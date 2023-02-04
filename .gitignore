@@ -1,0 +1,8 @@
+/.cache/
+/.idea/
+/.vscode/
+/cmake-build-debug/
+/build/
+/Testing/
+/SPARTA/
+notes.cpp
