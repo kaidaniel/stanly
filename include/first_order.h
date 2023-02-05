@@ -7,9 +7,9 @@
 #include <variant>
 
 #include "ConstantAbstractDomain.h"
+#include "DirectProductAbstractDomain.h"
 #include "HashedAbstractEnvironment.h"
 #include "HashedSetAbstractDomain.h"
-#include "ReducedProductAbstractDomain.h"
 
 namespace syntax {
 struct Input;
@@ -18,21 +18,21 @@ struct StoreSubscript;
 struct LoadSubscript;
 struct AssignScalar;
 struct AssignVar;
-}  // namespace syntax
+} // namespace syntax
 
 namespace concrete {
 using Var = int;
 using Scalar = int;
-using Object = std::vector<concrete::Scalar>;
-using Bindings = std::unordered_map<Var, concrete::Scalar>;
+using Object = std::unordered_map<concrete::Scalar, concrete::Scalar>;
 using Value = std::variant<concrete::Scalar, concrete::Object>;
+using Bindings = std::unordered_map<Var, concrete::Value>;
 void transition(const syntax::Input &, concrete::Bindings &);
 void transition(const syntax::Local &, concrete::Bindings &);
 void transition(const syntax::StoreSubscript &, concrete::Bindings &);
 void transition(const syntax::LoadSubscript &, concrete::Bindings &);
 void transition(const syntax::AssignScalar &, concrete::Bindings &);
 void transition(const syntax::AssignVar &, concrete::Bindings &);
-}  // namespace concrete
+} // namespace concrete
 
 namespace syntax {
 /// @brief declare variable ".var" to be an input to the program.
@@ -47,60 +47,52 @@ struct Input {
 struct Local {
   concrete::Var var;
 };
-/// @brief .object_var[.subscript_var] = .scalar_var
+/// @brief .target[.stored_field] = .rhs
 struct StoreSubscript {
-  concrete::Var scalar;
-  concrete::Var object;
+  concrete::Var rhs;
+  concrete::Var target;
   concrete::Var subscript;
 };
-/// @brief .scalar_var = .object_var[.subscript_var]
+/// @brief .lhs = .source[.subscript]
 struct LoadSubscript {
-  concrete::Var scalar;
-  concrete::Var object;
+  concrete::Var lhs;
+  concrete::Var source;
   concrete::Var subscript;
 };
-/// @brief .scalar_var = .scalar
+/// @brief .lhs = .scalar
 struct AssignScalar {
-  concrete::Var var;
+  concrete::Var lhs;
   concrete::Scalar scalar;
 };
-/// @brief .target_var = .source_var
+/// @brief .lhs = .rhs
 struct AssignVar {
-  concrete::Var target;
-  concrete::Var source;
+  concrete::Var lhs;
+  concrete::Var rhs;
 };
-}  // namespace syntax
+} // namespace syntax
 
 namespace abstract {
 /// @brief Abstraction of a scalar value.
 using Scalar = sparta::ConstantAbstractDomain<concrete::Scalar>;
 /// @brief Abstraction of an object as a set of field names.
 ///
-// abs_obj = [1 -> Abs{1}][2 -> Top] means: Union(paths where 1 is set to value
-// 1, paths where 2 is set to any value) -> over-approximates e.g. {{1:1, 2:3},
-// {1:1}} if combined with under-approximation of labels present, then: {1,2}
-// means can perform strong update. {1} means '2' can perform only weak update.
+// abs_obj = [1 -> abstract::Value{1}][2 -> Top] means:
+// Union(paths where 1 is set to value 1, paths where 2 is set to any value)
+//   -> over-approximates e.g. {{1:1, 2:3}, {1:1}}
+// if combined with under-approximation of labels present,
+//   then: {1,2} means can perform strong update.
+// {1} means '2' can perform only weak update.
 using Object = sparta::HashedSetAbstractDomain<concrete::Scalar>;
 /// @brief Abstraction of a set of values in memory (scalars or objects).
 struct Value
-    : public sparta::ReducedProductAbstractDomain<Value, Scalar, Object> {
-  using sparta::ReducedProductAbstractDomain<
-      Value, Scalar, Object>::ReducedProductAbstractDomain;
-  static void reduce_product(std::tuple<Scalar, Object> &) {}
+    : public sparta::DirectProductAbstractDomain<Value, Scalar, Object> {
+  using sparta::DirectProductAbstractDomain<
+      Value, Scalar, Object>::DirectProductAbstractDomain;
+  static const int ScalarIdx = 0;
+  static const int ObjectIdx = 1;
 };
 /// @brief Abstraction of the program state (Var -> Value).
-class Bindings {
- private:
-  void bind(const concrete::Var &, const abstract::Value &);
-  using Impl = sparta::HashedAbstractEnvironment<concrete::Var, Value>;
-  Impl impl_;
-
- public:
-  Bindings(Impl &&);
-  void bind_top(const concrete::Var &);
-  void bind_bottom(const concrete::Var &);
-};
-
+using Bindings = sparta::HashedAbstractEnvironment<concrete::Var, Value>;
 /// @brief Set Input.var to top (no-op).
 void transition(const syntax::Input &, abstract::Bindings &);
 /// @brief Bind Local.var to bottom.
@@ -117,5 +109,5 @@ void transition(const syntax::LoadSubscript &, abstract::Bindings &);
 void transition(const syntax::AssignScalar &, abstract::Bindings &);
 /// @brief Update .target_var to .source_var
 void transition(const syntax::AssignVar &, abstract::Bindings &);
-}  // namespace abstract
-#endif  // KSAR_FIRST_ORDER_H
+} // namespace abstract
+#endif // KSAR_FIRST_ORDER_H

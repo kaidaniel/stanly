@@ -8,11 +8,9 @@
 namespace sparta {
 using namespace std;
 
-template <typename>
-class AbstractDomain;
+template <typename> class AbstractDomain;
 
-template <typename>
-class AbstractValue;
+template <typename> class AbstractValue;
 
 enum class AbstractValueKind;
 
@@ -32,9 +30,9 @@ concept Value = derived_from<T, AbstractValue<T>> &&
 };
 
 template <typename T>
-concept GraphInterface = requires(T, const typename T::Graph g,
-                                  const typename T::EdgeId &e,
-                                  const typename T::NodeId &n) {
+concept GraphInterface = requires(
+    T, const typename T::Graph g, const typename T::EdgeId &e,
+    const typename T::NodeId &n) {
   { T::entry(g) } -> same_as<typename T::NodeId>;
   { T::source(g, e) } -> same_as<typename T::NodeId>;
   { T::predecessors(g, n) } -> ranges::range<>;
@@ -57,40 +55,29 @@ concept Domain = derived_from<T, AbstractDomain<T>> &&
 };
 
 // domain transformers
-template <Domain... T>
-class DisjointUnion;
-template <Domain... T>
-class DirectProduct;
-template <Domain T>
-class Reverse;
-template <Domain T>
-class Lifted;
+template <Domain... T> class DisjointUnion;
+template <Domain... T> class DirectProduct;
+template <Domain T> class Reverse;
+template <Domain T> class Lifted;
 
 // partition: implicitly BOTTOM (-> iterate over other.items())
 // (abstraction of) Union of execution paths, indexed by Label
 // Android: (field : Container x Name x Type) -> DisjointUnion String Integer
 // HeapPointer ...
 // => union of all paths with "load field", abstracted as "result register"
-template <typename Label, Domain D>
-class HashedPartition;
+template <typename Label, Domain D> class HashedPartition;
 // environment: implicitly TOP (-> iterate over this.items())
 // intersection of all possible states
-template <typename Label, Domain D>
-class TreePartition;
-template <typename Variable, Domain D>
-class HashedEnvironment;
+template <typename Label, Domain D> class TreePartition;
+template <typename Variable, Domain D> class HashedEnvironment;
 
 // simple domains
-template <typename T>
-class Constant;
-template <typename E /*Enum*/, typename L, typename C, L *l>
-class Finite;
-class IntegerSet;  // widens to Top unless one is subset of the other
-template <integral N>
-class Interval;
+template <typename T> class Constant;
+template <typename E /*Enum*/, typename L, typename C, L *l> class Finite;
+class IntegerSet; // widens to Top unless one is subset of the other
+template <integral N> class Interval;
 
-template <Value T>
-class Scaffolding;
+template <Value T> class Scaffolding;
 
 template <typename T, typename G, typename D>
 concept FixpointIter = GraphInterface<G> && Domain<D> &&
@@ -134,12 +121,13 @@ typename T::Function, typename T::Registry, typename T::Callsite::Domain,
                 FA, typename T::CallGraphInterface::Graph,
                 typename T::Callsite::Domain>,
             typename T::CallGraphInterface::Graph, typename T::Callsite::Domain>
-            &&requires(typename T::CallGraphInterface::NodeId &n,
-                       typename T::Program p, typename T::Registry r) {
+            &&requires(
+                typename T::CallGraphInterface::NodeId &n,
+                typename T::Program p, typename T::Registry r) {
   { T::function_by_node_id(n) } -> same_as<typename T::Function &>;
   { T::call_graph_of(p, &r) } -> same_as<typename T::CallGraphInterface::Graph>;
 };
 
-}  // namespace sparta
+} // namespace sparta
 
-#endif  // KSAR_SPARTA_CONCEPTS_H
+#endif // KSAR_SPARTA_CONCEPTS_H
