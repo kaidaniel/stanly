@@ -110,4 +110,5 @@ void transition(const syntax::AssignScalar &, abstract::Bindings &);
 /// @brief Update .target_var to .source_var
 void transition(const syntax::AssignVar &, abstract::Bindings &);
 } // namespace abstract
+
 #endif // KSAR_FIRST_ORDER_H

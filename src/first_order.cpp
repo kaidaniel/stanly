@@ -46,31 +46,26 @@ void transition(AssignVar &n, concrete::Bindings &b) {
 } // namespace concrete
 
 namespace abstract {
-namespace {
-  void with_field(Value &object_value, const Value &field_value) {
-    object_value.apply<Value::ObjectIdx>([&](Object *object) {
-      const Scalar &scalar{field_value.get<Value::ScalarIdx>()};
-      if (scalar.is_value()) {
-        object->add(*scalar.get_constant());
-      } else {
-        *object = Object{scalar.kind()};
-      }
-    });
-    object_value.apply<Value::ScalarIdx>(
-        [&](Scalar *value) { value->set_to_bottom(); });
-  }
 
-} // namespace
 void transition(Input &n, Bindings &b) { b.set(n.var, Value::top()); }
 void transition(Local &n, Bindings &b) { b.set(n.var, Value::bottom()); }
 void transition(StoreSubscript &n, Bindings &b) {
-  auto &subscript = b.get(n.subscript);
-  b.update(n.target, [&](Value *target) { with_field(*target, subscript); });
+  b.update(n.target, [&](Value *target) {
+    target->apply<Value::ObjectIdx>([&](Object *object) {
+      switch (auto &scalar = b.get(n.subscript).get<Value::ScalarIdx>();
+              scalar.kind()) {
+      case Kind::Bottom: object->set_to_bottom(); break;
+      case Kind::Top: object->set_to_top(); break;
+      case Kind::Value: object->add(*scalar.get_constant()); break;
+      }
+    });
+    target->apply<Value::ScalarIdx>(
+        [&](Scalar *scalar) { scalar->set_to_bottom(); });
+  });
 }
 void transition(LoadSubscript &n, Bindings &b) {
-  const Object &source{b.get(n.source).get<Value::ObjectIdx>()};
-  const Scalar &subscript{b.get(n.subscript).get<Value::ScalarIdx>()};
-  Scalar scalar = (source.is_bottom() | subscript.is_bottom())
+  Scalar scalar = (b.get(n.source).get<Value::ObjectIdx>().is_bottom() |
+                   b.get(n.subscript).get<Value::ScalarIdx>().is_bottom())
                       ? Scalar::bottom()
                       : Scalar::top();
   b.set(n.lhs, Value{{scalar, Object::bottom()}});
