@@ -1,22 +1,13 @@
-#include "first_order.h"
+#include "firstorder.h"
 
 namespace ksar {
-using Var = const syntax::Var;
-using Input = const syntax::Input;
-using Local = const syntax::Local;
-using StoreSubscript = const syntax::StoreSubscript;
-using LoadSubscript = const syntax::LoadSubscript;
-using AssignLiteral = const syntax::AssignLiteral;
-using AssignVar = const syntax::AssignVar;
+using namespace syntax;
+using namespace domain;
 using Kind = sparta::AbstractValueKind;
-using domain::Bindings;
-using domain::Element;
-using domain::Record;
-using domain::Value;
 
-void transition(Input &n, Bindings &b) { b.set(n.var, Value::top()); }
-void transition(Local &n, Bindings &b) { b.set(n.var, Value::bottom()); }
-void transition(StoreSubscript &n, Bindings &b) {
+void transition(const Input &n, Bindings &b) { b.set(n.var, Value::top()); }
+void transition(const Local &n, Bindings &b) { b.set(n.var, Value::bottom()); }
+void transition(const StoreSubscript &n, Bindings &b) {
   update(
       [&](Element *el) { el->set_to_bottom(); },
       [&](Record *record) {
@@ -29,7 +20,7 @@ void transition(StoreSubscript &n, Bindings &b) {
       b, n.target);
 }
 
-void transition(LoadSubscript &n, Bindings &b) {
+void transition(const LoadSubscript &n, Bindings &b) {
   bool any_bottom =
       record(b, n.source).is_bottom() | element(b, n.subscript).is_bottom();
   auto f = any_bottom ? &Element::set_to_bottom : &Element::set_to_top;
@@ -38,10 +29,12 @@ void transition(LoadSubscript &n, Bindings &b) {
       b, n.lhs);
 };
 
-void transition(AssignLiteral &n, Bindings &b) {
+void transition(const AssignLiteral &n, Bindings &b) {
   update(
       [&](Element *el) { *el = Element{n.literal}; },
       [](Record *re) { re->set_to_bottom(); }, b, n.lhs);
 };
-void transition(AssignVar &n, Bindings &b) { b.set(n.lhs, b.get(n.rhs)); };
+void transition(const AssignVar &n, Bindings &b) {
+  b.set(n.lhs, b.get(n.rhs));
+};
 } // namespace ksar
