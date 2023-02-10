@@ -10,7 +10,8 @@
         {
             "name": "linux-clang",
             "inherits": ["base"],
-            "binaryDir": "${sourceDir}/build"
+            "binaryDir": "${sourceDir}/build",
+            "environment": {"CXX": "clang++"}
         }
     ]
 }
