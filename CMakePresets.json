@@ -1,0 +1,16 @@
+{
+    "version": 3,
+    "configurePresets": [
+        {
+            "name": "base",
+            "hidden": true,
+            "generator": "Ninja Multi-Config",
+            "cacheVariables": {"CMAKE_BUILD_PARALLEL_LEVEL": "4", "CMAKE_BUILD_TYPE": "Debug"}
+        },
+        {
+            "name": "linux-clang",
+            "inherits": ["base"],
+            "binaryDir": "${sourceDir}/build"
+        }
+    ]
+}
