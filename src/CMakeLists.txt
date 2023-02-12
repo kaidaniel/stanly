@@ -7,7 +7,7 @@ target_compile_options(project_props INTERFACE
     -Wall 
     -Wextra 
     -Wpedantic
-    $<$<AND:$<CONFIG:DEBUG>,$<CXX_COMPILER_ID:Clang>>:-O0 -g -fdebug-macro -ggdb3 -gsimple-template-names>)
+    $<$<AND:$<CONFIG:Debug>,$<CXX_COMPILER_ID:Clang>>:-O0 -g -fdebug-macro -ggdb3 -gsimple-template-names>)
 target_include_directories(project_props INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 set_target_properties(project_props PROPERTIES 
     CXX_CLANG_TIDY clang-tidy

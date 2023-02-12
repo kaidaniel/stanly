@@ -19,6 +19,7 @@ if(NOT EXISTS "${CMAKE_BINARY_DIR}/dependency_graph.dot")
         COMMENT "generating dependency_graph.png")
 endif()
 
+
 add_subdirectory(extern)
 add_subdirectory(src)
 add_subdirectory(docs)

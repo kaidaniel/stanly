@@ -4,14 +4,21 @@
         {
             "name": "base",
             "hidden": true,
-            "generator": "Ninja Multi-Config",
-            "cacheVariables": {"CMAKE_BUILD_PARALLEL_LEVEL": "4", "CMAKE_BUILD_TYPE": "Debug"}
+            "generator": "Ninja Multi-Config"
         },
         {
             "name": "clang",
             "inherits": ["base"],
             "binaryDir": "${sourceDir}/build",
             "environment": {"CXX": "clang++"}
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "debug",
+            "configurePreset": "clang",
+            "jobs": 4,
+            "configuration": "Debug"
         }
     ]
 }
