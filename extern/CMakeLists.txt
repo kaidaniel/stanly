@@ -2,4 +2,6 @@
 # e.g. by writing a find module Findsparta.cmake using include(FetchContent)?
 # find_package(sparta REQUIRED)
 add_library(sparta INTERFACE)
-target_include_directories(sparta SYSTEM INTERFACE /usr/local/include/sparta)
+target_include_directories(sparta SYSTEM INTERFACE 
+    $<BUILD_INTERFACE:/usr/local/include/sparta>
+    $<INSTALL_INTERFACE:include/sparta)
