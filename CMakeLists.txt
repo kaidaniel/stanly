@@ -3,15 +3,10 @@ project(ksar
     VERSION 0.0.1
     LANGUAGES CXX)
 
-list(APPEND CMAKE_MODULE_PATH cmake_modules)
-include(set_globals)
-include(add_target_project_options)
-include(add_target_sparta)
+list(APPEND CMAKE_MODULE_PATH cmake)
+# TODO: add_custom_target to run sanitizers
 
-add_library(firstorder src/firstorder.cpp)
-target_link_libraries(firstorder project_options)
-target_link_libraries(firstorder sparta)
-
-# TODO configure in 'ctest -S build.make' (which can live in a project-agnostic location)
-# adding e.g. valgrind, ubsan etc.
-include(CTest)
+add_subdirectory(extern)
+add_subdirectory(src)
+add_subdirectory(docs)
+add_subdirectory(test)

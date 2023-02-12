@@ -21,7 +21,7 @@ void transition(const StoreSubscript &n, Bindings &b) {
 }
 void transition(const LoadSubscript &n, Bindings &b) {
   update(
-      (record(b, n.source).is_bottom() | element(b, n.subscript).is_bottom())
+      (record(b, n.source).is_bottom() or element(b, n.subscript).is_bottom())
           ? &Element::set_to_bottom
           : &Element::set_to_top,
       &Record::set_to_bottom, b, n.lhs);

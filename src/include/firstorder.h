@@ -47,7 +47,7 @@ namespace domain {
     return b.get(v).get<1>();
   }
   template <typename F, typename G>
-  static const void update(F f, G g, Bindings &b, const syntax::Var &v) {
+  static void update(F f, G g, Bindings &b, const syntax::Var &v) {
     b.update(v, [&](Value *value) {
       value->apply<0>([&](Element *element) { std::invoke(f, element); });
       value->apply<1>([&](Record *record) { std::invoke(g, record); });
