@@ -1,24 +1,19 @@
 {
     "version": 3,
     "configurePresets": [
-        {
-            "name": "base",
-            "hidden": true,
-            "generator": "Ninja Multi-Config"
-        },
-        {
-            "name": "clang",
-            "inherits": ["base"],
-            "binaryDir": "${sourceDir}/build",
-            "environment": {"CXX": "clang++"}
-        }
+        {"name": "configure_base", "hidden": true, "generator": "Ninja"},
+        {"name": "clang",         "inherits": ["configure_base"], "environment": {"CXX": "clang++"}, "hidden": true},
+        {"name": "gcc",           "inherits": ["configure_base"], "environment": {"CXX": "g++"},     "hidden": true},
+        {"name": "clang-debug",   "inherits": ["clang"], "binaryDir": "${sourceDir}/build/clang-debug"},
+        {"name": "clang-release", "inherits": ["clang"], "binaryDir": "${sourceDir}/build/clang-release"},
+        {"name": "gcc-debug",     "inherits": ["gcc"],   "binaryDir": "${sourceDir}/build/gcc-debug"},
+        {"name": "gcc-release",   "inherits": ["gcc"],   "binaryDir": "${sourceDir}/build/gcc-release"}
     ],
     "buildPresets": [
-        {
-            "name": "debug",
-            "configurePreset": "clang",
-            "jobs": 4,
-            "configuration": "Debug"
-        }
+        {"name": "build_base", "hidden": true, "jobs": 4},
+        {"name": "clang-debug",   "configurePreset": "clang-debug",   "inherits": ["build_base"], "configuration": "Debug"},
+        {"name": "clang-release", "configurePreset": "clang-release", "inherits": ["build_base"], "configuration": "Release"},
+        {"name": "gcc-debug",     "configurePreset": "gcc-debug",     "inherits": ["build_base"], "configuration": "Debug"},
+        {"name": "gcc-release",   "configurePreset": "gcc-release",   "inherits": ["build_base"], "configuration": "Release"}
     ]
 }
