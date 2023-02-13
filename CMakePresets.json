@@ -1,19 +1,19 @@
 {
-    "version": 3,
+    "version": 2,
     "configurePresets": [
-        {"name": "configure_base", "hidden": true, "generator": "Ninja"},
-        {"name": "clang",         "inherits": ["configure_base"], "environment": {"CXX": "clang++"}, "hidden": true},
-        {"name": "gcc",           "inherits": ["configure_base"], "environment": {"CXX": "g++"},     "hidden": true},
-        {"name": "clang-debug",   "inherits": ["clang"], "binaryDir": "${sourceDir}/build/clang-debug"},
-        {"name": "clang-release", "inherits": ["clang"], "binaryDir": "${sourceDir}/build/clang-release"},
-        {"name": "gcc-debug",     "inherits": ["gcc"],   "binaryDir": "${sourceDir}/build/gcc-debug"},
-        {"name": "gcc-release",   "inherits": ["gcc"],   "binaryDir": "${sourceDir}/build/gcc-release"}
+        {
+            "name": "base",
+            "hidden": true,
+            "generator": "Ninja",
+            "errors": {"deprecated": true},
+            "binaryDir": "${sourceDir}/build/${presetName}/$env{KSAR_BUILD_DIR}"
+        },
+        {"name": "clang", "inherits": ["base"], "environment": {"CXX": "clang++"}},
+        {"name": "gcc",   "inherits": ["base"], "environment": {"CXX": "g++"}}
     ],
     "buildPresets": [
-        {"name": "build_base", "hidden": true, "jobs": 4},
-        {"name": "clang-debug",   "configurePreset": "clang-debug",   "inherits": ["build_base"], "configuration": "Debug"},
-        {"name": "clang-release", "configurePreset": "clang-release", "inherits": ["build_base"], "configuration": "Release"},
-        {"name": "gcc-debug",     "configurePreset": "gcc-debug",     "inherits": ["build_base"], "configuration": "Debug"},
-        {"name": "gcc-release",   "configurePreset": "gcc-release",   "inherits": ["build_base"], "configuration": "Release"}
+        {"name": "base",  "hidden": true, "jobs": 4},
+        {"name": "clang", "inherits": ["base"], "configurePreset": "clang"},
+        {"name": "gcc",   "inherits": ["base"], "configurePreset": "gcc"}
     ]
 }
