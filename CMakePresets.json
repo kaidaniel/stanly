@@ -8,7 +8,7 @@
             "errors": {"deprecated": true},
             "binaryDir": "${sourceDir}/build/${presetName}/$env{KSAR_BUILD_DIR}"
         },
-        {"name": "clang", "inherits": ["base"], "environment": {"CXX": "clang++"}},
+        {"name": "clang", "inherits": ["base"], "environment": {"CXX": "clang++-15"}},
         {"name": "gcc",   "inherits": ["base"], "environment": {"CXX": "g++"}}
     ],
     "buildPresets": [
