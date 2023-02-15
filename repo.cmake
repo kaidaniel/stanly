@@ -42,7 +42,7 @@ function(introduce msg)
     math(EXPR n 80-${len})
     string(REPEAT "-" ${n} padding)
     set_show()
-    message("\n{show}")
+    message("\n${show}")
 endfunction()
 
 function(make_dependency_graph_png)
