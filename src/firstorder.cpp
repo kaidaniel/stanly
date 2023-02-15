@@ -10,14 +10,14 @@ namespace {
     return b.get(v).get<0>();
   }
   auto record(const Bindings &b, const syntax::Var &v) -> const Record & {
-    ;
     return b.get(v).get<1>();
   }
 
-  void update(auto f, auto g, Bindings &b, const syntax::Var &v) {
+  void update(auto felement, auto frecord, Bindings &b, const syntax::Var &v) {
     b.update(v, [&](Value *value) {
-      value->apply<0>([&](Element *element) { std::invoke(f, element); });
-      value->apply<1>([&](Record *record) { std::invoke(g, record); });
+      value->apply<0>(
+          [&](Element *element) { std::invoke(felement, element); });
+      value->apply<1>([&](Record *record) { std::invoke(frecord, record); });
     });
   }
 } // namespace
