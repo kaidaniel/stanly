@@ -1,11 +1,7 @@
 # TODO: add_custom_target to run sanitizers
 
 add_library(project_props INTERFACE)
-target_compile_options(project_props INTERFACE 
-    -Wall 
-    -Wextra 
-    -Wpedantic
-    -Werror)
+target_compile_options(project_props INTERFACE -Wall -Wextra -Wpedantic $<$<CONFIG:DEBUG>:-Werror>)
 target_include_directories(project_props INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_compile_features(project_props INTERFACE cxx_std_20)
 
