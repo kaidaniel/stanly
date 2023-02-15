@@ -14,8 +14,7 @@ namespace {
     return b.get(v).get<1>();
   }
 
-  template <typename F, typename G>
-  void update(F f, G g, Bindings &b, const syntax::Var &v) {
+  void update(auto f, auto g, Bindings &b, const syntax::Var &v) {
     b.update(v, [&](Value *value) {
       value->apply<0>([&](Element *element) { std::invoke(f, element); });
       value->apply<1>([&](Record *record) { std::invoke(g, record); });
