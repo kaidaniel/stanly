@@ -5,6 +5,24 @@ using namespace syntax;
 using namespace domain;
 using Kind = sparta::AbstractValueKind;
 
+namespace {
+  auto element(const Bindings &b, const syntax::Var &v) -> const Element & {
+    return b.get(v).get<0>();
+  }
+  auto record(const Bindings &b, const syntax::Var &v) -> const Record & {
+    ;
+    return b.get(v).get<1>();
+  }
+
+  template <typename F, typename G>
+  void update(F f, G g, Bindings &b, const syntax::Var &v) {
+    b.update(v, [&](Value *value) {
+      value->apply<0>([&](Element *element) { std::invoke(f, element); });
+      value->apply<1>([&](Record *record) { std::invoke(g, record); });
+    });
+  }
+} // namespace
+
 void transition(const Input &n, Bindings &b) { b.set(n.var, Value::top()); }
 void transition(const Local &n, Bindings &b) { b.set(n.var, Value::bottom()); }
 void transition(const StoreSubscript &n, Bindings &b) {
