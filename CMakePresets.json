@@ -6,7 +6,8 @@
             "hidden": true,
             "generator": "Ninja",
             "errors": {"deprecated": true},
-            "binaryDir": "${sourceDir}/build/${presetName}/$env{KSAR_BUILD_DIR}"
+            "binaryDir": "${sourceDir}/build/${presetName}/$env{KSAR_BUILD_DIR}",
+            "environment": {"CMAKE_EXPORT_COMPILE_COMMANDS": "On"}
         },
         {"name": "clang", "inherits": ["base"], "environment": {"CXX": "clang++-15"}},
         {"name": "gcc",   "inherits": ["base"], "environment": {"CXX": "g++"}}

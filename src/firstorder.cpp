@@ -11,7 +11,7 @@ void transition(const StoreSubscript &n, Bindings &b) {
   update(
       &Element::set_to_bottom,
       [&](Record *record) {
-        switch (auto &subscript{element(b, n.subscript)}; subscript.kind()) {
+        switch (const auto &subscript{element(b, n.subscript)}; subscript.kind()) {
         case Kind::Bottom: record->set_to_bottom(); break;
         case Kind::Top: record->set_to_top(); break;
         case Kind::Value: record->add(*subscript.get_constant()); break;
