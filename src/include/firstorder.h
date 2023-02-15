@@ -40,10 +40,12 @@ namespace domain {
   };
   /// @brief Abstraction of the program state (Var -> Value).
   using Bindings = sparta::HashedAbstractEnvironment<syntax::Var, Value>;
-  static auto element(const Bindings &b, const syntax::Var &v) -> const Element & {
+  static auto element(const Bindings &b, const syntax::Var &v)
+      -> const Element & {
     return b.get(v).get<0>();
   }
-  static auto record(const Bindings &b, const syntax::Var &v) -> const Record & {
+  static auto record(const Bindings &b, const syntax::Var &v)
+      -> const Record & {
     return b.get(v).get<1>();
   }
   template <typename F, typename G>
