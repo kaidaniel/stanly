@@ -1,0 +1,12 @@
+include(shared)
+
+function(run_main)
+    string(TIMESTAMP start_time %s)
+    main()
+    string(TIMESTAMP stop_time %s)
+    math(EXPR elapsed ${stop_time}-${start_time})
+    math(EXPR minutes ${elapsed}/60)
+    math(EXPR seconds ${elapsed}%60)
+    introduce(Done)
+    message("Success after ${minutes} minutes, ${seconds} seconds")
+endfunction()
