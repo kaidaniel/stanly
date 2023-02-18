@@ -2,20 +2,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators_all.hpp>
 #include <string>
-#include <variant>
-#include <vector>
 
-using namespace ksar;
-using rStr = const std::string &;
-using Str = std::string;
-
-Graph::Graph(rStr) {}
-Str Graph::show() { return "show_ir"; }
-Graph ksar::parse(rStr s) { return {s}; }
-
-Analysis::Analysis(const Graph &) {}
-Str Analysis::show() { return "show_bindings"; }
-Analysis ksar::analyse(const Graph &) { return Graph(""); }
 
 TEST_CASE(
     "correctly parse programs consisting of a single statement",
@@ -34,13 +21,13 @@ TEST_CASE(
         "x = 1",                "(AssignLiteral x 1)"
     })));
   // clang-format on
-  rStr statement = v[0];
-  rStr translation = v[1];
-  REQUIRE(parse(statement).show() == translation);
+  const std::string& statement = v[0];
+  const std::string& translation = v[1];
+  REQUIRE(ksar::parse(statement).show() == translation);
 }
 
 TEST_CASE("add two elements to a record", "[first-order][analysis]") {
-  auto graph = parse(
+  auto graph = ksar::parse(
       R"python(
 e = 1
 f = 2
@@ -55,7 +42,7 @@ r[f] = e
 (StoreSubscript f r e)
 (StoreSubscript e r f)
 )python");
-  auto analysis = analyse(graph);
+  auto analysis = ksar::analyse(graph);
   REQUIRE(analysis.show() == R"python(
 (Bind e (Integer 1))
 (Bind f (Integer 2))
