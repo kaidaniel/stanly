@@ -1,19 +1,17 @@
 #include "firstorder.h"
 
 namespace ksar {
-using namespace syntax;
-using namespace domain;
 using Kind = sparta::AbstractValueKind;
 
 namespace {
-  auto element(const Bindings &b, const syntax::Var &v) -> const Element & {
+  auto element(const Bindings &b, const Var &v) -> const Element & {
     return b.get(v).get<0>();
   }
-  auto record(const Bindings &b, const syntax::Var &v) -> const Record & {
+  auto record(const Bindings &b, const Var &v) -> const Record & {
     return b.get(v).get<1>();
   }
 
-  void update(auto felement, auto frecord, Bindings &b, const syntax::Var &v) {
+  void update(auto felement, auto frecord, Bindings &b, const Var &v) {
     b.update(v, [&](Value *value) {
       value->apply<0>(
           [&](Element *element) { std::invoke(felement, element); });

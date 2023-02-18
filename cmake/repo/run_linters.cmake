@@ -1,7 +1,7 @@
 include(shared)
 
 function(run_linters)
-    file(GLOB source_files src/*.cpp src/include/*.h)
+    file(GLOB source_files src/*.cpp src/include/*.h test/*.cpp)
     introduce(clang-tidy)
     execute_cmd(clang-tidy -p ${binary_dir}/clang/Release/ ${source_files})
     introduce(clang-format)
