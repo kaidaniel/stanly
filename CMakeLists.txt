@@ -7,7 +7,7 @@ find_package(fmt CONFIG REQUIRED)
 find_package(Catch2 CONFIG REQUIRED)
 find_package(unofficial-tree-sitter CONFIG REQUIRED)
 
-
 add_subdirectory(src)
 add_subdirectory(docs)
+enable_testing()
 add_subdirectory(test)

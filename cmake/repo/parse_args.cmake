@@ -1,3 +1,5 @@
+include(shared)
+
 function(parse_args)
     set(help "usage: 'cmake -P test_repo.cmake [--help-script][--remove]'")
     set(first_arg ${CMAKE_ARGV3})

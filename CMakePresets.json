@@ -1,20 +1,26 @@
 {
-    "version": 2,
+    "version": 6,
     "configurePresets": [
         {
             "name": "base",
             "hidden": true,
             "generator": "Ninja",
-            "errors": {"deprecated": true},
-            "binaryDir": "${sourceDir}/build/${presetName}/$env{KSAR_BUILD_DIR}",
-            "environment": {"CMAKE_EXPORT_COMPILE_COMMANDS": "ON" , "CMAKE_COLOR_DIAGNOSTICS": "ON"}
+            "warnings": {"systemVars": true},
+            "errors": {"deprecated": true, "dev": true},
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "environment": {
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON" , 
+                "CMAKE_COLOR_DIAGNOSTICS": "ON",
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
         },
-        {"name": "clang", "inherits": ["base"], "environment": {"CXX": "clang++-15"}},
-        {"name": "gcc",   "inherits": ["base"], "environment": {"CXX": "g++"}}
+        {"name": "clang", "environment": {"CXX": "clang++-15"}, "inherits": ["base"]}
     ],
-    "buildPresets": [
-        {"name": "base",  "hidden": true, "jobs": 6},
-        {"name": "clang", "inherits": ["base"], "configurePreset": "clang"},
-        {"name": "gcc",   "inherits": ["base"], "configurePreset": "gcc"}
-    ]
+    "buildPresets": [{"name": "clang",  "jobs": 4, "configurePreset": "clang"}],
+    "testPresets": [{"name": "clang", "configurePreset": "clang", "output": {"outputOnFailure": true}}],
+    "workflowPresets": [{"name": "clang", "steps": [
+        {"type": "configure", "name": "clang"}, 
+        {"type": "build", "name": "clang"}, 
+        {"type": "test", "name": "clang"}
+    ]}]
 }
