@@ -4,47 +4,52 @@ namespace ksar {
 using Kind = sparta::AbstractValueKind;
 
 namespace {
-  auto element(const Bindings &b, const Var &v) -> const Element & {
+  auto number(const Bindings &b, const Var &v) -> const Number & {
     return b.get(v).get<0>();
   }
   auto record(const Bindings &b, const Var &v) -> const Record & {
     return b.get(v).get<1>();
   }
 
-  void update(auto felement, auto frecord, Bindings &b, const Var &v) {
+  void update(auto fnumber, auto frecord, Bindings &b, const Var &v) {
     b.update(v, [&](Value *value) {
       value->apply<0>(
-          [&](Element *element) { std::invoke(felement, element); });
+          [&](Number *number) { std::invoke(fnumber, number); });
       value->apply<1>([&](Record *record) { std::invoke(frecord, record); });
     });
   }
 } // namespace
 
-void transition(const Input &n, Bindings &b) { b.set(n.var, Value::top()); }
-void transition(const Local &n, Bindings &b) { b.set(n.var, Value::bottom()); }
-void transition(const StoreSubscript &n, Bindings &b) {
+void transition(const DeclareLocalVar &n, Bindings &b) { b.set(n.var, Value::bottom()); }
+void transition(const SetField &n, Bindings &b) {
   update(
-      &Element::set_to_bottom,
+      &Number::set_to_bottom,
       [&](Record *record) {
-        switch (const auto &subscript{element(b, n.subscript)};
-                subscript.kind()) {
+        switch (const auto &field{number(b, n.field)};
+                field.kind()) {
         case Kind::Bottom: record->set_to_bottom(); break;
         case Kind::Top: record->set_to_top(); break;
-        case Kind::Value: record->add(*subscript.get_constant()); break;
+        case Kind::Value: record->add(*field.get_constant()); break;
         }
       },
       b, n.target);
 }
-void transition(const LoadSubscript &n, Bindings &b) {
+void transition(const LoadField &n, Bindings &b) {
   update(
-      (record(b, n.source).is_bottom() or element(b, n.subscript).is_bottom())
-          ? &Element::set_to_bottom
-          : &Element::set_to_top,
+      (record(b, n.source).is_bottom() or number(b, n.field).is_bottom())
+          ? &Number::set_to_bottom
+          : &Number::set_to_top,
       &Record::set_to_bottom, b, n.lhs);
 }
-void transition(const AssignLiteral &n, Bindings &b) {
-  auto set_to_literal = [&](Element *e) { *e = Element{n.literal}; };
+void transition(const LoadNumber &n, Bindings &b) {
+  auto set_to_literal = [&](Number *e) { *e = Number{n.number_literal}; };
   update(set_to_literal, &Record::set_to_bottom, b, n.lhs);
 }
-void transition(const AssignVar &n, Bindings &b) { b.set(n.lhs, b.get(n.rhs)); }
+void transition(const LoadRecord &n, Bindings &b){
+  auto set_to_record = [&](Record *r) { 
+    *r = Record{}; r->add(n.record_literal.begin(), n.record_literal.end());};
+  update(&Number::set_to_bottom, set_to_record, b, n.lhs);
+}
+void transition(const LoadVar &n, Bindings &b) { b.set(n.lhs, b.get(n.rhs)); }
+
 } // namespace ksar
