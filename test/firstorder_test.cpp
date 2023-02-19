@@ -3,7 +3,7 @@
 #include <catch2/generators/catch_generators_all.hpp>
 #include <string>
 
-using ksar::parse;
+using stanly::parse;
 
 TEST_CASE("parse single statements", "[first-order][parsing]") {
   // clang-format off
@@ -22,12 +22,12 @@ TEST_CASE("parse single statements", "[first-order][parsing]") {
   // clang-format on
   const std::string &statement = v[0];
   const std::string &translation = v[1];
-  const ksar::Graph graph = parse(statement);
+  const stanly::Graph graph = parse(statement);
   REQUIRE(show(graph) == translation);
 }
 // TODO remove the "." from ".first-order" to no longer skip the test.
 TEST_CASE("add two elements to a record", "[.first-order][analysis]") {
-  const ksar::Graph graph = parse(
+  const stanly::Graph graph = parse(
       R"python(
 e = 1
 f = 2
@@ -42,7 +42,7 @@ r[f] = e
 (StoreSubscript f r e)
 (StoreSubscript e r f)
 )python");
-  const ksar::Analysis analysis = analyse(graph);
+  const stanly::Analysis analysis = analyse(graph);
   REQUIRE(show(analysis) == R"python(
 (Bind e (Integer 1))
 (Bind f (Integer 2))

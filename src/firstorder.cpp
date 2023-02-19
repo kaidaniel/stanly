@@ -6,7 +6,7 @@
 #include <memory>
 #include <variant>
 
-namespace ksar {
+namespace stanly {
 using Var = int;
 using NumberLiteral = int;
 using RecordLiteral = std::vector<NumberLiteral>;
@@ -103,4 +103,4 @@ Analysis analyse(const FirstOrderLanguageGraph &) {
   return Analysis{FirstOrderLanguageAnalysis{}};
 }
 Graph parse(const std::string &) { return Graph{FirstOrderLanguageGraph{}}; }
-}; // namespace ksar
+}; // namespace stanly

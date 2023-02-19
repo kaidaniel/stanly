@@ -3,7 +3,7 @@
 #include <memory>
 #include <string>
 
-namespace ksar {
+namespace stanly {
 
 namespace detail {
   struct InterfaceBase {
@@ -67,4 +67,4 @@ public:
 
 Graph parse(const std::string &);
 
-} // namespace ksar
+} // namespace stanly

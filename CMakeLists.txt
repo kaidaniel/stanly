@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(ksar VERSION 0.0.1 LANGUAGES CXX)
+project(stanly VERSION 0.0.1 LANGUAGES CXX)
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 find_package(Sparta REQUIRED)
