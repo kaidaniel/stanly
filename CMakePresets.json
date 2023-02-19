@@ -14,13 +14,16 @@
                 "CMAKE_BUILD_TYPE": "Debug"
             }
         },
-        {"name": "clang", "environment": {"CXX": "clang++-15"}, "inherits": ["base"]}
+        {"name": "default", "environment": {"CXX": "clang++-15"}, "inherits": ["base"]}
     ],
-    "buildPresets": [{"name": "clang",  "jobs": 4, "configurePreset": "clang"}],
-    "testPresets": [{"name": "clang", "configurePreset": "clang", "output": {"outputOnFailure": true}}],
-    "workflowPresets": [{"name": "clang", "steps": [
-        {"type": "configure", "name": "clang"}, 
-        {"type": "build", "name": "clang"}, 
-        {"type": "test", "name": "clang"}
+    "buildPresets": [{"name": "default",  "jobs": 4, "configurePreset": "default"}],
+    "testPresets": [
+        {"name": "default", "configurePreset": "default", "output": {"outputOnFailure": true}},
+        {"name": "summary", "inherits": ["default"], "output": {"outputOnFailure": false}}
+    ],
+    "workflowPresets": [{"name": "default", "steps": [
+        {"type": "configure", "name": "default"}, 
+        {"type": "build", "name": "default"}, 
+        {"type": "test", "name": "default"}
     ]}]
 }

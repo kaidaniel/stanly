@@ -2,8 +2,9 @@
 #include "DirectProductAbstractDomain.h"
 #include "HashedAbstractEnvironment.h"
 #include "HashedSetAbstractDomain.h"
-#include <variant>
 #include "analysis.h"
+#include <variant>
+#include <memory>
 
 namespace ksar {
 using Var = int;
@@ -34,8 +35,9 @@ struct LoadNumber { Var lhs; NumberLiteral number_literal; };
 struct LoadRecord { Var lhs; RecordLiteral record_literal; };
 /// `lhs` = `rhs`
 struct LoadVar { Var lhs; Var rhs; };
-  // clang-format on
-using FirstOrderSyntax = std::variant<DeclareLocalVar, SetField, LoadField, LoadNumber, LoadRecord, LoadVar>;
+// clang-format on
+using FirstOrderSyntax = std::variant<
+    DeclareLocalVar, SetField, LoadField, LoadNumber, LoadRecord, LoadVar>;
 using Kind = sparta::AbstractValueKind;
 
 namespace {
@@ -48,20 +50,20 @@ namespace {
 
   void update(auto fnumber, auto frecord, Bindings &b, const Var &v) {
     b.update(v, [&](Value *value) {
-      value->apply<0>(
-          [&](Number *number) { std::invoke(fnumber, number); });
+      value->apply<0>([&](Number *number) { std::invoke(fnumber, number); });
       value->apply<1>([&](Record *record) { std::invoke(frecord, record); });
     });
   }
 } // namespace
 
-void transition(const DeclareLocalVar &n, Bindings &b) { b.set(n.var, Value::bottom()); }
+void transition(const DeclareLocalVar &n, Bindings &b) {
+  b.set(n.var, Value::bottom());
+}
 void transition(const SetField &n, Bindings &b) {
   update(
       &Number::set_to_bottom,
       [&](Record *record) {
-        switch (const auto &field{number(b, n.field)};
-                field.kind()) {
+        switch (const auto &field{number(b, n.field)}; field.kind()) {
         case Kind::Bottom: record->set_to_bottom(); break;
         case Kind::Top: record->set_to_top(); break;
         case Kind::Value: record->add(*field.get_constant()); break;
@@ -80,18 +82,28 @@ void transition(const LoadNumber &n, Bindings &b) {
   auto set_to_literal = [&](Number *e) { *e = Number{n.number_literal}; };
   update(set_to_literal, &Record::set_to_bottom, b, n.lhs);
 }
-void transition(const LoadRecord &n, Bindings &b){
-  auto set_to_record = [&](Record *r) { 
-    *r = Record{}; r->add(n.record_literal.begin(), n.record_literal.end());};
+void transition(const LoadRecord &n, Bindings &b) {
+  auto set_to_record = [&](Record *r) {
+    *r = Record{};
+    r->add(n.record_literal.begin(), n.record_literal.end());
+  };
   update(&Number::set_to_bottom, set_to_record, b, n.lhs);
 }
 void transition(const LoadVar &n, Bindings &b) { b.set(n.lhs, b.get(n.rhs)); }
 
-Graph::Graph(const std::string&) {}
-std::string Graph::show() { return "graph of the intermediate language"; }
-Graph parse(const std::string& s) { return {s}; }
+class FirstOrderLanguageGraph{};
+class FirstOrderLanguageAnalysis{};
+std::string show(const FirstOrderLanguageGraph&) { 
+  return "FirstOrderLanguageGraph"; }
+std::string show(const FirstOrderLanguageAnalysis&){
+  return "FirstOrderLanguageAnalysis";
+}
+Analysis analyse(const FirstOrderLanguageGraph&) { 
+  return Analysis{FirstOrderLanguageAnalysis{}}; }
+Graph parse_first_order_language(const std::string &){
+  return Graph{FirstOrderLanguageGraph{}};
+}
 
-Analysis::Analysis(const Graph &) {}
-std::string Analysis::show() { return "bindings of variables to abstract values"; }
-Analysis analyse(const Graph &) { return Graph(""); }
+
+
 } // namespace ksar
