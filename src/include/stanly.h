@@ -5,7 +5,7 @@
 
 namespace ksar {
 
-namespace interfaces {
+namespace detail {
   struct InterfaceBase {
     virtual ~InterfaceBase() = default;
     InterfaceBase() = default;
@@ -15,55 +15,54 @@ namespace interfaces {
     InterfaceBase &operator=(InterfaceBase &&) = delete;
   };
 
-    struct ShowInterface : InterfaceBase {
-    [[nodiscard]] virtual std::string do_show() const = 0;
+  struct Show {
+    struct Interface : InterfaceBase {
+      [[nodiscard]] virtual std::string do_show() const = 0;
+    };
+    template <class T> struct Model : Show::Interface {
+      Model(const T &t) : t_(t) {}
+      [[nodiscard]] std::string do_show() const override { return show(t_); }
+    private:
+      const T &t_;
+    };
   };
-  template <class T> struct ShowModel : ShowInterface {
-    ShowModel(const T &t) : t_(t) {}
-    [[nodiscard]] std::string do_show() const override { return show(t_); }
-  private:
-    const T &t_;
-  };
-
-  template<class Interface, template<class> class Model>
-  class TypeErasedInterface {
-  protected:
-    std::unique_ptr<Interface> interface_;
-  public:
-    template <class T>
-    TypeErasedInterface(T t) : interface_{std::make_unique<Model<T>>(std::move(t))} {}
-  };
-
-  using Show = TypeErasedInterface<ShowInterface, ShowModel>;
-
-
-  template<class AnalyseResult>
-    struct AnalyseInterface : InterfaceBase{
-    [[nodiscard]] virtual std::string do_show() const = 0;
-    [[nodiscard]] virtual AnalyseResult do_analyse() const = 0;
-  };
-  template <class T, class R> struct AnalyseModel : AnalyseInterface<R> {
-    AnalyseModel(const T &t) : t_(t) {}
-    [[nodiscard]] std::string do_show() const override { return show(t_); }
-    [[nodiscard]] R do_analyse() const override { return analyse(t_); }
-  private:
-    const T &t_;
+  template <class Result> struct Analyse {
+    struct Interface : InterfaceBase {
+      [[nodiscard]] virtual std::string do_show() const = 0;
+      [[nodiscard]] virtual Result do_analyse() const = 0;
+    };
+    template <class T> struct Model : Interface {
+      Model(const T &t) : t_(t) {}
+      [[nodiscard]] std::string do_show() const override { return show(t_); }
+      [[nodiscard]] Result do_analyse() const override { return analyse(t_); }
+    private:
+      const T &t_;
+    };
   };
 
-} // namespace interfaces
+} // namespace detail
 
-class Analysis : public interfaces::Show {
-  friend std::string show(const Analysis &self) { return self.interface_->do_show(); }
+class Analysis : public detail::Show {
+  using Show = detail::Show;
+
+  std::unique_ptr<Show::Interface> interface_;
+  friend std::string show(const Analysis &a) { return a.interface_->do_show(); }
+public:
+  template <class T>
+  explicit Analysis(T t)
+      : interface_{std::make_unique<Show::Model<T>>(std::move(t))} {}
 };
 
-namespace interfaces {
-template<class T> using AnalyseModelOfAnalysis = AnalyseModel<T, Analysis>;
-using Analyse = TypeErasedInterface<AnalyseInterface<Analysis>, AnalyseModelOfAnalysis>;
-}
+class Graph : public detail::Analyse<Analysis> {
+  using Analyse = detail::Analyse<Analysis>;
 
-class Graph : public interfaces::Analyse {
-  friend std::string show(const Graph &self) { return self.interface_->do_show(); }
-  friend Analysis analyse(const Graph &self) { return self.interface_->do_analyse(); }
+  std::unique_ptr<Analyse::Interface> interface_;
+  friend std::string show(const Graph &g) { return g.interface_->do_show(); }
+  friend Analysis analyse(const Graph &g) { return g.interface_->do_analyse(); }
+public:
+  template <class T>
+  explicit Graph(T t)
+      : interface_{std::make_unique<Analyse::Model<T>>(std::move(t))} {}
 };
 
 Graph parse(const std::string &);
