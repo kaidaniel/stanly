@@ -1,7 +1,7 @@
 set(binary_dir ${CMAKE_SOURCE_DIR}/build/repo_cmake_script)
 
 function(execute_cmd)
-    execute_process(COMMAND ${ARGN} ECHO_OUTPUT_VARIABLE ECHO_ERROR_VARIABLE COMMAND_ERROR_IS_FATAL ANY)
+    execute_process(COMMAND ${ARGN} ECHO_OUTPUT_VARIABLE ECHO_ERROR_VARIABLE)
 endfunction()
 
 function(introduce msg)
