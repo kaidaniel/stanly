@@ -22,8 +22,7 @@ TEST_CASE("parse single statements", "[first-order][parsing]") {
   // clang-format on
   const std::string &statement = v[0];
   const std::string &translation = v[1];
-  const stanly::Graph graph = parse(statement);
-  REQUIRE(show(graph) == translation);
+  REQUIRE(show(parse(statement)) == translation);
 }
 // TODO remove the "." from ".first-order" to no longer skip the test.
 TEST_CASE("add two elements to a record", "[.first-order][analysis]") {
@@ -42,8 +41,7 @@ r[f] = e
 (StoreSubscript f r e)
 (StoreSubscript e r f)
 )python");
-  const stanly::Analysis analysis = analyse(graph);
-  REQUIRE(show(analysis) == R"python(
+  REQUIRE(show(analyse(graph)) == R"python(
 (Bind e (Integer 1))
 (Bind f (Integer 2))
 (Bind r (Record 1 2))
