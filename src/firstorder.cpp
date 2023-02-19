@@ -100,10 +100,8 @@ std::string show(const FirstOrderLanguageAnalysis&){
 }
 Analysis analyse(const FirstOrderLanguageGraph&) { 
   return Analysis{FirstOrderLanguageAnalysis{}}; }
-Graph parse_first_order_language(const std::string &){
+Graph parse(const std::string&){
   return Graph{FirstOrderLanguageGraph{}};
 }
+};
 
-
-
-} // namespace ksar

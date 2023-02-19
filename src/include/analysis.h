@@ -20,6 +20,7 @@ class Analysis {
     private:
     const T& t_;
   };
+  // hidden friend: can only be looked up via ADL (?)
   friend std::string show(const Analysis& a) { return a.model_->do_show(); }
   public:
   template<class T>
@@ -53,4 +54,5 @@ class Graph {
     { analyse(t) } -> std::same_as<Analysis>; }
   explicit Graph(T t) : model_{std::make_unique<Model<T>>(std::move(t))} {}
 };
+Graph parse(const std::string&);
 } // namespace ksar

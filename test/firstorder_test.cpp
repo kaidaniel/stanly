@@ -4,7 +4,7 @@
 #include <catch2/generators/catch_generators_all.hpp>
 #include <string>
 
-auto parse = [](const std::string& str){ return ksar::parse_first_order_language(str);};
+using ksar::parse;
 
 TEST_CASE("parse single statements", "[first-order][parsing]") {
   // clang-format off
