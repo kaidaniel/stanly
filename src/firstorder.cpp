@@ -3,8 +3,8 @@
 #include "HashedAbstractEnvironment.h"
 #include "HashedSetAbstractDomain.h"
 #include "analysis.h"
-#include <variant>
 #include <memory>
+#include <variant>
 
 namespace ksar {
 using Var = int;
@@ -91,17 +91,16 @@ void transition(const LoadRecord &n, Bindings &b) {
 }
 void transition(const LoadVar &n, Bindings &b) { b.set(n.lhs, b.get(n.rhs)); }
 
-class FirstOrderLanguageGraph{};
-class FirstOrderLanguageAnalysis{};
-std::string show(const FirstOrderLanguageGraph&) { 
-  return "FirstOrderLanguageGraph"; }
-std::string show(const FirstOrderLanguageAnalysis&){
+class FirstOrderLanguageGraph {};
+class FirstOrderLanguageAnalysis {};
+std::string show(const FirstOrderLanguageGraph &) {
+  return "FirstOrderLanguageGraph";
+}
+std::string show(const FirstOrderLanguageAnalysis &) {
   return "FirstOrderLanguageAnalysis";
 }
-Analysis analyse(const FirstOrderLanguageGraph&) { 
-  return Analysis{FirstOrderLanguageAnalysis{}}; }
-Graph parse(const std::string&){
-  return Graph{FirstOrderLanguageGraph{}};
+Analysis analyse(const FirstOrderLanguageGraph &) {
+  return Analysis{FirstOrderLanguageAnalysis{}};
 }
-};
-
+Graph parse(const std::string &) { return Graph{FirstOrderLanguageGraph{}}; }
+}; // namespace ksar

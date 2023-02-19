@@ -1,5 +1,4 @@
 #include "analysis.h"
-#include "firstorder.h"
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators_all.hpp>
 #include <string>
@@ -27,7 +26,7 @@ TEST_CASE("parse single statements", "[first-order][parsing]") {
   REQUIRE(show(graph) == translation);
 }
 // TODO remove the "." from ".first-order" to no longer skip the test.
-TEST_CASE("add two elements to a record", "[first-order][analysis]") {
+TEST_CASE("add two elements to a record", "[.first-order][analysis]") {
   const ksar::Graph graph = parse(
       R"python(
 e = 1
