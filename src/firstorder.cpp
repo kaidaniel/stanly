@@ -2,7 +2,7 @@
 #include "DirectProductAbstractDomain.h"
 #include "HashedAbstractEnvironment.h"
 #include "HashedSetAbstractDomain.h"
-#include "analysis.h"
+#include "stanly.h"
 #include <memory>
 #include <variant>
 

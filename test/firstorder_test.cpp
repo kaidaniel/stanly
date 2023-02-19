@@ -1,4 +1,4 @@
-#include "analysis.h"
+#include "stanly.h"
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators_all.hpp>
 #include <string>
