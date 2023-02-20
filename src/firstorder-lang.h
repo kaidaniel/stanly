@@ -38,13 +38,21 @@ struct LoadRecord { Var lhs; RecordLiteral record_literal; };
 /// `lhs` = `rhs`
 struct LoadVar { Var lhs; Var rhs; };
 // clang-format on
+
+
 using FirstOrderSyntax = std::variant<
     DeclareLocalVar, SetField, LoadField, LoadNumber, LoadRecord, LoadVar>;
 using Kind = sparta::AbstractValueKind;
 
-class FirstOrderGraph {};
-class FirstOrderAnalysis {};
+class FirstOrderGraph{
+    std::vector<FirstOrderSyntax> nodes;
+    public:
+    template<class... Args>
+    void insert(Args&&... args);
+    friend std::string show(const FirstOrderGraph&);
+};
+class FirstOrderAnalysis;
 std::string show(const FirstOrderGraph&);
 std::string show(const FirstOrderAnalysis&);
-AnalysisType analyse(const FirstOrderGraph&);
+Analysis analyse(const FirstOrderGraph&);
 }

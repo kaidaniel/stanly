@@ -42,39 +42,31 @@ namespace implements {
   };
 } // namespace implements
 
-class AnalysisType : public implements::Show {
-  using Show = implements::Show;
+class Analysis : public implements::Show {
+  using Interface = implements::Show::Interface;
+  template<class T> using Model = implements::Show::Model<T>;
 
-  std::unique_ptr<Show::Interface> interface_;
-  friend std::string show(const AnalysisType &a) {
-    return a.interface_->do_show();
-  }
+  std::unique_ptr<Interface> interface_;
+  friend std::string show(const Analysis &a) { return a.interface_->do_show();}
 public:
   template <class T>
-  requires requires(T t) {
-    { show(t) } -> std::same_as<std::string>;
-  }
-  explicit AnalysisType(T t)
-      : interface_{std::make_unique<Show::Model<T>>(std::move(t))} {}
+  requires requires(T t) { { std::string{show(t)} };}
+  explicit Analysis(T t): interface_{std::make_unique<Model<T>>(std::move(t))} {}
 };
 
-class GraphType : public implements::ShowAndAnalyse<AnalysisType> {
-  using ShowAndAnalyse = implements::ShowAndAnalyse<AnalysisType>;
+class Graph : public implements::ShowAndAnalyse<Analysis> {
+  using Interface = implements::ShowAndAnalyse<Analysis>::Interface;
+  template <class T> using Model = implements::ShowAndAnalyse<Analysis>::Model<T>;
 
-  std::unique_ptr<ShowAndAnalyse::Interface> interface_;
-  friend std::string show(const GraphType &g) {
-    return g.interface_->do_show();
-  }
-  friend AnalysisType analyse(const GraphType &g) {
-    return g.interface_->do_analyse();
-  }
+  std::unique_ptr<Interface> interface_;
+  friend std::string show(const Graph &g) {return g.interface_->do_show();}
+  friend Analysis analyse(const Graph &g) {return g.interface_->do_analyse();}
 public:
   template <class T>
   requires requires(T t) {
-    { show(t) } -> std::same_as<std::string>;
-    {AnalysisType{analyse(t)}};
+    { std::string{show(t)} };
+    { Analysis{analyse(t)} };
   }
-  explicit GraphType(T t)
-      : interface_{std::make_unique<ShowAndAnalyse::Model<T>>(std::move(t))} {}
+  explicit Graph(T t): interface_{std::make_unique<Model<T>>(std::move(t))} {}
 };
 } // namespace stanly

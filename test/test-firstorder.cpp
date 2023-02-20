@@ -1,9 +1,9 @@
-#include "make_parser.h"
 #include "stanly-api.h"
+#include "firstorder-api.h"
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators_all.hpp>
 
-constexpr stanly::Parser parse = stanly::make_parser("firstorder");
+constexpr auto parse = stanly::parse_firstorder;
 
 TEST_CASE("parse single statements", "[first-order][parsing]") {
   // clang-format off
