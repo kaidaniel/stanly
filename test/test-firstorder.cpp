@@ -1,9 +1,9 @@
-#include "stanly.h"
+#include "make_parser.h"
+#include "stanly-api.h"
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators_all.hpp>
-#include <string>
 
-using stanly::parse;
+constexpr stanly::Parser parse = stanly::make_parser("firstorder");
 
 TEST_CASE("parse single statements", "[first-order][parsing]") {
   // clang-format off
@@ -26,7 +26,7 @@ TEST_CASE("parse single statements", "[first-order][parsing]") {
 }
 // TODO remove the "." from ".first-order" to no longer skip the test.
 TEST_CASE("add two elements to a record", "[.first-order][analysis]") {
-  const stanly::Graph graph = parse(
+  const auto graph = parse(
       R"python(
 e = 1
 f = 2

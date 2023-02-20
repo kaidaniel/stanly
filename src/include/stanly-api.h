@@ -1,11 +1,12 @@
 #pragma once
 
+#include <functional>
 #include <memory>
 #include <string>
 
 namespace stanly {
 
-namespace detail {
+namespace implements {
   struct InterfaceBase {
     virtual ~InterfaceBase() = default;
     InterfaceBase() = default;
@@ -26,7 +27,7 @@ namespace detail {
       const T &t_;
     };
   };
-  template <class Result> struct Analyse {
+  template <class Result> struct ShowAndAnalyse {
     struct Interface : InterfaceBase {
       [[nodiscard]] virtual std::string do_show() const = 0;
       [[nodiscard]] virtual Result do_analyse() const = 0;
@@ -39,32 +40,41 @@ namespace detail {
       const T &t_;
     };
   };
+} // namespace implements
 
-} // namespace detail
-
-class Analysis : public detail::Show {
-  using Show = detail::Show;
+class AnalysisType : public implements::Show {
+  using Show = implements::Show;
 
   std::unique_ptr<Show::Interface> interface_;
-  friend std::string show(const Analysis &a) { return a.interface_->do_show(); }
+  friend std::string show(const AnalysisType &a) {
+    return a.interface_->do_show();
+  }
 public:
   template <class T>
-  explicit Analysis(T t)
+  requires requires(T t) {
+    { show(t) } -> std::same_as<std::string>;
+  }
+  explicit AnalysisType(T t)
       : interface_{std::make_unique<Show::Model<T>>(std::move(t))} {}
 };
 
-class Graph : public detail::Analyse<Analysis> {
-  using Analyse = detail::Analyse<Analysis>;
+class GraphType : public implements::ShowAndAnalyse<AnalysisType> {
+  using ShowAndAnalyse = implements::ShowAndAnalyse<AnalysisType>;
 
-  std::unique_ptr<Analyse::Interface> interface_;
-  friend std::string show(const Graph &g) { return g.interface_->do_show(); }
-  friend Analysis analyse(const Graph &g) { return g.interface_->do_analyse(); }
+  std::unique_ptr<ShowAndAnalyse::Interface> interface_;
+  friend std::string show(const GraphType &g) {
+    return g.interface_->do_show();
+  }
+  friend AnalysisType analyse(const GraphType &g) {
+    return g.interface_->do_analyse();
+  }
 public:
   template <class T>
-  explicit Graph(T t)
-      : interface_{std::make_unique<Analyse::Model<T>>(std::move(t))} {}
+  requires requires(T t) {
+    { show(t) } -> std::same_as<std::string>;
+    {AnalysisType{analyse(t)}};
+  }
+  explicit GraphType(T t)
+      : interface_{std::make_unique<ShowAndAnalyse::Model<T>>(std::move(t))} {}
 };
-
-Graph parse(const std::string &);
-
 } // namespace stanly
