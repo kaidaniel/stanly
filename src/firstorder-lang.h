@@ -56,7 +56,6 @@ class FirstOrderSyntax {
   public:
   friend std::string show(const FirstOrderSyntax&);
   FirstOrderSyntax(Variant variant) : variant_(std::move(variant)) {}
-  using Repr = Variant;
 };
 
 class FirstOrderGraph{

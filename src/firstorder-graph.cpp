@@ -6,7 +6,7 @@
 #include <string>
 #include <tree_sitter/api.h>
 #include <vector>
-
+TSLanguage *tree_sitter_python(void);
 namespace stanly {
 
 template <class... Args> void FirstOrderGraph::insert(Args &&...args) {
@@ -29,8 +29,6 @@ std::string show(const FirstOrderSyntax &syntax) {
 std::string show(const FirstOrderGraph &graph) { return show(graph.nodes_[0]); }
 
 namespace treesitter { // every use of tree-sitter in this namespace
-  TSLanguage *tree_sitter_python(void);
-
   class Parser {
     TSParser *parser_;
     TSTree *tree_;
@@ -38,7 +36,9 @@ namespace treesitter { // every use of tree-sitter in this namespace
     Parser(const std::string &program)
         : parser_(ts_parser_new()),
           tree_(ts_parser_parse_string(
-              parser_, nullptr, program.c_str(), program.size())) {}
+              parser_, nullptr, program.c_str(), program.length())) {
+      ts_parser_set_language(parser_, tree_sitter_python());
+    }
     ~Parser() {
       ts_tree_delete(tree_);
       ts_parser_delete(parser_);
