@@ -10,16 +10,16 @@
 
 namespace stanly {
 using Var = int;
-using NumberLiteral = int;
-using RecordLiteral = std::vector<NumberLiteral>;
+using TextLiteral = std::string;
+using RecordLiteral = std::vector<TextLiteral>;
 /// Abstraction of a const-propagated literal.
-using Number = sparta::ConstantAbstractDomain<NumberLiteral>;
+using Text = sparta::ConstantAbstractDomain<TextLiteral>;
 /// Abstraction of a dynamic record as a set of field names.
-using Record = sparta::HashedSetAbstractDomain<NumberLiteral>;
+using Record = sparta::HashedSetAbstractDomain<TextLiteral>;
 /// Abstraction of a set of values in memory (elements or objects).
 struct Value
-    : public sparta::DirectProductAbstractDomain<Value, Number, Record> {
-  using Product = sparta::DirectProductAbstractDomain<Value, Number, Record>;
+    : public sparta::DirectProductAbstractDomain<Value, Text, Record> {
+  using Product = sparta::DirectProductAbstractDomain<Value, Text, Record>;
   using Product::DirectProductAbstractDomain;
 };
 /// Abstraction of the program state (Var -> Value).
@@ -31,22 +31,39 @@ struct DeclareLocalVar { Var var; };
 struct SetField { Var rhs; Var target; Var field; };
 /// `lhs` = `source` [ `subscript` ], e.g. `x=y[z]`
 struct LoadField { Var lhs; Var source; Var field; };
-/// `lhs` = `number`, e.g. `x=3`
-struct LoadNumber { Var lhs; NumberLiteral number_literal; };
-/// `lhs` = `record`, e.g. `x={1: "a", 2: "b"}`
+/// `lhs` = `text_literal`, e.g. `x="abc"`
+struct LoadText { Var lhs; TextLiteral text_literal; };
+/// `lhs` = `record`, e.g. `x={"a": 1, "b": 2}`
 struct LoadRecord { Var lhs; RecordLiteral record_literal; };
 /// `lhs` = `rhs`
 struct LoadVar { Var lhs; Var rhs; };
 // clang-format on
 
 
-using FirstOrderSyntax = std::variant<
-    DeclareLocalVar, SetField, LoadField, LoadNumber, LoadRecord, LoadVar>;
 using Kind = sparta::AbstractValueKind;
 
+std::string show(const DeclareLocalVar&);
+std::string show(const SetField&);
+std::string show(const LoadField&);
+std::string show(const LoadText&);
+std::string show(const LoadRecord&);
+std::string show(const LoadVar&);
+
+
+class FirstOrderSyntax {
+  using Variant = std::variant<DeclareLocalVar, SetField, LoadField, LoadText, LoadRecord, LoadVar>;
+  Variant variant_;
+  public:
+  friend std::string show(const FirstOrderSyntax&);
+  FirstOrderSyntax(Variant variant) : variant_(std::move(variant)) {}
+  using Repr = Variant;
+};
+
 class FirstOrderGraph{
-    std::vector<FirstOrderSyntax> nodes;
+    std::vector<FirstOrderSyntax> nodes_;
     public:
+    FirstOrderGraph(std::vector<FirstOrderSyntax> nodes) 
+      : nodes_(std::move(nodes)) {}
     template<class... Args>
     void insert(Args&&... args);
     friend std::string show(const FirstOrderGraph&);

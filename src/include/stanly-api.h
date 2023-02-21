@@ -44,29 +44,31 @@ namespace implements {
 
 class Analysis : public implements::Show {
   using Interface = implements::Show::Interface;
-  template<class T> using Model = implements::Show::Model<T>;
+  template <class T> using Model = implements::Show::Model<T>;
 
   std::unique_ptr<Interface> interface_;
-  friend std::string show(const Analysis &a) { return a.interface_->do_show();}
+  friend std::string show(const Analysis &a) { return a.interface_->do_show(); }
 public:
   template <class T>
-  requires requires(T t) { { std::string{show(t)} };}
-  explicit Analysis(T t): interface_{std::make_unique<Model<T>>(std::move(t))} {}
+  requires requires(T t) { {std::string{show(t)}}; }
+  explicit Analysis(T t)
+      : interface_{std::make_unique<Model<T>>(std::move(t))} {}
 };
 
 class Graph : public implements::ShowAndAnalyse<Analysis> {
   using Interface = implements::ShowAndAnalyse<Analysis>::Interface;
-  template <class T> using Model = implements::ShowAndAnalyse<Analysis>::Model<T>;
+  template <class T>
+  using Model = implements::ShowAndAnalyse<Analysis>::Model<T>;
 
   std::unique_ptr<Interface> interface_;
-  friend std::string show(const Graph &g) {return g.interface_->do_show();}
-  friend Analysis analyse(const Graph &g) {return g.interface_->do_analyse();}
+  friend std::string show(const Graph &g) { return g.interface_->do_show(); }
+  friend Analysis analyse(const Graph &g) { return g.interface_->do_analyse(); }
 public:
   template <class T>
   requires requires(T t) {
-    { std::string{show(t)} };
-    { Analysis{analyse(t)} };
+    {std::string{show(t)}};
+    {Analysis{analyse(t)}};
   }
-  explicit Graph(T t): interface_{std::make_unique<Model<T>>(std::move(t))} {}
+  explicit Graph(T t) : interface_{std::make_unique<Model<T>>(std::move(t))} {}
 };
 } // namespace stanly
