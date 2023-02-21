@@ -29,16 +29,21 @@ std::string show(const FirstOrderSyntax &syntax) {
 std::string show(const FirstOrderGraph &graph) { return show(graph.nodes_[0]); }
 
 namespace treesitter { // every use of tree-sitter in this namespace
+
   class Parser {
+    using Node = TSNode;
     TSParser *parser_;
     TSTree *tree_;
+    Node root_;
   public:
-    Parser(const std::string &program)
+    explicit Parser(const std::string &program)
         : parser_(ts_parser_new()),
           tree_(ts_parser_parse_string(
-              parser_, nullptr, program.c_str(), program.length())) {
-      ts_parser_set_language(parser_, tree_sitter_python());
-    }
+              parser_, nullptr, program.c_str(), program.length())),
+          root_([&] {
+            ts_parser_set_language(parser_, tree_sitter_python());
+            return ts_tree_root_node(tree_);
+          }()) {}
     ~Parser() {
       ts_tree_delete(tree_);
       ts_parser_delete(parser_);
@@ -48,23 +53,32 @@ namespace treesitter { // every use of tree-sitter in this namespace
     Parser(Parser &&) = delete;
     Parser operator=(Parser &&) = delete;
 
-    [[nodiscard]] TSNode root() const { return ts_tree_root_node(tree_); }
-    [[nodiscard]] static TSNode child(TSNode node, uint32_t i) {
+    [[nodiscard]] const Node &root() const { return root_; }
+    [[nodiscard]] static Node child(const Node &node, uint32_t i) {
       return ts_node_named_child(node, i);
+    }
+    [[nodiscard]] static std::string name(const Node &node) {
+      return ts_node_type(node);
     }
   };
 
-  static std::vector<FirstOrderSyntax>
+  template <class Node> class ParserInterface {
+    Node &root();
+    Node child(Node &);
+    std::string name(Node &);
+  }
+
+  static FirstOrderGraph
   parse_firstorder(const std::string &program) {
     const Parser parser{program};
-    TSNode root = parser.root();
-    TSNode child = Parser::child(root, 0);
+    TSNode child = Parser::child(parser.root(), 0);
 
-    return std::vector{FirstOrderSyntax{LoadText{0, ts_node_type(child)}}};
+    return FirstOrderGraph{
+        std::vector{FirstOrderSyntax{LoadText{0, Parser::name(child)}}}};
   }
 } // namespace treesitter
 
 Graph parse_firstorder(const std::string &program) {
-  return Graph{FirstOrderGraph{treesitter::parse_firstorder(program)}};
+  return Graph{treesitter::parse_firstorder(program)};
 }
 } // namespace stanly
