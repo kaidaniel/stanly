@@ -57,19 +57,13 @@ namespace treesitter { // every use of tree-sitter in this namespace
     [[nodiscard]] static Node child(const Node &node, uint32_t i) {
       return ts_node_named_child(node, i);
     }
-    [[nodiscard]] static std::string name(const Node &node) {
-      return ts_node_type(node);
-    }
+    [[nodiscard]] static std::string name(const Node &node) { return ts_node_type(node); }
   };
-
-  template <class Node> class ParserInterface {
-    Node &root();
-    Node child(Node &);
-    std::string name(Node &);
-  }
-
-  static FirstOrderGraph
-  parse_firstorder(const std::string &program) {
+/* interface for Parser:
+    root:   ()  -> Node
+    child: Node -> Node
+    name:  Node -> String */
+  static FirstOrderGraph parse_firstorder(const std::string &program) {
     const Parser parser{program};
     TSNode child = Parser::child(parser.root(), 0);
 
