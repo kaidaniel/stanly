@@ -34,4 +34,10 @@ FetchContent_Declare(tree_sitter_python
   SOURCE_DIR ${tree_sitter_python_dir})
 FetchContent_Populate(tree_sitter_python)
 execute_process(COMMAND tree-sitter generate WORKING_DIRECTORY ${tree_sitter_python_dir})
-add_library(tree-sitter-python ${tree_sitter_python_dir}/src/parser.c)
+add_library(tree-sitter-python
+  ${tree_sitter_python_dir}/src/parser.c
+  ${tree_sitter_python_dir}/src/scanner.cc)
+
+set_target_properties(tree-sitter-python PROPERTIES
+  C_STANDARD 99 C_STANDARD_REQUIRED ON POSITION_INDEPENDENT_CODE ON)
+target_include_directories(tree-sitter-python PUBLIC ${tree_sitter_python_dir}/src/)

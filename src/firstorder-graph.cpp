@@ -5,8 +5,14 @@
 #include <cstring>
 #include <string>
 #include <tree_sitter/api.h>
+#include <tree_sitter/parser.h>
 #include <vector>
+#include <iostream>
+#include <numeric>
+
+extern "C"{
 TSLanguage *tree_sitter_python(void);
+}
 namespace stanly {
 
 template <class... Args> void FirstOrderGraph::insert(Args &&...args) {
@@ -15,7 +21,12 @@ template <class... Args> void FirstOrderGraph::insert(Args &&...args) {
 
 std::string show(const DeclareLocalVar &) { return "(DeclareLocalVar ?)"; }
 std::string show(const SetField &) { return "(SetField ? ? ?)"; }
-std::string show(const LoadField &) { return "(LoadField ? ? ?)"; }
+std::string show(const LoadField &n) { 
+  return std::string("(LoadField ") 
+  + std::to_string(n.lhs) + " " 
+  + std::to_string(n.source) + " "
+  + std::to_string(n.field) + ")"; 
+  }
 std::string show(const LoadText &n) {
   return std::string("(LoadText ") + n.text_literal + " " +
       std::to_string(n.lhs) + ")";
@@ -26,7 +37,14 @@ std::string show(const FirstOrderSyntax &syntax) {
   return std::visit(
       [](const auto &node) { return show(node); }, syntax.variant_);
 }
-std::string show(const FirstOrderGraph &graph) { return show(graph.nodes_[0]); }
+std::string show(const FirstOrderGraph &graph) {
+  return std::transform_reduce(
+    std::begin(graph.nodes_), 
+    std::end(graph.nodes_),
+    std::string{},
+    [](const std::string& str1, const std::string& str2) { return str1 + str2;},
+    [](const FirstOrderSyntax& syntax) -> std::string { return show(syntax); });
+}
 
 namespace treesitter { // every use of tree-sitter in this namespace
 
@@ -38,12 +56,11 @@ namespace treesitter { // every use of tree-sitter in this namespace
   public:
     explicit Parser(const std::string &program)
         : parser_(ts_parser_new()),
-          tree_(ts_parser_parse_string(
-              parser_, nullptr, program.c_str(), program.length())),
-          root_([&] {
+          tree_([&] {
             ts_parser_set_language(parser_, tree_sitter_python());
-            return ts_tree_root_node(tree_);
-          }()) {}
+            return ts_parser_parse_string(
+              parser_, nullptr, program.c_str(), program.length());}()),
+          root_(ts_tree_root_node(tree_)) {}
     ~Parser() {
       ts_tree_delete(tree_);
       ts_parser_delete(parser_);
@@ -66,13 +83,24 @@ namespace treesitter { // every use of tree-sitter in this namespace
   static FirstOrderGraph parse_firstorder(const std::string &program) {
     const Parser parser{program};
     TSNode child = Parser::child(parser.root(), 0);
+    std::string name = Parser::name(child);
 
-    return FirstOrderGraph{
-        std::vector{FirstOrderSyntax{LoadText{0, Parser::name(child)}}}};
+    std::vector syntax = {
+      FirstOrderSyntax{LoadText{0, name}},
+      FirstOrderSyntax{LoadField{0, 1, 2}}
+    };
+    FirstOrderGraph graph{syntax};
+
+    // TODO: something goes wrong when copying to Graph (segfaults on show())
+    // Graph gr{graph};
+    // std::cout << show(gr);
+    std::cout << show(graph);
+    return graph;
   }
 } // namespace treesitter
 
 Graph parse_firstorder(const std::string &program) {
   return Graph{treesitter::parse_firstorder(program)};
 }
+
 } // namespace stanly

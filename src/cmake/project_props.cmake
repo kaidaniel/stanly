@@ -2,7 +2,7 @@
 
 add_library(project_props INTERFACE)
 target_compile_options(project_props INTERFACE
-    -Wall -Wextra -Wpedantic $<$<CONFIG:DEBUG>:-Werror>)
+    -Wall -Wextra -Wpedantic)
 target_include_directories(project_props INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_compile_features(project_props INTERFACE cxx_std_20)
 
