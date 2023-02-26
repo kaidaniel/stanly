@@ -80,27 +80,21 @@ namespace treesitter { // every use of tree-sitter in this namespace
     root:   ()  -> Node
     child: Node -> Node
     name:  Node -> String */
-  static FirstOrderGraph parse_firstorder(const std::string &program) {
+  static Graph parse_firstorder(const std::string &program) {
     const Parser parser{program};
     TSNode child = Parser::child(parser.root(), 0);
     std::string name = Parser::name(child);
 
-    std::vector syntax = {
-      FirstOrderSyntax{LoadText{0, name}},
-      FirstOrderSyntax{LoadField{0, 1, 2}}
-    };
-    FirstOrderGraph graph{syntax};
+    FirstOrderGraph graph;
+    graph.insert(LoadText{0, name});
+    graph.insert(LoadField{0, 1, 2});
 
-    // TODO: something goes wrong when copying to Graph (segfaults on show())
-    // Graph gr{graph};
-    // std::cout << show(gr);
-    std::cout << show(graph);
-    return graph;
+    return Graph{std::move(graph)};
   }
 } // namespace treesitter
 
 Graph parse_firstorder(const std::string &program) {
-  return Graph{treesitter::parse_firstorder(program)};
+  return treesitter::parse_firstorder(program);
 }
 
 } // namespace stanly

@@ -7,6 +7,7 @@
 #include <vector>
 #include <variant>
 #include "stanly-api.h"
+#include <iostream>
 
 namespace stanly {
 using Var = int;
@@ -49,6 +50,14 @@ std::string show(const LoadText&);
 std::string show(const LoadRecord&);
 std::string show(const LoadVar&);
 
+struct Moveonly {
+  ~Moveonly() = default;
+  Moveonly() = default;
+  Moveonly(const Moveonly&) = delete;
+  Moveonly& operator=(const Moveonly&) = delete;
+  Moveonly(Moveonly&&) noexcept {std::cout << "Moveonly(Moveonly&&)\n";};
+  Moveonly& operator=(Moveonly&&) noexcept {std::cout << "operator=(Moveonly&&)\n"; return *this;};
+};
 
 class FirstOrderSyntax {
   using Variant = std::variant<DeclareLocalVar, SetField, LoadField, LoadText, LoadRecord, LoadVar>;
@@ -58,11 +67,9 @@ class FirstOrderSyntax {
   FirstOrderSyntax(Variant variant) : variant_(std::move(variant)) {}
 };
 
-class FirstOrderGraph{
+class FirstOrderGraph : public Moveonly {
     std::vector<FirstOrderSyntax> nodes_;
     public:
-    FirstOrderGraph(std::vector<FirstOrderSyntax> nodes) 
-      : nodes_(std::move(nodes)) {}
     template<class... Args>
     void insert(Args&&... args);
     friend std::string show(const FirstOrderGraph&);

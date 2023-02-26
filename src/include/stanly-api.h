@@ -3,6 +3,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <iostream>
 
 namespace stanly {
 
@@ -21,10 +22,10 @@ namespace implements {
       [[nodiscard]] virtual std::string do_show() const = 0;
     };
     template <class T> struct Model : Show::Interface {
-      Model(const T &t) : t_(t) {}
+      Model(T&& t) : t_(std::move(t)) {}
       [[nodiscard]] std::string do_show() const override { return show(t_); }
     private:
-      const T &t_;
+      T t_;
     };
   };
   template <class Result> struct ShowAndAnalyse {
@@ -33,11 +34,11 @@ namespace implements {
       [[nodiscard]] virtual Result do_analyse() const = 0;
     };
     template <class T> struct Model : Interface {
-      Model(const T &t) : t_(t) {}
+      Model(T&& t) : t_(std::move(t)) {}
       [[nodiscard]] std::string do_show() const override { return show(t_); }
       [[nodiscard]] Result do_analyse() const override { return analyse(t_); }
     private:
-      const T &t_;
+      T t_;
     };
   };
 } // namespace implements
