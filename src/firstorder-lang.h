@@ -50,25 +50,9 @@ std::string show(const LoadText&);
 std::string show(const LoadRecord&);
 std::string show(const LoadVar&);
 
-struct Moveonly {
-  ~Moveonly() = default;
-  Moveonly() = default;
-  Moveonly(const Moveonly&) = delete;
-  Moveonly& operator=(const Moveonly&) = delete;
-  Moveonly(Moveonly&&) noexcept {std::cout << "Moveonly(Moveonly&&)\n";};
-  Moveonly& operator=(Moveonly&&) noexcept {std::cout << "operator=(Moveonly&&)\n"; return *this;};
-};
-
-class FirstOrderSyntax {
-  using Variant = std::variant<DeclareLocalVar, SetField, LoadField, LoadText, LoadRecord, LoadVar>;
-  Variant variant_;
-  public:
-  friend std::string show(const FirstOrderSyntax&);
-  FirstOrderSyntax(Variant variant) : variant_(std::move(variant)) {}
-};
-
-class FirstOrderGraph : public Moveonly {
-    std::vector<FirstOrderSyntax> nodes_;
+class FirstOrderGraph {
+    using Syntax = std::variant<DeclareLocalVar, SetField, LoadField, LoadText, LoadRecord, LoadVar>;
+    std::vector<Syntax> nodes_;
     public:
     template<class... Args>
     void insert(Args&&... args);

@@ -1,9 +1,9 @@
 #pragma once
 
 #include <functional>
+#include <iostream>
 #include <memory>
 #include <string>
-#include <iostream>
 
 namespace stanly {
 
@@ -22,7 +22,7 @@ namespace implements {
       [[nodiscard]] virtual std::string do_show() const = 0;
     };
     template <class T> struct Model : Show::Interface {
-      Model(T&& t) : t_(std::move(t)) {}
+      Model(T &&t) : t_(std::forward<T>(t)) {}
       [[nodiscard]] std::string do_show() const override { return show(t_); }
     private:
       T t_;
@@ -33,8 +33,8 @@ namespace implements {
       [[nodiscard]] virtual std::string do_show() const = 0;
       [[nodiscard]] virtual Result do_analyse() const = 0;
     };
-    template <class T> struct Model : Interface {
-      Model(T&& t) : t_(std::move(t)) {}
+    template <class T, class... Args> struct Model : Interface {
+      Model(T (*parse)(Args...), Args &&...args) : t_(parse(args...)) {}
       [[nodiscard]] std::string do_show() const override { return show(t_); }
       [[nodiscard]] Result do_analyse() const override { return analyse(t_); }
     private:
@@ -52,24 +52,25 @@ class Analysis : public implements::Show {
 public:
   template <class T>
   requires requires(T t) { {std::string{show(t)}}; }
-  explicit Analysis(T t)
-      : interface_{std::make_unique<Model<T>>(std::move(t))} {}
+  explicit Analysis(T &&t)
+      : interface_{std::make_unique<Model<T>>(std::forward<T>(t))} {}
 };
 
 class Graph : public implements::ShowAndAnalyse<Analysis> {
   using Interface = implements::ShowAndAnalyse<Analysis>::Interface;
-  template <class T>
-  using Model = implements::ShowAndAnalyse<Analysis>::Model<T>;
+  template <class T, class... Args>
+  using Model = implements::ShowAndAnalyse<Analysis>::Model<T, Args...>;
 
   std::unique_ptr<Interface> interface_;
   friend std::string show(const Graph &g) { return g.interface_->do_show(); }
   friend Analysis analyse(const Graph &g) { return g.interface_->do_analyse(); }
 public:
-  template <class T>
+  template <class T, class... Args>
   requires requires(T t) {
     {std::string{show(t)}};
     {Analysis{analyse(t)}};
   }
-  explicit Graph(T t) : interface_{std::make_unique<Model<T>>(std::move(t))} {}
+  explicit Graph(T (*parse)(Args...), Args &&...args)
+      : interface_{std::make_unique<Model<T, Args...>>(parse, args...)} {}
 };
 } // namespace stanly

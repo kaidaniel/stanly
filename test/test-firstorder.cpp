@@ -5,10 +5,9 @@
 
 constexpr auto parse = stanly::parse_firstorder;
 
-TEST_CASE("parser doesnt crash", "[first-order][parsing]"){
+TEST_CASE("parser doesnt crash", "[first-order][parsing]") {
   std::string statement = "x=y";
-  auto graph = parse(statement);
-  REQUIRE(show(graph) == "asd");
+  REQUIRE(show(parse(statement)) == "asd");
 }
 
 TEST_CASE("parse single statements", "[.first-order][parsing]") {
