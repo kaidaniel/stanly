@@ -45,15 +45,16 @@ std::string show(const FirstOrderGraph &graph) {
 namespace treesitter { // every use of tree-sitter in this namespace
 
   class Parser {
-    using Node = TSNode;
+    TSLanguage *language_;
     TSParser *parser_;
     TSTree *tree_;
-    Node root_;
+    TSNode root_;
   public:
     explicit Parser(const std::string &program)
-        : parser_(ts_parser_new()),
+        : language_(tree_sitter_python()),
+          parser_(ts_parser_new()),
           tree_([&] {
-            ts_parser_set_language(parser_, tree_sitter_python());
+            ts_parser_set_language(parser_, language_);
             return ts_parser_parse_string(
                 parser_, nullptr, program.c_str(), program.length());
           }()),
@@ -67,13 +68,11 @@ namespace treesitter { // every use of tree-sitter in this namespace
     Parser(Parser &&) = delete;
     Parser operator=(Parser &&) = delete;
 
-    [[nodiscard]] const Node &root() const { return root_; }
-    [[nodiscard]] static Node child(const Node &node, uint32_t i) {
-      return ts_node_named_child(node, i);
-    }
-    [[nodiscard]] static std::string name(const Node &node) {
-      return ts_node_type(node);
-    }
+    [[nodiscard]] const TSNode &root() const { return root_; }
+    [[nodiscard]] static std::unique_ptr<char> s_expr(const TSNode& node) {
+       return std::unique_ptr<char>{ts_node_string(node)};}
+    [[nodiscard]] TSFieldId field_id(const std::string& name) const { 
+      return ts_language_field_id_for_name(language_, name.c_str(), name.length());}
   };
   /* interface for Parser:
       root:   ()  -> Node
@@ -81,11 +80,24 @@ namespace treesitter { // every use of tree-sitter in this namespace
       name:  Node -> String */
   static FirstOrderGraph parse_firstorder(const std::string &program) {
     const Parser parser{program};
-    TSNode child = Parser::child(parser.root(), 0);
-    std::string name = Parser::name(child);
+    TSNode child = ts_node_named_child(parser.root(), 0);
+    std::string name = ts_node_type(child);
     FirstOrderGraph graph{};
     graph.insert(LoadText{0, name});
     graph.insert(LoadField{0, 1, 2});
+    // std::cout << Parser::s_expr(child);
+    // const TSFieldId STATEMENT = parser.field_id("expression_statement");
+    std::cout << Parser::s_expr(parser.root());
+    // TSTreeCursor cursor{ts_tree_cursor_new(parser.root())};
+    // if(ts_tree_cursor_goto_first_child(&cursor)){
+    //   while(ts_tree_cursor_goto_next_sibling(&cursor)){
+    //     TSFieldId field = ts_tree_cursor_current_field_id(&cursor);
+    //     if(field == STATEMENT) {
+
+    //     }
+    //   }
+    // }
+
 
     return graph;
   }
