@@ -34,7 +34,8 @@ namespace implements {
       [[nodiscard]] virtual Result do_analyse() const = 0;
     };
     template <class T, class... Args> struct Model : Interface {
-      Model(T (*parse)(Args...), Args &&...args) : t_(parse(args...)) {}
+      Model(T (*parse)(Args...), Args &&...args)
+          : t_(parse(std::forward<Args>(args)...)) {}
       [[nodiscard]] std::string do_show() const override { return show(t_); }
       [[nodiscard]] Result do_analyse() const override { return analyse(t_); }
     private:
@@ -71,6 +72,7 @@ public:
     {Analysis{analyse(t)}};
   }
   explicit Graph(T (*parse)(Args...), Args &&...args)
-      : interface_{std::make_unique<Model<T, Args...>>(parse, args...)} {}
+      : interface_{std::make_unique<Model<T, Args...>>(
+            parse, std::forward<Args>(args)...)} {}
 };
 } // namespace stanly
