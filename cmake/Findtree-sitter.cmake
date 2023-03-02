@@ -8,15 +8,14 @@ project(
 
 set(tree_sitter_dir "${CMAKE_BINARY_DIR}/tree-sitter")
 
-FetchContent_Declare(tree_sitter_extern
+FetchContent_Declare(tree-sitter
     GIT_REPOSITORY git@github.com:tree-sitter/tree-sitter.git
     GIT_TAG v0.20.7
     SOURCE_DIR        ${tree_sitter_dir}
 )
-FetchContent_Populate(tree_sitter_extern)
-file(GLOB tree_sitter_src "${tree_sitter_dir}/lib/src/*.c")
+FetchContent_Populate(tree-sitter)
 
-add_library(tree-sitter ${tree_sitter_src})
+add_library(tree-sitter ${tree_sitter_dir}/lib/src/lib.c)
 target_include_directories(tree-sitter
   PRIVATE ${tree_sitter_dir}/lib/src
   PUBLIC ${tree_sitter_dir}/lib/include)
@@ -28,10 +27,12 @@ set_target_properties(tree-sitter PROPERTIES
 find_program(tree-sitter-cli tree-sitter REQUIRED)
 
 set(tree_sitter_python_dir ${CMAKE_BINARY_DIR}/tree-sitter-python)
+
 FetchContent_Declare(tree_sitter_python
   GIT_REPOSITORY git@github.com:tree-sitter/tree-sitter-python.git
   GIT_TAG v0.20.0
   SOURCE_DIR ${tree_sitter_python_dir})
+
 FetchContent_Populate(tree_sitter_python)
 execute_process(COMMAND tree-sitter generate WORKING_DIRECTORY ${tree_sitter_python_dir})
 add_library(tree-sitter-python
@@ -40,4 +41,3 @@ add_library(tree-sitter-python
 
 set_target_properties(tree-sitter-python PROPERTIES
   C_STANDARD 99 C_STANDARD_REQUIRED ON POSITION_INDEPENDENT_CODE ON)
-target_include_directories(tree-sitter-python PUBLIC ${tree_sitter_python_dir}/src/)

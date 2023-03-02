@@ -6,7 +6,7 @@
 constexpr auto parse = stanly::parse_firstorder;
 
 TEST_CASE("parser doesnt crash", "[first-order][parsing]") {
-  std::string statement = "x=y";
+  std::string statement = "x='text_literal_x'";
   REQUIRE(show(parse(statement)) == "asd");
 }
 
