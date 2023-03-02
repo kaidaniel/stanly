@@ -52,9 +52,11 @@ class FirstOrderGraph {
   using Syntax = std::variant<
       DeclareLocalVar, SetField, LoadField, LoadText, LoadRecord, LoadVar>;
   std::vector<Syntax> nodes_;
+  std::string program_;
 public:
   template <class... Args> void insert(Args &&...args);
   friend std::string show(const FirstOrderGraph &);
+  FirstOrderGraph(std::string program);
 };
 class FirstOrderAnalysis;
 std::string show(const FirstOrderGraph &);

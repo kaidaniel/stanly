@@ -27,6 +27,8 @@ TSLanguage *tree_sitter_python(void);
 }
 namespace stanly {
 
+FirstOrderGraph::FirstOrderGraph(std::string program) : program_(std::move(program)) {}
+
 template <class... Args> void FirstOrderGraph::insert(Args &&...args) {
   nodes_.emplace_back(std::forward<Args>(args)...);
 };
@@ -54,6 +56,7 @@ string show(const FirstOrderGraph &graph) {
 namespace treesitter { // every use of tree-sitter in this namespace
 
   class Parser {
+    FirstOrderGraph graph_;
     string program_;
     TSLanguage *language_;
     TSParser *parser_;
@@ -72,10 +75,10 @@ namespace treesitter { // every use of tree-sitter in this namespace
       TSFieldId left;
       TSFieldId right;
     } fields_;
-    FirstOrderGraph graph_{};
   public:
-    explicit Parser(string program)
-        : program_(std::move(program)),
+    explicit Parser(string_view program)
+        : graph_(std::string{program}),
+          program_(program),
           language_(tree_sitter_python()),
           parser_(ts_parser_new()),
           tree_([&] {
