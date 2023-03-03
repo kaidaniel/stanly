@@ -5,25 +5,20 @@
 
 constexpr auto parse = stanly::parse_firstorder;
 
-TEST_CASE("parser doesnt crash", "[first-order][parsing]") {
-  std::string statement = "x=y";
-  REQUIRE(show(parse(statement)) == "(LoadVar x=y)");
-  REQUIRE(show(parse("x=1")) == "(LoadText x='1')");
-}
-
-TEST_CASE("parse single statements", "[.first-order][parsing]") {
+TEST_CASE("parse single statements", "[first-order][parsing]") {
   // clang-format off
     auto v = GENERATE(chunk(2, values({
-        "x=input()",            "(Input x)",
-        "y=[]",                 "(Local y)",
-        "z = {}",               "(AllocRecord z (Record))",
-        "z = {1: 'x', 3: {}}",  "(AllocRecord z (Record 1 3))",
-        "abc = {1: 'x'}",       "(AllocRecord abc (Record 1))",
+        "x=y",                  "(LoadVar x=y)",
+        "x=1",                  "(LoadText x='1')",
+        "y=[]",                 "(DeclareLocalVar y)",
+        "z = {}",               "(LoadRecord z=[])",
+        "z = {1: 'x', 3: {}}",  "(LoadRecord z=[\"1\", \"3\"])",
+ /*     "abc = {1: 'x'}",       "(AllocRecord abc (Record 1))",
         "abc_def = {1,2,3}",    "(Local abc_def)",
         "a[b] = x",             "(StoreSubscript x a b)",
         "x = a[b]",             "(LoadSubscript x a b)",
         "x = y",                "(AssignVar x y)",
-        "x = 1",                "(AssignLiteral x 1)"
+        "x = 1",                "(AssignLiteral x 1)" */
     })));
   // clang-format on
   const std::string &statement = v[0];

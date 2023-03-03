@@ -108,10 +108,14 @@ namespace treesitter { // every use of tree-sitter in this namespace
       TSSymbol identifier;
       TSSymbol integer;
       TSSymbol string;
+      TSSymbol dictionary;
+      TSSymbol pair;
     } symbols_;
     struct Fields {
       TSFieldId left;
       TSFieldId right;
+      TSFieldId key;
+      TSFieldId value;
     } fields_;
   public:
     explicit Parser(string_view program)
@@ -127,16 +131,20 @@ namespace treesitter { // every use of tree-sitter in this namespace
           root_(ts_tree_root_node(tree_)),
           cursor_(ts_tree_cursor_new(root_)),
           symbols_({
-              symbol("expression_statement"),
-              symbol("assignment"),
-              symbol("module"),
-              symbol("identifier"),
-              symbol("integer"),
-              symbol("string"),
+              .expression_statement = symbol("expression_statement"),
+              .assignment = symbol("assignment"),
+              .module = symbol("module"),
+              .identifier = symbol("identifier"),
+              .integer = symbol("integer"),
+              .string = symbol("string"),
+              .dictionary = symbol("dictionary"),
+              .pair = symbol("pair"),
           }),
           fields_({
-              field("left"),
-              field("right"),
+              .left = field("left"),
+              .right = field("right"),
+              .key = field("key"),
+              .value = field("value"),
           }) {}
     ~Parser() {
       ts_tree_delete(tree_);
@@ -179,6 +187,7 @@ namespace treesitter { // every use of tree-sitter in this namespace
       }
       return false;
     }
+    bool to_parent() { return ts_tree_cursor_goto_parent(&cursor_); }
 
     TSSymbol symbol() {
       return ts_node_symbol(ts_tree_cursor_current_node(&cursor_));
@@ -197,8 +206,8 @@ namespace treesitter { // every use of tree-sitter in this namespace
       return unique_ptr<char>{
           ts_node_string(ts_tree_cursor_current_node(&cursor_))};
     }
-    void show_type() {
-      cout << ts_node_type(ts_tree_cursor_current_node(&cursor_)) << "\n";
+    std::string type() {
+      return ts_node_type(ts_tree_cursor_current_node(&cursor_));
     }
     void show_field() {
       cout << ts_tree_cursor_current_field_name(&cursor_) << "\n";
@@ -212,12 +221,12 @@ namespace treesitter { // every use of tree-sitter in this namespace
     }
 
     [[nodiscard]] FirstOrderGraph parse() && {
-      show();
       assert(at(&Symbols::module));
       to_child();
       assert(at(&Symbols::expression_statement));
       to_child();
       assert(at(&Symbols::assignment));
+      show();
       to_child();
       assert(at(&Fields::left, &Symbols::identifier));
       Var lhs{graph_.idx(text())};
@@ -229,11 +238,32 @@ namespace treesitter { // every use of tree-sitter in this namespace
         insert(LoadVar{.lhs = lhs, .rhs = graph_.idx(rhs)});
       } else if (at(&Symbols::string) or at(&Symbols::integer)) {
         insert(LoadText{.lhs = lhs, .text_literal = rhs});
+      } else if (at(&Symbols::dictionary)) {
+        insert(
+            LoadRecord{.lhs = lhs, .record_literal = parse_record_literal()});
       } else {
-        std::domain_error(format("assigning {} not implemented", rhs));
+        throw std::domain_error(
+            format("assigning ({} {}) not implemented", type(), rhs));
       }
 
       return graph_;
+    }
+
+    RecordLiteral parse_record_literal() {
+      RecordLiteral record_literal{};
+      fmt::print("text: {}\n", text());
+      assert(at(&Symbols::dictionary));
+      to_child();
+      while (at(&Symbols::pair)) {
+        to_child();
+        assert(at(&Fields::key));
+        record_literal.emplace_back(text());
+        to_parent();
+        if (not to_sibling()) { break; }
+      }
+      fmt::print("parsed: {}\n", record_literal);
+
+      return record_literal;
     }
   };
 
