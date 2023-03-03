@@ -12,7 +12,7 @@
 #include <unordered_map>
 
 namespace stanly {
-using Var = int;
+using VarIdx = int;
 using TextLiteral = std::string_view;
 using RecordLiteral = std::vector<TextLiteral>;
 /// Abstraction of a const-propagated literal.
@@ -25,20 +25,20 @@ struct Value : public sparta::DirectProductAbstractDomain<Value, Text, Record> {
   using Product::DirectProductAbstractDomain;
 };
 /// Abstraction of the program state (Var -> Value).
-using Bindings = sparta::HashedAbstractEnvironment<Var, Value>;
+using Bindings = sparta::HashedAbstractEnvironment<VarIdx, Value>;
 // clang-format off
 /// declare `var` to be a local variable., e.g. `x=unknown_func()`
-struct DeclareLocalVar { Var var; };
+struct DeclareLocalVar { VarIdx var; };
 /// `target` [ `field` ] = `rhs`, e.g. `x[y]=z`
-struct SetField { Var rhs; Var target; Var field; };
+struct SetField { VarIdx rhs; VarIdx target; VarIdx field; };
 /// `lhs` = `source` [ `subscript` ], e.g. `x=y[z]`
-struct LoadField { Var lhs; Var source; Var field; };
+struct LoadField { VarIdx lhs; VarIdx source; VarIdx field; };
 /// `lhs` = `text_literal`, e.g. `x="abc"` or `x=1`
-struct LoadText { Var lhs; TextLiteral text_literal; };
+struct LoadText { VarIdx lhs; TextLiteral text_literal; };
 /// `lhs` = `record`, e.g. `x={"a": 1, "b": 2}`
-struct LoadRecord { Var lhs; RecordLiteral record_literal; };
+struct LoadRecord { VarIdx lhs; RecordLiteral record_literal; };
 /// `lhs` = `rhs`
-struct LoadVar { Var lhs; Var rhs; };
+struct LoadVar { VarIdx lhs; VarIdx rhs; };
 // clang-format on
 
 using Kind = sparta::AbstractValueKind;
@@ -49,20 +49,20 @@ class FirstOrderGraph {
   std::vector<Syntax> nodes_;
   std::string program_;
   class VariablePool {
-    std::unordered_map<std::string_view, Var> var_to_idx_{};
-    std::vector<std::string_view> idx_to_var_{};
-    Var max_{-1};  // start at -1 so the index of the first insert is 0.
+    std::unordered_map<std::string_view, VarIdx> var_name_to_idx_{};
+    std::vector<std::string_view> var_idx_to_var_{};
+    VarIdx max_{-1};  // start at -1 so the index of the first insert is 0.
     public:
-      Var idx(std::string_view);
-      std::string_view var(Var) const;
+      VarIdx var_name_to_idx(std::string_view);
+      std::string_view var_idx_to_name(VarIdx) const;
   } variable_pool_;
 
 public:
   template <class... Args> void insert(Args &&...args);
   friend std::string show(const FirstOrderGraph &);
   std::string_view program() { return program_; }
-  Var idx(std::string_view);
-  std::string_view var(Var) const;
+  VarIdx var_name_to_idx(std::string_view);
+  std::string_view var_idx_to_name(VarIdx) const;
   FirstOrderGraph(std::string program);
 };
 class FirstOrderAnalysis;

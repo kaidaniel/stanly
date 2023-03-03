@@ -31,26 +31,26 @@ extern "C" {
 TSLanguage *tree_sitter_python(void);
 }
 namespace stanly {
-using GetVariable = const function<string_view(Var)> &;
+using GetVariable = const function<string_view(VarIdx)> &;
 FirstOrderGraph::FirstOrderGraph(std::string program)
     : program_(std::move(program)) {}
 
-Var FirstOrderGraph::VariablePool::idx(string_view variable) {
-  auto search = var_to_idx_.find(variable);
-  if (search != end(var_to_idx_)) { return search->second; }
+VarIdx FirstOrderGraph::VariablePool::var_name_to_idx(string_view variable) {
+  auto search = var_name_to_idx_.find(variable);
+  if (search != end(var_name_to_idx_)) { return search->second; }
   max_++;
-  var_to_idx_.emplace(variable, max_);
-  idx_to_var_.push_back(variable);
+  var_name_to_idx_.emplace(variable, max_);
+  var_idx_to_var_.push_back(variable);
   return max_;
 }
-Var FirstOrderGraph::idx(string_view variable) {
-  return variable_pool_.idx(variable);
+VarIdx FirstOrderGraph::var_name_to_idx(string_view variable) {
+  return variable_pool_.var_name_to_idx(variable);
 }
-string_view FirstOrderGraph::VariablePool::var(Var idx) const {
-  return idx_to_var_.at(idx);
+string_view FirstOrderGraph::VariablePool::var_idx_to_name(VarIdx idx) const {
+  return var_idx_to_var_.at(idx);
 }
-string_view FirstOrderGraph::var(Var idx) const {
-  return variable_pool_.var(idx);
+string_view FirstOrderGraph::var_idx_to_name(VarIdx idx) const {
+  return variable_pool_.var_idx_to_name(idx);
 }
 
 template <class... Args> void FirstOrderGraph::insert(Args &&...args) {
@@ -85,7 +85,7 @@ string show(const FirstOrderGraph &graph) {
       [&graph](const auto &syntax) {
         return visit(
             [&graph](const auto &node) {
-              return show(node, [&graph](Var v) { return graph.var(v); });
+              return show(node, [&graph](VarIdx v) { return graph.var_idx_to_name(v); });
             },
             syntax);
       });
@@ -226,16 +226,15 @@ namespace treesitter { // every use of tree-sitter in this namespace
       assert(at(&Symbols::expression_statement));
       to_child();
       assert(at(&Symbols::assignment));
-      show();
       to_child();
       assert(at(&Fields::left, &Symbols::identifier));
-      Var lhs{graph_.idx(text())};
+      VarIdx lhs{graph_.var_name_to_idx(text())};
       to_sibling();
       assert(at(&Fields::right));
       string_view rhs{text()};
 
       if (at(&Symbols::identifier)) {
-        insert(LoadVar{.lhs = lhs, .rhs = graph_.idx(rhs)});
+        insert(LoadVar{.lhs = lhs, .rhs = graph_.var_name_to_idx(rhs)});
       } else if (at(&Symbols::string) or at(&Symbols::integer)) {
         insert(LoadText{.lhs = lhs, .text_literal = rhs});
       } else if (at(&Symbols::dictionary)) {
@@ -251,7 +250,6 @@ namespace treesitter { // every use of tree-sitter in this namespace
 
     RecordLiteral parse_record_literal() {
       RecordLiteral record_literal{};
-      fmt::print("text: {}\n", text());
       assert(at(&Symbols::dictionary));
       to_child();
       while (at(&Symbols::pair)) {
@@ -261,7 +259,6 @@ namespace treesitter { // every use of tree-sitter in this namespace
         to_parent();
         if (not to_sibling()) { break; }
       }
-      fmt::print("parsed: {}\n", record_literal);
 
       return record_literal;
     }
