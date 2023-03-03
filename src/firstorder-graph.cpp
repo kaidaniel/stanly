@@ -5,11 +5,15 @@
 #include <cstring>
 #include <iostream>
 #include <numeric>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <tree_sitter/api.h>
 //#include <tree_sitter/parser.h>
 #include <vector>
+#include <fmt/core.h>
+#include <fmt/ranges.h>
+#include <functional>
 
 using std::string;
 using std::to_string;
@@ -21,35 +25,63 @@ using std::end;
 using std::transform_reduce;
 using std::visit;
 using std::string_view;
+using fmt::format;
+using std::function;
+
+
 
 extern "C" {
 TSLanguage *tree_sitter_python(void);
 }
 namespace stanly {
-
+using GetVariable = const function<string_view(Var)>&;
 FirstOrderGraph::FirstOrderGraph(std::string program) : program_(std::move(program)) {}
+
+Var FirstOrderGraph::VariablePool::idx(string_view variable) {
+    auto search = var_to_idx_.find(variable);
+    if(search != end(var_to_idx_)) {return search->second;}
+    max_++;
+    var_to_idx_.emplace(variable, max_);
+    idx_to_var_.push_back(variable);
+    return max_;
+  }
+Var FirstOrderGraph::idx(string_view variable) { return variable_pool_.idx(variable); }
+string_view FirstOrderGraph::VariablePool::var(Var idx) const {
+  return idx_to_var_.at(idx);
+}
+string_view FirstOrderGraph::var(Var idx) const { return variable_pool_.var(idx); }
+
 
 template <class... Args> void FirstOrderGraph::insert(Args &&...args) {
   nodes_.emplace_back(std::forward<Args>(args)...);
 };
 
-string show(const DeclareLocalVar &) { return "(DeclareLocalVar ?)"; }
-string show(const SetField &) { return "(SetField ? ? ?)"; }
-string show(const LoadField &n) {
-  return string("(LoadField ") + to_string(n.lhs) + " " + to_string(n.source) +
-      " " + to_string(n.field) + ")";
+string show(const DeclareLocalVar &n, GetVariable get ) { 
+  return format("(DeclareLocalVar {})", get(n.var)); 
 }
-string show(const LoadText &n) {
-  return string("(LoadText ") + n.text_literal + " " + to_string(n.lhs) + ")";
-}
-string show(const LoadRecord &) { return "(LoadRecord ? ?)"; }
-string show(const LoadVar &) { return "(LoadVar ? ?)"; }
+string show(const SetField &n, GetVariable get) { 
+  return format("(SetField {}[{}]={})", get(n.target), get(n.field), get(n.rhs)); 
+  }
+string show(const LoadField &n, GetVariable get) { 
+  return format("(LoadField {}={}[{}])", get(n.lhs), get(n.source), get(n.field)); 
+  }
+string show(const LoadText &n, GetVariable get) {
+  return format("(LoadText {}='{}')", get(n.lhs), n.text_literal); 
+  }
+string show(const LoadRecord &n, GetVariable get) { 
+  return format("(LoadRecord {}={})", get(n.lhs), n.record_literal); 
+  }
+string show(const LoadVar &n, GetVariable get) { 
+  return format("(LoadVar {}={})", get(n.lhs), get(n.rhs)); 
+  }
+
 string show(const FirstOrderGraph &graph) {
   return transform_reduce(
       begin(graph.nodes_), end(graph.nodes_), string{},
       [](str str1, str str2) { return str1 + str2; },
-      [](const auto &syntax) {
-        return visit([](const auto &node) { return show(node); }, syntax);
+      [&graph](const auto &syntax) {
+        return visit([&graph](const auto &node) { 
+          return show(node, [&graph](Var v){return graph.var(v);}); }, syntax);
       });
 }
 
@@ -57,7 +89,7 @@ namespace treesitter { // every use of tree-sitter in this namespace
 
   class Parser {
     FirstOrderGraph graph_;
-    string program_;
+    string_view program_;
     TSLanguage *language_;
     TSParser *parser_;
     TSTree *tree_;
@@ -77,14 +109,14 @@ namespace treesitter { // every use of tree-sitter in this namespace
     } fields_;
   public:
     explicit Parser(string_view program)
-        : graph_(std::string{program}),
-          program_(program),
+        : graph_(string{program}),
+          program_(graph_.program()),
           language_(tree_sitter_python()),
           parser_(ts_parser_new()),
           tree_([&] {
             ts_parser_set_language(parser_, language_);
             return ts_parser_parse_string(
-                parser_, nullptr, program_.c_str(), program_.length());
+                parser_, nullptr, begin(program_), program_.size());
           }()),
           root_(ts_tree_root_node(tree_)),
           cursor_(ts_tree_cursor_new(root_)),
@@ -171,26 +203,28 @@ namespace treesitter { // every use of tree-sitter in this namespace
       to_child(&Symbols::expression_statement);
       to_child(&Symbols::assignment);
       to_child(&Fields::left, &Symbols::identifier);
-      //string_view variable {text()};
-      // to_child(&Fields::right);
-      // if (at(&Symbols::identifier)) {
-        
-      // }
-      do {
-        insert(LoadText{0, "asd"});
-        
-      } while(to_sibling());
+      Var lhs {graph_.idx(text())};
+      to_sibling(&Fields::right);
+      string_view rhs {text()};
+
+      if (at(&Symbols::identifier)) {
+        insert(LoadVar{.lhs=lhs, .rhs=graph_.idx(rhs)});
+      } else if (at(&Symbols::string) or at(&Symbols::integer)) {
+        insert(LoadText{.lhs=lhs, .text_literal=rhs});  
+      } else {
+        std::domain_error(format("assigning {} not implemented", rhs));
+      }
 
       return graph_;
     }
   };
 
-  static FirstOrderGraph parse_firstorder(str program) {
+  static FirstOrderGraph parse_firstorder(string_view program) {
     return Parser{program}.parse();
   }
 } // namespace treesitter
 
-Graph parse_firstorder(const std::string &program) {
+Graph parse_firstorder(string_view program) {
   return Graph{treesitter::parse_firstorder, program};
 }
 

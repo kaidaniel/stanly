@@ -9,7 +9,8 @@ add_library(firstorder
 target_link_libraries(firstorder
     sparta
     tree-sitter
-    tree-sitter-python)
+    tree-sitter-python
+    fmt)
 include(project_props)
 
 # set_source_files_properties(

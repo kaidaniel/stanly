@@ -8,10 +8,12 @@
 #include <iostream>
 #include <variant>
 #include <vector>
+#include <string_view>
+#include <unordered_map>
 
 namespace stanly {
 using Var = int;
-using TextLiteral = std::string;
+using TextLiteral = std::string_view;
 using RecordLiteral = std::vector<TextLiteral>;
 /// Abstraction of a const-propagated literal.
 using Text = sparta::ConstantAbstractDomain<TextLiteral>;
@@ -31,7 +33,7 @@ struct DeclareLocalVar { Var var; };
 struct SetField { Var rhs; Var target; Var field; };
 /// `lhs` = `source` [ `subscript` ], e.g. `x=y[z]`
 struct LoadField { Var lhs; Var source; Var field; };
-/// `lhs` = `text_literal`, e.g. `x="abc"`
+/// `lhs` = `text_literal`, e.g. `x="abc"` or `x=1`
 struct LoadText { Var lhs; TextLiteral text_literal; };
 /// `lhs` = `record`, e.g. `x={"a": 1, "b": 2}`
 struct LoadRecord { Var lhs; RecordLiteral record_literal; };
@@ -41,21 +43,26 @@ struct LoadVar { Var lhs; Var rhs; };
 
 using Kind = sparta::AbstractValueKind;
 
-std::string show(const DeclareLocalVar &);
-std::string show(const SetField &);
-std::string show(const LoadField &);
-std::string show(const LoadText &);
-std::string show(const LoadRecord &);
-std::string show(const LoadVar &);
-
 class FirstOrderGraph {
   using Syntax = std::variant<
       DeclareLocalVar, SetField, LoadField, LoadText, LoadRecord, LoadVar>;
   std::vector<Syntax> nodes_;
   std::string program_;
+  class VariablePool {
+    std::unordered_map<std::string_view, Var> var_to_idx_{};
+    std::vector<std::string_view> idx_to_var_{};
+    Var max_{-1};  // start at -1 so the index of the first insert is 0.
+    public:
+      Var idx(std::string_view);
+      std::string_view var(Var) const;
+  } variable_pool_;
+
 public:
   template <class... Args> void insert(Args &&...args);
   friend std::string show(const FirstOrderGraph &);
+  std::string_view program() { return program_; }
+  Var idx(std::string_view);
+  std::string_view var(Var) const;
   FirstOrderGraph(std::string program);
 };
 class FirstOrderAnalysis;
