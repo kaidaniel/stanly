@@ -1,5 +1,3 @@
-# TODO: add_custom_target to run sanitizers
-
 add_library(project_props INTERFACE)
 target_compile_options(project_props INTERFACE
     -Wall -Wextra -Wpedantic)

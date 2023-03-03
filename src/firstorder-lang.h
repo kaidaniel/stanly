@@ -10,6 +10,13 @@
 #include <vector>
 #include <string_view>
 #include <unordered_map>
+#include "fmt/core.h"
+
+#ifndef NDEBUG
+#include <exception>
+#include "boost/stacktrace.hpp" // std::cout << boost::stacktrace::stacktrace();
+#endif
+
 
 namespace stanly {
 using VarIdx = int;
@@ -41,8 +48,8 @@ struct LoadRecord { VarIdx lhs; RecordLiteral record_literal; };
 struct LoadVar { VarIdx lhs; VarIdx rhs; };
 // clang-format on
 
-using Kind = sparta::AbstractValueKind;
 
+using Kind = sparta::AbstractValueKind;
 class FirstOrderGraph {
   using Syntax = std::variant<
       DeclareLocalVar, SetField, LoadField, LoadText, LoadRecord, LoadVar>;
@@ -63,7 +70,22 @@ public:
   std::string_view program() { return program_; }
   VarIdx var_name_to_idx(std::string_view);
   std::string_view var_idx_to_name(VarIdx) const;
-  FirstOrderGraph(std::string program);
+  FirstOrderGraph(std::string program)
+    : program_(std::move(program)) {}
+  FirstOrderGraph(const FirstOrderGraph&) {
+      #ifndef NDEBUG
+      std::cout << boost::stacktrace::stacktrace();
+      throw std::logic_error("Copied FirstOrderGraph");
+      #endif
+  };
+  FirstOrderGraph(FirstOrderGraph&&){
+      #ifndef NDEBUG
+      std::cout << boost::stacktrace::stacktrace();
+      throw std::logic_error("Copied FirstOrderGraph");
+      #endif
+  }
+  FirstOrderGraph operator=(FirstOrderGraph&&) = delete;
+  FirstOrderGraph operator=(const FirstOrderGraph&) = delete;
 };
 class FirstOrderAnalysis;
 std::string show(const FirstOrderGraph &);

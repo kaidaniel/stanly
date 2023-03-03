@@ -11,6 +11,13 @@ target_link_libraries(firstorder
     tree-sitter
     tree-sitter-python
     fmt)
+
+target_link_options(firstorder
+    PUBLIC $<$<CONFIG:DEBUG>:-lboost_stacktrace_backtrace -ldl -lbacktrace>)
+target_compile_definitions(firstorder
+    PUBLIC $<$<CONFIG:DEBUG>:"BOOST_STACKTRACE_LINK">)
+
+
 include(project_props)
 
 # set_source_files_properties(

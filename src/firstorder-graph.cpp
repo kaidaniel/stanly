@@ -32,8 +32,6 @@ TSLanguage *tree_sitter_python(void);
 }
 namespace stanly {
 using GetVariable = const function<string_view(VarIdx)> &;
-FirstOrderGraph::FirstOrderGraph(std::string program)
-    : program_(std::move(program)) {}
 
 VarIdx FirstOrderGraph::VariablePool::var_name_to_idx(string_view variable) {
   auto search = var_name_to_idx_.find(variable);
@@ -85,7 +83,9 @@ string show(const FirstOrderGraph &graph) {
       [&graph](const auto &syntax) {
         return visit(
             [&graph](const auto &node) {
-              return show(node, [&graph](VarIdx v) { return graph.var_idx_to_name(v); });
+              return show(node, [&graph](VarIdx v) {
+                return graph.var_idx_to_name(v);
+              });
             },
             syntax);
       });
@@ -94,7 +94,6 @@ string show(const FirstOrderGraph &graph) {
 namespace treesitter { // every use of tree-sitter in this namespace
 
   class Parser {
-    FirstOrderGraph graph_;
     string_view program_;
     TSLanguage *language_;
     TSParser *parser_;
@@ -119,8 +118,7 @@ namespace treesitter { // every use of tree-sitter in this namespace
     } fields_;
   public:
     explicit Parser(string_view program)
-        : graph_(string{program}),
-          program_(graph_.program()),
+        : program_(program),
           language_(tree_sitter_python()),
           parser_(ts_parser_new()),
           tree_([&] {
@@ -163,9 +161,6 @@ namespace treesitter { // every use of tree-sitter in this namespace
     [[nodiscard]] TSFieldId field(str name) const {
       return ts_language_field_id_for_name(
           language_, name.c_str(), name.size());
-    }
-    template <class... Args> void insert(Args &&...args) {
-      graph_.insert(std::forward<Args>(args)...);
     }
     void skip_concrete_nodes() {
       while (not ts_node_is_named(ts_tree_cursor_current_node(&cursor_)) and
@@ -221,6 +216,8 @@ namespace treesitter { // every use of tree-sitter in this namespace
     }
 
     [[nodiscard]] FirstOrderGraph parse() && {
+      FirstOrderGraph graph{string{program_}};
+
       assert(at(&Symbols::module));
       to_child();
       assert(at(&Symbols::expression_statement));
@@ -228,24 +225,24 @@ namespace treesitter { // every use of tree-sitter in this namespace
       assert(at(&Symbols::assignment));
       to_child();
       assert(at(&Fields::left, &Symbols::identifier));
-      VarIdx lhs{graph_.var_name_to_idx(text())};
+      VarIdx lhs{graph.var_name_to_idx(text())};
       to_sibling();
       assert(at(&Fields::right));
       string_view rhs{text()};
 
       if (at(&Symbols::identifier)) {
-        insert(LoadVar{.lhs = lhs, .rhs = graph_.var_name_to_idx(rhs)});
+        graph.insert(LoadVar{.lhs = lhs, .rhs = graph.var_name_to_idx(rhs)});
       } else if (at(&Symbols::string) or at(&Symbols::integer)) {
-        insert(LoadText{.lhs = lhs, .text_literal = rhs});
+        graph.insert(LoadText{.lhs = lhs, .text_literal = rhs});
       } else if (at(&Symbols::dictionary)) {
-        insert(
+        graph.insert(
             LoadRecord{.lhs = lhs, .record_literal = parse_record_literal()});
       } else {
         throw std::domain_error(
             format("assigning ({} {}) not implemented", type(), rhs));
       }
 
-      return graph_;
+      return graph;
     }
 
     RecordLiteral parse_record_literal() {
