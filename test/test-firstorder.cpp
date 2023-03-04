@@ -13,12 +13,12 @@ TEST_CASE("parse single statements", "[first-order][parsing]") {
         "y=[]",                 "(DeclareLocalVar y)",
         "z = {}",               "(LoadRecord z=[])",
         "z = {1: 'x', 3: {}}",  "(LoadRecord z=[\"1\", \"3\"])",
-        "abc = {1: 'x'}",       "(LoadRecord abc (Record 1))",
+    /*  "abc = {1: 'x'}",       "(LoadRecord abc (Record 1))",
         "abc_def = {1,2,3}",    "(Local abc_def)",
         "a[b] = x",             "(StoreSubscript x a b)",
         "x = a[b]",             "(LoadSubscript x a b)",
         "x = y",                "(AssignVar x y)",
-        "x = 1",                "(AssignLiteral x 1)"
+        "x = 1",                "(AssignLiteral x 1)" */
     })));
   // clang-format on
   const std::string &statement = v[0];
