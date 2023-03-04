@@ -35,7 +35,7 @@ using GetVariable = const function<string_view(VarIdx)> &;
 
 VarIdx FirstOrderGraph::VariablePool::var_name_to_idx(string_view variable) {
   auto search = var_name_to_idx_.find(variable);
-  if (search != end(var_name_to_idx_)) { return search->second; }
+  if (search != var_name_to_idx_.end()) { return search->second; }
   max_++;
   var_name_to_idx_.emplace(variable, max_);
   var_idx_to_var_.push_back(variable);
@@ -77,17 +77,13 @@ string show(const LoadVar &n, GetVariable get) {
 }
 
 string show(const FirstOrderGraph &graph) {
+  auto get = [&](const auto v) { return graph.var_idx_to_name(v); };
   return transform_reduce(
-      begin(graph.nodes_), end(graph.nodes_), string{},
+
+      begin(graph), end(graph), string{},
       [](str str1, str str2) { return str1 + str2; },
-      [&graph](const auto &syntax) {
-        return visit(
-            [&graph](const auto &node) {
-              return show(node, [&graph](VarIdx v) {
-                return graph.var_idx_to_name(v);
-              });
-            },
-            syntax);
+      [&](const auto &syntax) {
+        return visit([&](const auto &node) { return show(node, get); }, syntax);
       });
 }
 
@@ -109,6 +105,8 @@ namespace treesitter { // every use of tree-sitter in this namespace
       TSSymbol string;
       TSSymbol dictionary;
       TSSymbol pair;
+      TSSymbol list;
+      TSSymbol set;
     } symbols_;
     struct Fields {
       TSFieldId left;
@@ -137,6 +135,8 @@ namespace treesitter { // every use of tree-sitter in this namespace
               .string = symbol("string"),
               .dictionary = symbol("dictionary"),
               .pair = symbol("pair"),
+              .list = symbol("list"),
+              .set = symbol("set"),
           }),
           fields_({
               .left = field("left"),
@@ -162,26 +162,17 @@ namespace treesitter { // every use of tree-sitter in this namespace
       return ts_language_field_id_for_name(
           language_, name.c_str(), name.size());
     }
-    void skip_concrete_nodes() {
+    bool skip_concrete_nodes() {
       while (not ts_node_is_named(ts_tree_cursor_current_node(&cursor_)) and
-             (to_sibling() or to_child())) { /* side-effects in loop head */
-      };
+             (to_sibling() or to_child())) { /* side-effects in loop head */};
+      return true;
     }
 
     bool to_child() {
-      if (ts_tree_cursor_goto_first_child(&cursor_)) {
-        skip_concrete_nodes();
-        return true;
-      }
-      return false;
-    }
+      return ts_tree_cursor_goto_first_child(&cursor_) 
+              ? skip_concrete_nodes() : false;}
     bool to_sibling() {
-      if (ts_tree_cursor_goto_next_sibling(&cursor_)) {
-        skip_concrete_nodes();
-        return true;
-      }
-      return false;
-    }
+      return ts_tree_cursor_goto_next_sibling(&cursor_) ? skip_concrete_nodes() : false; }
     bool to_parent() { return ts_tree_cursor_goto_parent(&cursor_); }
 
     TSSymbol symbol() {
@@ -215,8 +206,7 @@ namespace treesitter { // every use of tree-sitter in this namespace
           std::begin(program_) + ts_node_end_byte(node)};
     }
 
-    [[nodiscard]] FirstOrderGraph parse() && {
-      FirstOrderGraph graph{string{program_}};
+    void parse(FirstOrderGraph& graph) {
 
       assert(at(&Symbols::module));
       to_child();
@@ -234,15 +224,17 @@ namespace treesitter { // every use of tree-sitter in this namespace
         graph.insert(LoadVar{.lhs = lhs, .rhs = graph.var_name_to_idx(rhs)});
       } else if (at(&Symbols::string) or at(&Symbols::integer)) {
         graph.insert(LoadText{.lhs = lhs, .text_literal = rhs});
-      } else if (at(&Symbols::dictionary)) {
+      } else if (
+          at(&Symbols::dictionary) or at(&Symbols::set)
+        ) {
         graph.insert(
             LoadRecord{.lhs = lhs, .record_literal = parse_record_literal()});
+      } else if (at(&Symbols::list)) {
+        graph.insert(DeclareLocalVar{.var = lhs});
       } else {
         throw std::domain_error(
             format("assigning ({} {}) not implemented", type(), rhs));
       }
-
-      return graph;
     }
 
     RecordLiteral parse_record_literal() {
@@ -262,9 +254,13 @@ namespace treesitter { // every use of tree-sitter in this namespace
   };
 
   static FirstOrderGraph parse_firstorder(string_view program) {
-    return Parser{program}.parse();
+    return FirstOrderGraph{string{program}};
   }
 } // namespace treesitter
+
+FirstOrderGraph::FirstOrderGraph(string_view program) : program_(string{program}){
+  treesitter::Parser{program_}.parse(*this);
+}
 
 Graph parse_firstorder(string_view program) {
   return Graph{treesitter::parse_firstorder, program};

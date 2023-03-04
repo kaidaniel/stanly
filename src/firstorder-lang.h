@@ -70,8 +70,11 @@ public:
   std::string_view program() { return program_; }
   VarIdx var_name_to_idx(std::string_view);
   std::string_view var_idx_to_name(VarIdx) const;
-  FirstOrderGraph(std::string program)
-    : program_(std::move(program)) {}
+  decltype(auto) begin() { return std::begin(nodes_); }
+  decltype(auto) end() { return std::end(nodes_); }
+  decltype(auto) begin() const { return std::begin(nodes_); }
+  decltype(auto) end() const { return std::end(nodes_); }
+  FirstOrderGraph(std::string_view program);
   FirstOrderGraph(const FirstOrderGraph&) {
       #ifndef NDEBUG
       std::cout << boost::stacktrace::stacktrace();
