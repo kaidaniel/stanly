@@ -1,255 +1,114 @@
 #include "firstorder-lang.h"
 #include "metaprogramming.h"
-#include "stanly-api.h"
-#include <algorithm>
-#include <cassert>
-#include <cstring>
-#include <numeric>
-#include <stdexcept>
-#include <string>
-#include <string_view>
-#include <tree_sitter/api.h>
-//#include <tree_sitter/parser.h>
-#include <fmt/core.h>
-#include <fmt/ranges.h>
-#include <functional>
-#include <vector>
 #include "range/v3/view.hpp"
 #include <variant>
 #ifndef NDEBUG
-#include <boost/stacktrace.hpp>
-#include <iostream>
+#  include <boost/stacktrace.hpp>
+
 #endif
+#include <forward_list>
+#include <iostream>
+#include <set>
+#include <string>
+#include <string_view>
+#include <sys/types.h>
+#include <unordered_map>
+#include <vector>
 
-using std::string;
-using std::unique_ptr;
-using str = const std::string &;
-using fmt::format;
-using std::begin;
-using std::cout;
-using std::end;
-using std::function;
-using std::string_view;
-using std::transform_reduce;
-using std::visit;
-
-extern "C" {
-TSLanguage *tree_sitter_python(void);
-}
 namespace stanly {
 
- [[nodiscard]] decltype(auto) FirstOrderGraph::nodes_view() { 
-    using enum kFirstOrderSyntax;
-    auto get = [&](Idx var_idx) { return program_source_text_index_.idx_to_text_reference(var_idx); };
-    return ::ranges::views::transform(syntax_nodes_, [&](BytePackedSyntax n) -> metaprogramming::rebind<std::variant, FirstOderSyntaxNodes>::type { 
-      switch(n.syntax_tag){
-        case kSetField: return SetField{get(n.var_idx), get(n.subscript.subscripted), get(n.subscript.subscripting)};
-        case kLoadField: return LoadField{get(n.var_idx), get(n.subscript.subscripted), get(n.subscript.subscripting)};
-        case kLoadText: return LoadText{get(n.var_idx), get(n.text_idx)};
-        case kLoadRecord: return LoadRecord{get(n.var_idx), record_literals_[n.record_idx]};
-        case kLoadVar: return LoadVar{get(n.var_idx), get(n.load_var_rhs)};
-      };
-  });
-  }
+class Idx {
+  uint16_t idx_;
+  Idx(uint16_t idx)
+      : idx_(idx) {} // private constructor to make idx_to_text_reference safer
+public:
+  Idx() = delete;
+  friend class ProgramSourceTextIndex;
+};
 
-using GetVariable = const function<string_view(VarRef)> &;
-
-VarRef FirstOrderGraph::VariablePool::var_name_to_idx(string_view variable) {
-  auto search = var_name_to_idx_.find(variable);
-  if (search != var_name_to_idx_.end()) { return search->second; }
-  max_++;
-  var_name_to_idx_.emplace(variable, max_);
-  var_idx_to_var_.push_back(variable);
-  return max_;
-}
-VarRef FirstOrderGraph::var_name_to_idx(string_view variable) {
-  return variable_pool_.var_name_to_idx(variable);
-}
-string_view FirstOrderGraph::VariablePool::var_idx_to_name(VarRef idx) const {
-  return var_idx_to_var_.at(idx);
-}
-string_view FirstOrderGraph::var_idx_to_name(VarRef idx) const {
-  return variable_pool_.var_idx_to_name(idx);
-}
-
-
-namespace treesitter { // every use of tree-sitter in this namespace
-
-  class Parser {
-    string_view program_;
-    TSLanguage *language_;
-    TSParser *parser_;
-    TSTree *tree_;
-    TSNode root_;
-    TSTreeCursor cursor_;
-    struct Symbols {
-      TSSymbol expression_statement;
-      TSSymbol assignment;
-      TSSymbol module;
-      TSSymbol identifier;
-      TSSymbol integer;
-      TSSymbol string;
-      TSSymbol dictionary;
-      TSSymbol pair;
-      TSSymbol list;
-      TSSymbol set;
-    } symbols_;
-    struct Fields {
-      TSFieldId left;
-      TSFieldId right;
-      TSFieldId key;
-      TSFieldId value;
-    } fields_;
-  public:
-    explicit Parser(string_view program)
-        : program_(program),
-          language_(tree_sitter_python()),
-          parser_(ts_parser_new()),
-          tree_([&] {
-            ts_parser_set_language(parser_, language_);
-            return ts_parser_parse_string(
-                parser_, nullptr, begin(program_), program_.size());
-          }()),
-          root_(ts_tree_root_node(tree_)),
-          cursor_(ts_tree_cursor_new(root_)),
-          symbols_({
-              .expression_statement = symbol("expression_statement"),
-              .assignment = symbol("assignment"),
-              .module = symbol("module"),
-              .identifier = symbol("identifier"),
-              .integer = symbol("integer"),
-              .string = symbol("string"),
-              .dictionary = symbol("dictionary"),
-              .pair = symbol("pair"),
-              .list = symbol("list"),
-              .set = symbol("set"),
-          }),
-          fields_({
-              .left = field("left"),
-              .right = field("right"),
-              .key = field("key"),
-              .value = field("value"),
-          }) {}
-    ~Parser() {
-      ts_tree_delete(tree_);
-      ts_parser_delete(parser_);
-    }
-    Parser(const Parser &) = delete;
-    Parser operator=(const Parser &) = delete;
-    Parser(Parser &&) = delete;
-    Parser operator=(Parser &&) = delete;
-
-    [[nodiscard]] const TSNode &root() const { return root_; }
-    [[nodiscard]] TSSymbol symbol(str name) const {
-      return ts_language_symbol_for_name(
-          language_, name.c_str(), name.length(), true);
-    }
-    [[nodiscard]] TSFieldId field(str name) const {
-      return ts_language_field_id_for_name(
-          language_, name.c_str(), name.size());
-    }
-    bool skip_concrete_nodes() {
-      while (not ts_node_is_named(ts_tree_cursor_current_node(&cursor_)) and
-             (to_sibling() or to_child())) { /* side-effects in loop head */};
-      return true;
-    }
-
-    bool to_child() {
-      return ts_tree_cursor_goto_first_child(&cursor_) 
-              ? skip_concrete_nodes() : false;}
-    bool to_sibling() {
-      return ts_tree_cursor_goto_next_sibling(&cursor_) ? skip_concrete_nodes() : false; }
-    bool to_parent() { return ts_tree_cursor_goto_parent(&cursor_); }
-
-    TSSymbol symbol() {
-      return ts_node_symbol(ts_tree_cursor_current_node(&cursor_));
-    }
-    bool at(const TSSymbol Symbols::*symbol) {
-      return ts_node_symbol(ts_tree_cursor_current_node(&cursor_)) ==
-          symbols_.*symbol;
-    }
-    bool at(const TSFieldId Fields::*field) {
-      return ts_tree_cursor_current_field_id(&cursor_) == fields_.*field;
-    }
-    bool at(const TSFieldId Fields::*field, const TSSymbol Symbols::*symbol) {
-      return at(field) and at(symbol);
-    }
-    unique_ptr<char> s_expr() {
-      return unique_ptr<char>{
-          ts_node_string(ts_tree_cursor_current_node(&cursor_))};
-    }
-    std::string type() {
-      return ts_node_type(ts_tree_cursor_current_node(&cursor_));
-    }
-    void show_field() {
-      cout << ts_tree_cursor_current_field_name(&cursor_) << "\n";
-    }
-    void show() { cout << s_expr() << "\n"; }
-    string_view text() {
-      auto node = ts_tree_cursor_current_node(&cursor_);
-      return {
-          std::begin(program_) + ts_node_start_byte(node),
-          std::begin(program_) + ts_node_end_byte(node)};
-    }
-
-    void parse(FirstOrderGraph& graph) {
-
-      assert(at(&Symbols::module));
-      to_child();
-      assert(at(&Symbols::expression_statement));
-      to_child();
-      assert(at(&Symbols::assignment));
-      to_child();
-      assert(at(&Fields::left, &Symbols::identifier));
-      VarRef lhs{graph.var_name_to_idx(text())};
-      to_sibling();
-      assert(at(&Fields::right));
-      string_view rhs{text()};
-
-      if (at(&Symbols::identifier)) {
-        graph.insert(LoadVar{.lhs = lhs, .rhs = graph.var_name_to_idx(rhs)});
-      } else if (at(&Symbols::string) or at(&Symbols::integer)) {
-        graph.insert(LoadText{.lhs = lhs, .text_literal = rhs});
-      } else if (
-          at(&Symbols::dictionary) or at(&Symbols::set)
-        ) {
-        graph.insert(
-            LoadRecord{.lhs = lhs, .record_literal = parse_record_literal()});
-      } else if (at(&Symbols::list)) {
-        graph.insert(DeclareLocalVar{.var = lhs});
-      } else {
-        throw std::domain_error(
-            format("assigning ({} {}) not implemented", type(), rhs));
-      }
-    }
-
-    RecordLiteral parse_record_literal() {
-      RecordLiteral record_literal{};
-      assert(at(&Symbols::dictionary));
-      to_child();
-      while (at(&Symbols::pair)) {
-        to_child();
-        assert(at(&Fields::key));
-        record_literal.emplace_back(text());
-        to_parent();
-        if (not to_sibling()) { break; }
-      }
-
-      return record_literal;
-    }
+class ProgramSourceTextIndex {
+  // set (not unordered set) because comparing long strings is faster than
+  // hashing them (?)
+  std::set<std::string_view> all_text_references_;
+  std::vector<std::string_view> idx_to_text_reference_{};
+  // adding elements to a forward list won't invalidate references to elements.
+  // each element is the source from one file.
+  std::forward_list<std::string> program_source_texts_;
+public:
+  // Bounds checked: insert at most: std::numeric_limits<Idx>::max() (size of
+  // the index).
+  Idx insert_text_reference(std::string_view);
+  // Not bounds checked
+  std::string_view idx_to_text_reference(Idx);
+  void add_program_source(std::string_view);
+};
+struct SourceTextLocation {
+  int program;
+  int start;
+  int end;
+  int col;
+  int row;
+};
+struct Subscript {
+  Idx subscripted;
+  Idx subscripting;
+};
+enum class kFirstOrderSyntax : char {
+  kSetField,
+  kLoadField,
+  kLoadText,
+  kLoadRecord,
+  kLoadVar
+};
+struct BytePackedSyntax {
+  union {
+    Subscript subscript;
+    Idx text_idx;
+    Idx record_idx;
+    Idx load_var_rhs;
   };
+  Idx var_idx;
+  kFirstOrderSyntax syntax_tag;
+};
+class FirstOrderGraph {
+  std::unordered_map<BytePackedSyntax, SourceTextLocation>
+      syntax_node_to_source_text_offsets_;
+  std::vector<BytePackedSyntax> syntax_nodes_;
+  std::unordered_map<Idx, std::vector<std::string_view>> record_literals_;
+  ProgramSourceTextIndex program_source_text_index_;
+public:
+  [[nodiscard]] decltype(auto) nodes_view();
+  FirstOrderGraph(std::string_view program);
+  FirstOrderGraph(const FirstOrderGraph &) = delete;
+  FirstOrderGraph(FirstOrderGraph &&) = delete;
+  FirstOrderGraph operator=(FirstOrderGraph &&) = delete;
+  FirstOrderGraph operator=(const FirstOrderGraph &) = delete;
+  ~FirstOrderGraph() = default;
+};
 
-  static FirstOrderGraph parse_firstorder(string_view program) {
-    return FirstOrderGraph{string{program}};
-  }
-} // namespace treesitter
-
-FirstOrderGraph::FirstOrderGraph(string_view program) : program_(string{program}){
-  treesitter::Parser{program_}.parse(*this);
+[[nodiscard]] decltype(auto) FirstOrderGraph::nodes_view() {
+  using enum kFirstOrderSyntax;
+  auto get = [&](Idx var_idx) {
+    return program_source_text_index_.idx_to_text_reference(var_idx);
+  };
+  return ::ranges::views::transform(
+      syntax_nodes_,
+      [&](BytePackedSyntax n)
+          -> metaprogramming::rebind<std::variant, FirstOderSyntaxNodes>::type {
+        switch (n.syntax_tag) {
+        case kSetField:
+          return SetField{
+              get(n.var_idx), get(n.subscript.subscripted),
+              get(n.subscript.subscripting)};
+        case kLoadField:
+          return LoadField{
+              get(n.var_idx), get(n.subscript.subscripted),
+              get(n.subscript.subscripting)};
+        case kLoadText: return LoadText{get(n.var_idx), get(n.text_idx)};
+        case kLoadRecord:
+          return LoadRecord{get(n.var_idx), record_literals_[n.record_idx]};
+        case kLoadVar: return LoadVar{get(n.var_idx), get(n.load_var_rhs)};
+        };
+      });
 }
-
-Graph parse_firstorder(string_view program) {
-  return Graph{treesitter::parse_firstorder, program};
-}
-
 } // namespace stanly
