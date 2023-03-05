@@ -5,21 +5,18 @@
 #include "HashedAbstractEnvironment.h"
 #include "HashedSetAbstractDomain.h"
 #include "stanly-api.h"
-#include <iostream>
-#include <variant>
+#include <sys/types.h>
 #include <vector>
 #include <string_view>
 #include <unordered_map>
-#include "fmt/core.h"
+#include <set>
+#include <forward_list>
 
-#ifndef NDEBUG
-#include <exception>
-#include "boost/stacktrace.hpp" // std::cout << boost::stacktrace::stacktrace();
-#endif
 
 
 namespace stanly {
-using VarIdx = int;
+
+using Var = std::string_view;
 using TextLiteral = std::string_view;
 using RecordLiteral = std::vector<TextLiteral>;
 /// Abstraction of a const-propagated literal.
@@ -32,66 +29,74 @@ struct Value : public sparta::DirectProductAbstractDomain<Value, Text, Record> {
   using Product::DirectProductAbstractDomain;
 };
 /// Abstraction of the program state (Var -> Value).
-using Bindings = sparta::HashedAbstractEnvironment<VarIdx, Value>;
+using Bindings = sparta::HashedAbstractEnvironment<Var, Value>;
 // clang-format off
-/// declare `var` to be a local variable., e.g. `x=unknown_func()`
-struct DeclareLocalVar { VarIdx var; };
 /// `target` [ `field` ] = `rhs`, e.g. `x[y]=z`
-struct SetField { VarIdx rhs; VarIdx target; VarIdx field; };
+struct SetField { Var rhs; Var target; Var field; };
 /// `lhs` = `source` [ `subscript` ], e.g. `x=y[z]`
-struct LoadField { VarIdx lhs; VarIdx source; VarIdx field; };
+struct LoadField { Var lhs; Var source; Var field; };
 /// `lhs` = `text_literal`, e.g. `x="abc"` or `x=1`
-struct LoadText { VarIdx lhs; TextLiteral text_literal; };
+struct LoadText { Var lhs; TextLiteral text_literal; };
 /// `lhs` = `record`, e.g. `x={"a": 1, "b": 2}`
-struct LoadRecord { VarIdx lhs; RecordLiteral record_literal; };
+struct LoadRecord { Var lhs; RecordLiteral record_literal; };
 /// `lhs` = `rhs`
-struct LoadVar { VarIdx lhs; VarIdx rhs; };
+struct LoadVar { Var lhs; Var rhs; };
 // clang-format on
+
+class Idx {
+  uint16_t idx_;
+  Idx(uint16_t idx) : idx_(idx) {}  // private constructor to make idx_to_text_reference safer
+  public:
+  Idx() = delete;
+  friend class ProgramSourceTextIndex;
+};
+
+class ProgramSourceTextIndex {
+  // set (not unordered set) because comparing long strings is faster than hashing them (?)
+  std::set<std::string_view> all_text_references_;
+  std::vector<std::string_view> idx_to_text_reference_{};
+  // adding elements to a forward list won't invalidate references to elements.
+  // each element is the source from one file.
+  std::forward_list<std::string> program_source_texts_;
+  public:
+  // Bounds checked: insert at most: std::numeric_limits<Idx>::max() (size of the index).
+  Idx insert_text_reference(std::string_view);
+  // Not bounds checked
+  std::string_view idx_to_text_reference(Idx);
+  void add_program_source(std::string_view);
+};
 
 
 using Kind = sparta::AbstractValueKind;
 class FirstOrderGraph {
-  using Syntax = std::variant<
-      DeclareLocalVar, SetField, LoadField, LoadText, LoadRecord, LoadVar>;
-  std::vector<Syntax> nodes_;
-  std::string program_;
-  class VariablePool {
-    std::unordered_map<std::string_view, VarIdx> var_name_to_idx_{};
-    std::vector<std::string_view> var_idx_to_var_{};
-    VarIdx max_{-1};  // start at -1 so the index of the first insert is 0.
-    public:
-      VarIdx var_name_to_idx(std::string_view);
-      std::string_view var_idx_to_name(VarIdx) const;
-  } variable_pool_;
+  struct SourceTextLocation{int program; int start; int end; int col; int row; };
+  struct Subscript {Idx subscripted; Idx subscripting;};
+  enum class kFirstOrderSyntax : char { kSetField, kLoadField, kLoadText, kLoadRecord, kLoadVar};
+  struct BytePackedSyntax {
+    union{
+      Subscript subscript;
+      Idx text_idx;
+      Idx record_idx;
+      Idx load_var_rhs;
+    };
+    Idx var_idx;
+    kFirstOrderSyntax syntax_tag;
+  };
+  
+  std::unordered_map<BytePackedSyntax, SourceTextLocation> syntax_node_to_source_text_offsets_;
+  std::vector<BytePackedSyntax> syntax_nodes_;
+  std::unordered_map<Idx, RecordLiteral> record_literals_;
+  ProgramSourceTextIndex program_source_text_index_;
 
 public:
-  template <class... Args> void insert(Args &&...args);
-  friend std::string show(const FirstOrderGraph &);
-  std::string_view program() { return program_; }
-  VarIdx var_name_to_idx(std::string_view);
-  std::string_view var_idx_to_name(VarIdx) const;
-  decltype(auto) begin() { return std::begin(nodes_); }
-  decltype(auto) end() { return std::end(nodes_); }
-  decltype(auto) begin() const { return std::begin(nodes_); }
-  decltype(auto) end() const { return std::end(nodes_); }
+  [[nodiscard]] decltype(auto) nodes_view();
   FirstOrderGraph(std::string_view program);
-  FirstOrderGraph(const FirstOrderGraph&) {
-      #ifndef NDEBUG
-      std::cout << boost::stacktrace::stacktrace();
-      throw std::logic_error("Copied FirstOrderGraph");
-      #endif
-  };
-  FirstOrderGraph(FirstOrderGraph&&){
-      #ifndef NDEBUG
-      std::cout << boost::stacktrace::stacktrace();
-      throw std::logic_error("Copied FirstOrderGraph");
-      #endif
-  }
+  FirstOrderGraph(const FirstOrderGraph&) = delete;
+  FirstOrderGraph(FirstOrderGraph&&) = delete;
   FirstOrderGraph operator=(FirstOrderGraph&&) = delete;
   FirstOrderGraph operator=(const FirstOrderGraph&) = delete;
+  ~FirstOrderGraph() = default;
 };
 class FirstOrderAnalysis;
-std::string show(const FirstOrderGraph &);
-std::string show(const FirstOrderAnalysis &);
 Analysis analyse(const FirstOrderGraph &);
 } // namespace stanly

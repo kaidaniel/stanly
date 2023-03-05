@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <cassert>
 #include <cstring>
-#include <iostream>
 #include <numeric>
 #include <stdexcept>
 #include <string>
@@ -14,6 +13,12 @@
 #include <fmt/ranges.h>
 #include <functional>
 #include <vector>
+#include "range/v3/view.hpp"
+#include <variant>
+#ifndef NDEBUG
+#include <boost/stacktrace.hpp>
+#include <iostream>
+#endif
 
 using std::string;
 using std::unique_ptr;
@@ -31,9 +36,24 @@ extern "C" {
 TSLanguage *tree_sitter_python(void);
 }
 namespace stanly {
-using GetVariable = const function<string_view(VarIdx)> &;
 
-VarIdx FirstOrderGraph::VariablePool::var_name_to_idx(string_view variable) {
+ [[nodiscard]] decltype(auto) FirstOrderGraph::nodes_view() { 
+    using enum kFirstOrderSyntax;
+    auto get = [&](Idx var_idx) { return program_source_text_index_.idx_to_text_reference(var_idx); };
+    return ::ranges::views::transform(syntax_nodes_, [&](BytePackedSyntax n) -> std::variant<SetField, LoadField, LoadText, LoadRecord, LoadVar> { 
+      switch(n.syntax_tag){
+        case kSetField: return SetField{get(n.var_idx), get(n.subscript.subscripted), get(n.subscript.subscripting)};
+        case kLoadField: return LoadField{get(n.var_idx), get(n.subscript.subscripted), get(n.subscript.subscripting)};
+        case kLoadText: return LoadText{get(n.var_idx), get(n.text_idx)};
+        case kLoadRecord: return LoadRecord{get(n.var_idx), record_literals_[n.record_idx]};
+        case kLoadVar: return LoadVar{get(n.var_idx), get(n.load_var_rhs)};
+      };
+  });
+  }
+
+using GetVariable = const function<string_view(VarRef)> &;
+
+VarRef FirstOrderGraph::VariablePool::var_name_to_idx(string_view variable) {
   auto search = var_name_to_idx_.find(variable);
   if (search != var_name_to_idx_.end()) { return search->second; }
   max_++;
@@ -41,51 +61,16 @@ VarIdx FirstOrderGraph::VariablePool::var_name_to_idx(string_view variable) {
   var_idx_to_var_.push_back(variable);
   return max_;
 }
-VarIdx FirstOrderGraph::var_name_to_idx(string_view variable) {
+VarRef FirstOrderGraph::var_name_to_idx(string_view variable) {
   return variable_pool_.var_name_to_idx(variable);
 }
-string_view FirstOrderGraph::VariablePool::var_idx_to_name(VarIdx idx) const {
+string_view FirstOrderGraph::VariablePool::var_idx_to_name(VarRef idx) const {
   return var_idx_to_var_.at(idx);
 }
-string_view FirstOrderGraph::var_idx_to_name(VarIdx idx) const {
+string_view FirstOrderGraph::var_idx_to_name(VarRef idx) const {
   return variable_pool_.var_idx_to_name(idx);
 }
 
-template <class... Args> void FirstOrderGraph::insert(Args &&...args) {
-  nodes_.emplace_back(std::forward<Args>(args)...);
-};
-
-string show(const DeclareLocalVar &n, GetVariable get) {
-  return format("(DeclareLocalVar {})", get(n.var));
-}
-string show(const SetField &n, GetVariable get) {
-  return format(
-      "(SetField {}[{}]={})", get(n.target), get(n.field), get(n.rhs));
-}
-string show(const LoadField &n, GetVariable get) {
-  return format(
-      "(LoadField {}={}[{}])", get(n.lhs), get(n.source), get(n.field));
-}
-string show(const LoadText &n, GetVariable get) {
-  return format("(LoadText {}='{}')", get(n.lhs), n.text_literal);
-}
-string show(const LoadRecord &n, GetVariable get) {
-  return format("(LoadRecord {}={})", get(n.lhs), n.record_literal);
-}
-string show(const LoadVar &n, GetVariable get) {
-  return format("(LoadVar {}={})", get(n.lhs), get(n.rhs));
-}
-
-string show(const FirstOrderGraph &graph) {
-  auto get = [&](const auto v) { return graph.var_idx_to_name(v); };
-  return transform_reduce(
-
-      begin(graph), end(graph), string{},
-      [](str str1, str str2) { return str1 + str2; },
-      [&](const auto &syntax) {
-        return visit([&](const auto &node) { return show(node, get); }, syntax);
-      });
-}
 
 namespace treesitter { // every use of tree-sitter in this namespace
 
@@ -215,7 +200,7 @@ namespace treesitter { // every use of tree-sitter in this namespace
       assert(at(&Symbols::assignment));
       to_child();
       assert(at(&Fields::left, &Symbols::identifier));
-      VarIdx lhs{graph.var_name_to_idx(text())};
+      VarRef lhs{graph.var_name_to_idx(text())};
       to_sibling();
       assert(at(&Fields::right));
       string_view rhs{text()};

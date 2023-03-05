@@ -2,14 +2,14 @@
 
 namespace stanly {
 namespace {
-  auto text(const Bindings &b, const VarIdx &v) -> const Text & {
+  auto text(const Bindings &b, const VarRef &v) -> const Text & {
     return b.get(v).get<0>();
   }
-  auto record(const Bindings &b, const VarIdx &v) -> const Record & {
+  auto record(const Bindings &b, const VarRef &v) -> const Record & {
     return b.get(v).get<1>();
   }
 
-  void update(auto fnumber, auto frecord, Bindings &b, const VarIdx &v) {
+  void update(auto fnumber, auto frecord, Bindings &b, const VarRef &v) {
     b.update(v, [&](Value *value) {
       value->apply<0>([&](Text *text) { std::invoke(fnumber, text); });
       value->apply<1>([&](Record *record) { std::invoke(frecord, record); });
