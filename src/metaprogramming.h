@@ -40,14 +40,9 @@ struct rebind<T, TypeList<Args...>> {
 template <template <class...> typename T, class... Args>
 using rebind_t = typename rebind<T, Args...>::type;
 
-template <class T, class... Args> struct is_any_of {
-  constexpr static bool value = false;
-};
+template <class T, class... Args> constexpr static bool is_any_of_v = false;
+template <class T, class... Args>
+constexpr static bool is_any_of_v<T, TypeList<Args...>> =
+    std::disjunction_v<std::is_same<T, Args>...>;
 
-template <class T, class... Args> struct is_any_of<T, TypeList<Args...>> {
-  constexpr static bool value = std::disjunction_v<std::is_same<T, Args>...>;
-};
-
-template <class T, class S>
-constexpr static bool is_any_of_v = is_any_of<T, S>::value;
 } // namespace stanly::metaprogramming
