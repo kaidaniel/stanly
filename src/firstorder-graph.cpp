@@ -47,15 +47,16 @@ struct SourceTextLocation {
   int row;
 };
 struct Subscript {
-  Idx subscripted;
-  Idx subscripting;
+  Idx object;
+  Idx field;
 };
 enum class kFirstOrderSyntax : char {
   kSetField,
   kLoadField,
   kLoadText,
   kLoadRecord,
-  kLoadVar
+  kLoadVar,
+  kLoadTop,
 };
 struct BytePackedSyntax {
   union {
@@ -92,19 +93,25 @@ public:
       syntax_nodes_,
       [&](BytePackedSyntax n)
           -> metaprogramming::rebind<std::variant, FirstOderSyntaxNodes>::type {
+        const auto &object = get(n.subscript.object);
+        const auto &field = get(n.subscript.field);
+        const auto &var = get(n.var_idx);
+        const auto &text_literal = get(n.text_idx);
+        const auto &load_var_rhs = get(n.load_var_rhs);
+        const auto &record_literal = record_literals_[n.record_idx];
         switch (n.syntax_tag) {
         case kSetField:
-          return SetField{
-              get(n.var_idx), get(n.subscript.subscripted),
-              get(n.subscript.subscripting)};
+          return SetField{.rhs = var, .target = object, .field = field};
         case kLoadField:
-          return LoadField{
-              get(n.var_idx), get(n.subscript.subscripted),
-              get(n.subscript.subscripting)};
-        case kLoadText: return LoadText{get(n.var_idx), get(n.text_idx)};
+          return LoadField{.lhs = var, .source = object, .field = field};
+        case kLoadText:
+          return LoadText{.lhs = var, .text_literal = text_literal};
         case kLoadRecord:
-          return LoadRecord{get(n.var_idx), record_literals_[n.record_idx]};
-        case kLoadVar: return LoadVar{get(n.var_idx), get(n.load_var_rhs)};
+          return LoadRecord{.lhs = var, .record_literal = record_literal};
+        case kLoadVar: /*        */
+          return LoadVar{.lhs = var, .rhs = load_var_rhs};
+        case kLoadTop: /*        */
+          return LoadTop{.lhs = var, .text_literal = text_literal};
         };
       });
 }

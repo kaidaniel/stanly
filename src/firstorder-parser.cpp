@@ -8,6 +8,7 @@
 #include <string>
 #include <string_view>
 #include <tree_sitter/api.h>
+#include <variant>
 //#include <tree_sitter/parser.h>
 #include <fmt/core.h>
 #include <fmt/ranges.h>
@@ -24,6 +25,7 @@ using std::string;
 using std::unique_ptr;
 using str = const std::string &;
 using fmt::format;
+using stanly::metaprogramming::rebind;
 using std::begin;
 using std::cout;
 using std::end;
@@ -87,7 +89,10 @@ namespace treesitter { // every use of tree-sitter in this namespace
               .right = field("right"),
               .key = field("key"),
               .value = field("value"),
-          }) {}
+          }) {
+      assert(at(&Symbols::module));
+      to_child();
+    }
     ~Parser() {
       ts_tree_delete(tree_);
       ts_parser_delete(parser_);
@@ -107,7 +112,7 @@ namespace treesitter { // every use of tree-sitter in this namespace
           language_, name.c_str(), name.size());
     }
     bool skip_concrete_nodes() {
-      while (not ts_node_is_named(ts_tree_cursor_current_node(&cursor_)) and
+      while (not ts_node_is_named(node()) and
              (to_sibling() or to_child())) { /* side-effects in loop head */
       };
       return true;
@@ -122,13 +127,10 @@ namespace treesitter { // every use of tree-sitter in this namespace
                                                         : false;
     }
     bool to_parent() { return ts_tree_cursor_goto_parent(&cursor_); }
-
-    TSSymbol symbol() {
-      return ts_node_symbol(ts_tree_cursor_current_node(&cursor_));
-    }
+    TSNode node() { return node(); }
+    TSSymbol symbol() { return ts_node_symbol(node()); }
     bool at(const TSSymbol Symbols::*symbol) {
-      return ts_node_symbol(ts_tree_cursor_current_node(&cursor_)) ==
-          symbols_.*symbol;
+      return ts_node_symbol(node()) == symbols_.*symbol;
     }
     bool at(const TSFieldId Fields::*field) {
       return ts_tree_cursor_current_field_id(&cursor_) == fields_.*field;
@@ -136,53 +138,37 @@ namespace treesitter { // every use of tree-sitter in this namespace
     bool at(const TSFieldId Fields::*field, const TSSymbol Symbols::*symbol) {
       return at(field) and at(symbol);
     }
-    unique_ptr<char> s_expr() {
-      return unique_ptr<char>{
-          ts_node_string(ts_tree_cursor_current_node(&cursor_))};
-    }
-    std::string type() {
-      return ts_node_type(ts_tree_cursor_current_node(&cursor_));
-    }
-    void show_field() {
-      cout << ts_tree_cursor_current_field_name(&cursor_) << "\n";
-    }
+    auto s_expr() { return unique_ptr<char>{ts_node_string(node())}; }
+    std::string type() { return ts_node_type(node()); }
     void show() { cout << s_expr() << "\n"; }
     string_view text() {
-      auto node = ts_tree_cursor_current_node(&cursor_);
       return {
-          std::begin(program_) + ts_node_start_byte(node),
-          std::begin(program_) + ts_node_end_byte(node)};
+          std::begin(program_) + ts_node_start_byte(node()),
+          std::begin(program_) + ts_node_end_byte(node())};
     }
 
-    void parse(FirstOrderGraph &graph) {
-      assert(at(&Symbols::module));
-      to_child();
+    rebind<std::variant, FirstOderSyntaxNodes>::type next_node() {
       assert(at(&Symbols::expression_statement));
       to_child();
       assert(at(&Symbols::assignment));
       to_child();
       assert(at(&Fields::left, &Symbols::identifier));
-      VarRef lhs{graph.var_name_to_idx(text())};
+      Var left{text()};
       to_sibling();
       assert(at(&Fields::right));
-      string_view rhs{text()};
+      string_view right{text()};
 
-      if (at(&Symbols::identifier)) {
-        graph.insert(LoadVar{.lhs = lhs, .rhs = graph.var_name_to_idx(rhs)});
-      } else if (at(&Symbols::string) or at(&Symbols::integer)) {
-        graph.insert(LoadText{.lhs = lhs, .text_literal = rhs});
-      } else if (at(&Symbols::dictionary) or at(&Symbols::set)) {
-        graph.insert(
-            LoadRecord{.lhs = lhs, .record_literal = parse_record_literal()});
-      } else if (at(&Symbols::list)) {
-        graph.insert(DeclareLocalVar{.var = lhs});
-      } else {
-        throw std::domain_error(
-            format("assigning ({} {}) not implemented", type(), rhs));
-      }
+      if (at(&Symbols::identifier)) { return LoadVar{left, right}; }
+      if (at(&Symbols::string)) { return LoadText{left, right}; }
+      if (at(&Symbols::integer)) { return LoadText{left, right}; }
+      if (at(&Symbols::dictionary)) { return LoadRecord{left, record()}; }
+      if (at(&Symbols::set)) { return LoadRecord{left, record()}; }
+      if (at(&Symbols::list)) { return LoadTop{left, right}; }
+      throw std::domain_error(
+          format("assigning ({} {}) not implemented", type(), right));
     }
 
-    RecordLiteral parse_record_literal() {
+    RecordLiteral record() {
       RecordLiteral record_literal{};
       assert(at(&Symbols::dictionary));
       to_child();

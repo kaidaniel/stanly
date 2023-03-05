@@ -35,10 +35,11 @@ struct LoadText { Var lhs; TextLiteral text_literal; };
 struct LoadRecord { Var lhs; RecordLiteral record_literal; };
 /// `lhs` = `rhs`
 struct LoadVar { Var lhs; Var rhs; };
+struct LoadTop { Var lhs; TextLiteral text_literal;};
 // clang-format on
 
 using Kind = sparta::AbstractValueKind;
 using FirstOderSyntaxNodes = metaprogramming::TypeList<
-    SetField, LoadField, LoadText, LoadRecord, LoadVar>;
+    SetField, LoadField, LoadText, LoadRecord, LoadVar, LoadTop>;
 
 } // namespace stanly
