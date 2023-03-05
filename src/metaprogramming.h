@@ -32,13 +32,13 @@ template <class T> auto struct_to_tuple(T &&object) noexcept {
   }
 }
 template <class Head, class... Tails> struct TypeList;
-
 template <template <class...> typename T, class... Args> struct rebind;
-
 template <template <class...> typename T, class... Args>
 struct rebind<T, TypeList<Args...>> {
   using type = T<Args...>;
 };
+template <template <class...> typename T, class... Args>
+using rebind_t = typename rebind<T, Args...>::type;
 
 template <class T, class... Args> struct is_any_of {
   constexpr static bool value = false;

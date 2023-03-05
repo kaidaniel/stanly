@@ -39,7 +39,7 @@ struct LoadTop { Var lhs; TextLiteral text_literal;};
 // clang-format on
 
 using Kind = sparta::AbstractValueKind;
-using FirstOderSyntaxNodes = metaprogramming::TypeList<
+using FirstOrderSyntaxNode = metaprogramming::TypeList<
     SetField, LoadField, LoadText, LoadRecord, LoadVar, LoadTop>;
 
 } // namespace stanly

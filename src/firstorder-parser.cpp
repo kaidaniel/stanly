@@ -25,7 +25,7 @@ using std::string;
 using std::unique_ptr;
 using str = const std::string &;
 using fmt::format;
-using stanly::metaprogramming::rebind;
+using stanly::metaprogramming::rebind_t;
 using std::begin;
 using std::cout;
 using std::end;
@@ -147,7 +147,7 @@ namespace treesitter { // every use of tree-sitter in this namespace
           std::begin(program_) + ts_node_end_byte(node())};
     }
 
-    rebind<std::variant, FirstOderSyntaxNodes>::type next_node() {
+    rebind_t<std::variant, FirstOrderSyntaxNode> next_node() {
       assert(at(&Symbols::expression_statement));
       to_child();
       assert(at(&Symbols::assignment));

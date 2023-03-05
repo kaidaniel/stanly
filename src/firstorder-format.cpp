@@ -13,7 +13,7 @@ using stanly::metaprogramming::struct_to_tuple;
 using stanly::metaprogramming::type_name;
 template <class T>
 using is_firstorder_syntax_node =
-    std::enable_if_t<is_any_of_v<T, stanly::FirstOderSyntaxNodes>, char>;
+    std::enable_if_t<is_any_of_v<T, stanly::FirstOrderSyntaxNode>, char>;
 
 template <typename T>
 struct fmt::formatter<T, is_firstorder_syntax_node<T>>
