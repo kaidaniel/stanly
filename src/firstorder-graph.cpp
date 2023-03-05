@@ -100,18 +100,12 @@ public:
         const auto &load_var_rhs = get(n.load_var_rhs);
         const auto &record_literal = record_literals_[n.record_idx];
         switch (n.syntax_tag) {
-        case kSetField:
-          return SetField{.rhs = var, .target = object, .field = field};
-        case kLoadField:
-          return LoadField{.lhs = var, .source = object, .field = field};
-        case kLoadText:
-          return LoadText{.lhs = var, .text_literal = text_literal};
-        case kLoadRecord:
-          return LoadRecord{.lhs = var, .record_literal = record_literal};
-        case kLoadVar: /*        */
-          return LoadVar{.lhs = var, .rhs = load_var_rhs};
-        case kLoadTop: /*        */
-          return LoadTop{.lhs = var, .text_literal = text_literal};
+        case kSetField: return SetField{var, object, field};
+        case kLoadField: return LoadField{var, object, field};
+        case kLoadText: return LoadText{var, text_literal};
+        case kLoadRecord: return LoadRecord{var, record_literal};
+        case kLoadVar: return LoadVar{var, load_var_rhs};
+        case kLoadTop: return LoadTop{var, text_literal};
         };
       });
 }
