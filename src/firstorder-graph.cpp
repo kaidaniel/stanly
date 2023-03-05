@@ -1,4 +1,5 @@
 #include "firstorder-lang.h"
+#include "metaprogramming.h"
 #include "stanly-api.h"
 #include <algorithm>
 #include <cassert>
@@ -40,7 +41,7 @@ namespace stanly {
  [[nodiscard]] decltype(auto) FirstOrderGraph::nodes_view() { 
     using enum kFirstOrderSyntax;
     auto get = [&](Idx var_idx) { return program_source_text_index_.idx_to_text_reference(var_idx); };
-    return ::ranges::views::transform(syntax_nodes_, [&](BytePackedSyntax n) -> std::variant<SetField, LoadField, LoadText, LoadRecord, LoadVar> { 
+    return ::ranges::views::transform(syntax_nodes_, [&](BytePackedSyntax n) -> metaprogramming::rebind<std::variant, FirstOderSyntaxNodes>::type { 
       switch(n.syntax_tag){
         case kSetField: return SetField{get(n.var_idx), get(n.subscript.subscripted), get(n.subscript.subscripting)};
         case kLoadField: return LoadField{get(n.var_idx), get(n.subscript.subscripted), get(n.subscript.subscripting)};

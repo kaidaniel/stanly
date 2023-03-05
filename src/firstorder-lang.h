@@ -5,6 +5,7 @@
 #include "HashedAbstractEnvironment.h"
 #include "HashedSetAbstractDomain.h"
 #include "stanly-api.h"
+#include "metaprogramming.h"
 #include <sys/types.h>
 #include <vector>
 #include <string_view>
@@ -42,6 +43,8 @@ struct LoadRecord { Var lhs; RecordLiteral record_literal; };
 /// `lhs` = `rhs`
 struct LoadVar { Var lhs; Var rhs; };
 // clang-format on
+
+using FirstOderSyntaxNodes = metaprogramming::TypeList<SetField, LoadField, LoadText, LoadRecord, LoadVar>;
 
 class Idx {
   uint16_t idx_;
