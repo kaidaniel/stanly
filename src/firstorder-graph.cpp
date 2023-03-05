@@ -27,18 +27,15 @@ public:
 };
 
 class ProgramSourceTextIndex {
-  // set (not unordered set) because comparing long strings is faster than
-  // hashing them (?)
+  // all_text_references_: set because long strings slow to hash (?redex)
+  // program_source_texts_: adding to a forward list won't invalidate
+  // references. insert_text_reference: bounds checked, <=
+  // std::numeric_limits<Idx>::max() idx_to_text_reference: Not bounds checked
   std::set<std::string_view> all_text_references_;
   std::vector<std::string_view> idx_to_text_reference_{};
-  // adding elements to a forward list won't invalidate references to elements.
-  // each element is the source from one file.
   std::forward_list<std::string> program_source_texts_;
 public:
-  // Bounds checked: insert at most: std::numeric_limits<Idx>::max() (size of
-  // the index).
   Idx insert_text_reference(std::string_view);
-  // Not bounds checked
   std::string_view idx_to_text_reference(Idx);
   void add_program_source(std::string_view);
 };
@@ -78,7 +75,7 @@ class FirstOrderGraph {
   ProgramSourceTextIndex program_source_text_index_;
 public:
   [[nodiscard]] decltype(auto) nodes_view();
-  FirstOrderGraph(std::string_view program);
+  FirstOrderGraph(std::function<std::string(void)>);
   FirstOrderGraph(const FirstOrderGraph &) = delete;
   FirstOrderGraph(FirstOrderGraph &&) = delete;
   FirstOrderGraph operator=(FirstOrderGraph &&) = delete;
