@@ -28,13 +28,9 @@ using fmt::format;
 using stanly::metaprogramming::rebind_t;
 using std::begin;
 using std::cout;
-using std::end;
-using std::function;
 using std::string_view;
-using std::transform_reduce;
 
 namespace treesitter { // every use of tree-sitter in this namespace
-
   class Parser {
     string_view program_;
     TSLanguage *language_;
@@ -61,8 +57,11 @@ namespace treesitter { // every use of tree-sitter in this namespace
       TSFieldId value;
     } fields_;
   public:
+    friend void parse_firstorder(
+      string_view program, 
+      const std::function<void(rebind_t<std::variant, FirstOrderSyntaxNode>&&)>& callback);
     explicit Parser(string_view program)
-        : program_(program),
+        :  program_(program),
           language_(tree_sitter_python()),
           parser_(ts_parser_new()),
           tree_([&] {
@@ -92,6 +91,9 @@ namespace treesitter { // every use of tree-sitter in this namespace
           }) {
       assert(at(&Symbols::module));
       to_child();
+
+      /* loop until nothing left to parse */
+      callback(next_node());
     }
     ~Parser() {
       ts_tree_delete(tree_);
@@ -147,6 +149,21 @@ namespace treesitter { // every use of tree-sitter in this namespace
           std::begin(program_) + ts_node_end_byte(node())};
     }
 
+    RecordLiteral record() {
+      RecordLiteral record_literal{};
+      assert(at(&Symbols::dictionary));
+      to_child();
+      while (at(&Symbols::pair)) {
+        to_child();
+        assert(at(&Fields::key));
+        record_literal.emplace_back(text());
+        to_parent();
+        if (not to_sibling()) { break; }
+      }
+
+      return record_literal;
+    }
+
     rebind_t<std::variant, FirstOrderSyntaxNode> next_node() {
       assert(at(&Symbols::expression_statement));
       to_child();
@@ -167,34 +184,16 @@ namespace treesitter { // every use of tree-sitter in this namespace
       throw std::domain_error(
           format("assigning ({} {}) not implemented", type(), right));
     }
-
-    RecordLiteral record() {
-      RecordLiteral record_literal{};
-      assert(at(&Symbols::dictionary));
-      to_child();
-      while (at(&Symbols::pair)) {
-        to_child();
-        assert(at(&Fields::key));
-        record_literal.emplace_back(text());
-        to_parent();
-        if (not to_sibling()) { break; }
-      }
-
-      return record_literal;
-    }
   };
 
-  static FirstOrderGraph parse_firstorder(string_view program) {
-    return FirstOrderGraph{string{program}};
-  }
 } // namespace treesitter
 
-FirstOrderGraph::FirstOrderGraph(string_view program)
-    : program_(string{program}) {
-  treesitter::Parser{program_}.parse(*this);
+void parse_firstorder(
+  string_view program, 
+  const std::function<void(const rebind_t<std::variant, FirstOrderSyntaxNode>)>& callback){
+    treesitter::Parser parser{program};
+    /* loop until no more input left over */
+    callback(parser.next_node());
 }
 
-Graph parse_firstorder(string_view program) {
-  return Graph{treesitter::parse_firstorder, program};
-}
 } // namespace stanly

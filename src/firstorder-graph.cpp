@@ -1,5 +1,6 @@
 #include "firstorder-lang.h"
 #include "metaprogramming.h"
+#include "stanly-api.h"
 #include "range/v3/view.hpp"
 #include <variant>
 #ifndef NDEBUG
@@ -37,8 +38,8 @@ class ProgramSourceTextIndex {
   std::vector<std::string_view> idx_to_text_reference_{};
   std::forward_list<std::string> program_source_texts_;
 public:
-  Idx insert_text_reference(std::string_view);
-  std::string_view idx_to_text_reference(Idx);
+  const Idx& insert_text_reference(std::string_view);
+  const std::string_view& idx_to_text_reference(Idx);
   void add_program_source(std::string_view);
 };
 struct SourceTextLocation {
@@ -74,13 +75,13 @@ class FirstOrderGraph {
   std::unordered_map<BytePackedSyntax, SourceTextLocation>
       syntax_node_to_source_text_offsets_;
   std::vector<BytePackedSyntax> syntax_nodes_;
-  std::unordered_map<Idx, std::vector<std::string_view>> record_literals_;
+  std::unordered_map<Idx, RecordLiteral> record_literals_;
   ProgramSourceTextIndex program_source_text_index_;
 
   void insert(rebind_t<std::variant, FirstOrderSyntaxNode>);
 public:
   [[nodiscard]] decltype(auto) nodes_view();
-  FirstOrderGraph(std::function<std::string(void)>);
+  FirstOrderGraph(std::string_view program);
   FirstOrderGraph(const FirstOrderGraph &) = delete;
   FirstOrderGraph(FirstOrderGraph &&) = delete;
   FirstOrderGraph operator=(FirstOrderGraph &&) = delete;
@@ -90,18 +91,18 @@ public:
 
 [[nodiscard]] decltype(auto) FirstOrderGraph::nodes_view() {
   using enum kFirstOrderSyntax;
-  auto get = [&](Idx var_idx) {
-    return program_source_text_index_.idx_to_text_reference(var_idx);
-  };
+  auto get = std::bind_front(
+    &ProgramSourceTextIndex::idx_to_text_reference, 
+    &program_source_text_index_);
   return ::ranges::views::transform(
       syntax_nodes_,
       [&](BytePackedSyntax n) -> rebind_t<std::variant, FirstOrderSyntaxNode> {
-        const auto &object = get(n.subscript.object);
-        const auto &field = get(n.subscript.field);
-        const auto &var = get(n.var_idx);
-        const auto &text_literal = get(n.text_idx);
-        const auto &load_var_rhs = get(n.load_var_rhs);
-        const auto &record_literal = record_literals_[n.record_idx];
+        auto object = get(n.subscript.object);
+        auto field = get(n.subscript.field);
+        auto var = get(n.var_idx);
+        auto text_literal = get(n.text_idx);
+        auto load_var_rhs = get(n.load_var_rhs);
+        auto& record_literal = record_literals_[n.record_idx];
         switch (n.syntax_tag) {
         case kSetField: return SetField{var, object, field};
         case kLoadField: return LoadField{var, object, field};
@@ -111,5 +112,13 @@ public:
         case kLoadTop: return LoadTop{var, text_literal};
         };
       });
+}
+
+Graph (*(make_parser)(std::string_view language))(std::string_view){
+  if (language == "firstorder") {
+    return [](std::string_view program) {
+      return FirstOrderGraph{progam};
+    };
+  }
 }
 } // namespace stanly

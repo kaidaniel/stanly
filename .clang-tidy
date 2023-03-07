@@ -1,2 +1,2 @@
-Checks: '-*,boost*,clang-*,concurrency*,cppcoreguidelines*,misc*,modernize*,performance*,portability*,readability*,-readability-identifier-length,-readability-named-parameter,-modernize-use-trailing-return-type,-cppcoreguidelines-pro-bounds-array-to-pointer-decay'
+Checks: '-*,boost*,clang-*,concurrency*,cppcoreguidelines*,misc*,modernize*,performance*,portability*,readability*,-readability-identifier-length,-readability-named-parameter,-modernize-use-trailing-return-type,-cppcoreguidelines-pro-bounds-array-to-pointer-decay,-cppcoreguidelines-pro-type-union-access'
 UseColor: true
