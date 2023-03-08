@@ -71,7 +71,7 @@ class FirstOrderGraph {
   std::unordered_map<Idx, RecordLiteral> record_literals_{};
   ProgramSourceTextIndex program_source_text_index_{};
 
-  void insert(rebind_t<std::variant, FirstOrderSyntaxNode>);
+  void insert(Syntax);
 public:
   [[nodiscard]] decltype(auto) nodes_view();
   FirstOrderGraph(std::string_view program);
@@ -89,7 +89,7 @@ public:
       &program_source_text_index_);
   return ::ranges::views::transform(
       syntax_nodes_,
-      [&](BytePackedSyntax n) -> rebind_t<std::variant, FirstOrderSyntaxNode> {
+      [&](BytePackedSyntax n) -> Syntax {
         auto object = get(n.subscript.object);
         auto field = get(n.subscript.field);
         auto var = get(n.var_idx);

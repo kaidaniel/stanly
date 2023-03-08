@@ -165,7 +165,7 @@ namespace treesitter { // every use of tree-sitter in this namespace
       return record_literal;
     }
 
-    rebind_t<std::variant, FirstOrderSyntaxNode> next_node() {
+    Syntax next_node() {
       assert(at(&Symbols::expression_statement));
       to_child();
       assert(at(&Symbols::assignment));
@@ -194,7 +194,7 @@ namespace treesitter { // every use of tree-sitter in this namespace
 } // namespace treesitter
 
 std::unique_ptr<inpt_range<Syntax>> parse_firstorder(string_view program) {
-  return make_unique<treesitter::Parser>(program); // TODO: will this cause slicing?
+  return make_unique<treesitter::Parser>(program); // TODO: will this cause slicing? how will Parser's destructor be called?
 }
 
 } // namespace stanly::parser

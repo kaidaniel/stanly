@@ -11,6 +11,7 @@ template <class Return> class inpt_iterator {
 public:
   template <class Self>
   inpt_iterator(
+      // TODO: does this need to call the destructor for *self?
       Self *self, Return (Self::*generate)(),
       bool (Self::*is_exhausted)() const)
       : generate_{[self, generate] { return (self->*generate)(); }},
