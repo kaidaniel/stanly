@@ -5,6 +5,7 @@
 #include "HashedAbstractEnvironment.h"
 #include "HashedSetAbstractDomain.h"
 #include "metaprogramming.h"
+#include "iterator.h"
 #include <string_view>
 #include <variant>
 #include <vector>
@@ -34,9 +35,8 @@ struct LoadTop { Var lhs; TextLiteral text_literal;};
 using Kind = sparta::AbstractValueKind;
 using FirstOrderSyntaxNode = metaprogramming::TypeList<
     SetField, LoadField, LoadText, LoadRecord, LoadVar, LoadTop>;
-void parse_firstorder(
-    std::string_view program,
-    const std::function<void(
-        const metaprogramming::rebind_t<std::variant, FirstOrderSyntaxNode>)>
-        &callback);
+
+using Syntax = metaprogramming::rebind_t<std::variant, FirstOrderSyntaxNode>;
+std::unique_ptr<iterator::inpt_range<Syntax>> parse_firstorder(std::string_view);
+
 } // namespace stanly

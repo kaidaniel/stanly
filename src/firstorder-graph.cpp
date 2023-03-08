@@ -1,5 +1,4 @@
 #include "firstorder-lang.h"
-#include "firstorder-parser.h"
 #include "metaprogramming.h"
 #include "range/v3/view.hpp"
 #include "stanly-api.h"
@@ -21,9 +20,7 @@ namespace stanly {
 
 using stanly::metaprogramming::rebind_t;
 
-struct Idx {
-  uint16_t idx_;
-};
+struct Idx {uint16_t idx_;};
 
 class ProgramSourceTextIndex {
   // all_text_references_: set because long strings slow to hash (?redex)
@@ -112,8 +109,10 @@ public:
 
 FirstOrderGraph::FirstOrderGraph(std::string_view program) {
   program = program_source_text_index_.add_program_source(program);
-  auto syntax_nodes = parser::parse_firstorder(program);
-  for (auto node : syntax_nodes) {}
+  auto syntax_nodes = parse_firstorder(program);
+  for (auto node : *syntax_nodes){
+    insert(std::move(node));
+  }
 }
 
 // Graph (*(make_parser)(std::string_view language))(std::string_view) {

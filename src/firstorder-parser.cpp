@@ -29,12 +29,11 @@ using fmt::format;
 using stanly::metaprogramming::rebind_t;
 using std::make_unique;
 using std::string_view;
+using iterator::inpt_range;
 
 namespace treesitter { // every use of tree-sitter in this namespace
   class Parser;
-  using range_adaptor = iterator::input_range_adaptor<
-      Parser, rebind_t<std::variant, FirstOrderSyntaxNode>>;
-  class Parser : public range_adaptor {
+  class Parser : public inpt_range<Syntax> {
     string_view program_;
     TSLanguage *language_;
     TSParser *parser_;
@@ -62,7 +61,7 @@ namespace treesitter { // every use of tree-sitter in this namespace
   public:
     friend void parse_firstorder(string_view program);
     explicit Parser(string_view program)
-        : range_adaptor(&Parser::next_node, &Parser::is_done),
+        : inpt_range(&Parser::next_node, &Parser::is_done),
           program_(program),
           language_(tree_sitter_python()),
           parser_(ts_parser_new()),
@@ -194,8 +193,8 @@ namespace treesitter { // every use of tree-sitter in this namespace
 
 } // namespace treesitter
 
-std::unique_ptr<treesitter::Parser> parse_firstorder(string_view program) {
-  return make_unique<treesitter::Parser>(program);
+std::unique_ptr<inpt_range<Syntax>> parse_firstorder(string_view program) {
+  return make_unique<treesitter::Parser>(program); // TODO: will this cause slicing?
 }
 
 } // namespace stanly::parser
