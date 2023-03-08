@@ -44,29 +44,12 @@ private:
   Return return_slot_{};
 };
 
-template <typename Domain> class NodeRef {
-public:
-  template <typename Node>
-  NodeRef(Node const &node)
-      : node_{std::addressof(node)},
-        transfer_{[](void const *node, Domain &d) {
-          transfer(*static_cast<Node const *>(node), d);
-        }} {}
-private:
-  friend void transfer(NodeRef const &node, Domain &d) {
-    node.transfer_(node.node_, d);
-  }
-  using Transfer = void(void const *);
-  Transfer *transfer_{nullptr};
-  void const *node_{nullptr};
-};
-
 template <class Return> class inpt_range {
   using iter = inpt_iterator<Return>;
   using sentinel_type = iterator_sentinel;
   iter iter_;
 public:
-  template<class Derived>
+  template<class Derived> // TODO: instead of CRTP, use composition and give iter_ a unique_ptr<Derived>?
   inpt_range(
       Return (Derived::*generate)(), bool (Derived::*is_exhausted)() const)
       : iter_{&static_cast<Derived &>(*this), generate, is_exhausted} {}
