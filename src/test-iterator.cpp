@@ -11,12 +11,12 @@ template <class T, class Return> constexpr bool check_concepts() {
   static_assert(
       std::same_as<std::ranges::iterator_t<T>, inpt_iterator<Return>>);
   static_assert(std::input_iterator<inpt_iterator<Return>>);
-  static_assert(std::ranges::range<inpt_range<T, Return>>);
+  static_assert(std::ranges::range<inpt_range<Return>>);
   static_assert(std::ranges::range<T>);
   static_assert(std::ranges::input_range<T>);
   return true;
 };
-class count_to_five : public inpt_range<count_to_five, int> {
+class count_to_five : public inpt_range<int> {
   int count() {
     number_++;
     return number_;

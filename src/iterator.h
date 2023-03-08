@@ -60,11 +60,12 @@ private:
   void const *node_{nullptr};
 };
 
-template <class Derived, class Return> class inpt_range {
+template <class Return> class inpt_range {
   using iter = inpt_iterator<Return>;
   using sentinel_type = iterator_sentinel;
   iter iter_;
 public:
+  template<class Derived>
   inpt_range(
       Return (Derived::*generate)(), bool (Derived::*is_exhausted)() const)
       : iter_{&static_cast<Derived &>(*this), generate, is_exhausted} {}
