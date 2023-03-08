@@ -1,4 +1,5 @@
 #include "firstorder-lang.h"
+#include "iterator.h"
 #include "stanly-api.h"
 #include <algorithm>
 #include <cassert>
@@ -19,19 +20,21 @@ extern "C" {
 TSLanguage *tree_sitter_python(void);
 }
 
-namespace stanly {
+namespace stanly::parser {
 
 using std::string;
 using std::unique_ptr;
 using str = const std::string &;
 using fmt::format;
 using stanly::metaprogramming::rebind_t;
-using std::begin;
-using std::cout;
+using std::make_unique;
 using std::string_view;
 
 namespace treesitter { // every use of tree-sitter in this namespace
-  class Parser {
+  class Parser;
+  using range_adaptor = iterator::input_range_adaptor<
+      Parser, rebind_t<std::variant, FirstOrderSyntaxNode>>;
+  class Parser : public range_adaptor {
     string_view program_;
     TSLanguage *language_;
     TSParser *parser_;
@@ -57,17 +60,16 @@ namespace treesitter { // every use of tree-sitter in this namespace
       TSFieldId value;
     } fields_;
   public:
-    friend void parse_firstorder(
-      string_view program, 
-      const std::function<void(rebind_t<std::variant, FirstOrderSyntaxNode>&&)>& callback);
+    friend void parse_firstorder(string_view program);
     explicit Parser(string_view program)
-        :  program_(program),
+        : range_adaptor(&Parser::next_node, &Parser::is_done),
+          program_(program),
           language_(tree_sitter_python()),
           parser_(ts_parser_new()),
           tree_([&] {
             ts_parser_set_language(parser_, language_);
             return ts_parser_parse_string(
-                parser_, nullptr, begin(program_), program_.size());
+                parser_, nullptr, program_.begin(), program_.size());
           }()),
           root_(ts_tree_root_node(tree_)),
           cursor_(ts_tree_cursor_new(root_)),
@@ -91,9 +93,6 @@ namespace treesitter { // every use of tree-sitter in this namespace
           }) {
       assert(at(&Symbols::module));
       to_child();
-
-      /* loop until nothing left to parse */
-      callback(next_node());
     }
     ~Parser() {
       ts_tree_delete(tree_);
@@ -129,8 +128,10 @@ namespace treesitter { // every use of tree-sitter in this namespace
                                                         : false;
     }
     bool to_parent() { return ts_tree_cursor_goto_parent(&cursor_); }
-    TSNode node() { return node(); }
-    TSSymbol symbol() { return ts_node_symbol(node()); }
+    [[nodiscard]] TSNode node() const {
+      return ts_tree_cursor_current_node(&cursor_);
+    }
+    [[nodiscard]] TSSymbol symbol() const { return ts_node_symbol(node()); }
     bool at(const TSSymbol Symbols::*symbol) {
       return ts_node_symbol(node()) == symbols_.*symbol;
     }
@@ -140,9 +141,10 @@ namespace treesitter { // every use of tree-sitter in this namespace
     bool at(const TSFieldId Fields::*field, const TSSymbol Symbols::*symbol) {
       return at(field) and at(symbol);
     }
-    auto s_expr() { return unique_ptr<char>{ts_node_string(node())}; }
-    std::string type() { return ts_node_type(node()); }
-    void show() { cout << s_expr() << "\n"; }
+    [[nodiscard]] auto s_expr() const {
+      return unique_ptr<char>{ts_node_string(node())};
+    }
+    [[nodiscard]] string type() const { return ts_node_type(node()); }
     string_view text() {
       return {
           std::begin(program_) + ts_node_start_byte(node()),
@@ -184,16 +186,16 @@ namespace treesitter { // every use of tree-sitter in this namespace
       throw std::domain_error(
           format("assigning ({} {}) not implemented", type(), right));
     }
+    [[nodiscard]] bool is_done() const {
+      return ts_node_is_null(ts_node_next_sibling(node())) and
+          ts_node_child_count(node()) == 0;
+    };
   };
 
 } // namespace treesitter
 
-void parse_firstorder(
-  string_view program, 
-  const std::function<void(const rebind_t<std::variant, FirstOrderSyntaxNode>)>& callback){
-    treesitter::Parser parser{program};
-    /* loop until no more input left over */
-    callback(parser.next_node());
+std::unique_ptr<treesitter::Parser> parse_firstorder(string_view program) {
+  return make_unique<treesitter::Parser>(program);
 }
 
-} // namespace stanly
+} // namespace stanly::parser

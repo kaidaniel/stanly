@@ -6,8 +6,8 @@
 #include "HashedSetAbstractDomain.h"
 #include "metaprogramming.h"
 #include <string_view>
-#include <vector>
 #include <variant>
+#include <vector>
 
 namespace stanly {
 
@@ -35,6 +35,8 @@ using Kind = sparta::AbstractValueKind;
 using FirstOrderSyntaxNode = metaprogramming::TypeList<
     SetField, LoadField, LoadText, LoadRecord, LoadVar, LoadTop>;
 void parse_firstorder(
-  std::string_view program, 
-  const std::function<void(const metaprogramming::rebind_t<std::variant, FirstOrderSyntaxNode>)>& callback);
+    std::string_view program,
+    const std::function<void(
+        const metaprogramming::rebind_t<std::variant, FirstOrderSyntaxNode>)>
+        &callback);
 } // namespace stanly

@@ -22,11 +22,11 @@ struct fmt::formatter<T, is_firstorder_syntax_node<T>>
 };
 
 namespace stanly {
-  template<class ...T>
-  void println(fmt::format_string<T...> fmt, T&&... args) {
-    return fmt::print(stdout, "{}\n", fmt::format(fmt, std::forward<T>(args)...));
-  }
-
-  template<class ...T>
-  void print(fmt::format_string<T...> fmt, T&&... args) {return fmt::print(fmt, std::forward<T>(args)...); }
+template <class... T> void println(fmt::format_string<T...> fmt, T &&...args) {
+  return fmt::print(stdout, "{}\n", fmt::format(fmt, std::forward<T>(args)...));
 }
+
+template <class... T> void print(fmt::format_string<T...> fmt, T &&...args) {
+  return fmt::print(fmt, std::forward<T>(args)...);
+}
+} // namespace stanly

@@ -1,7 +1,8 @@
 #include "firstorder-lang.h"
+#include "firstorder-parser.h"
 #include "metaprogramming.h"
-#include "stanly-api.h"
 #include "range/v3/view.hpp"
+#include "stanly-api.h"
 #include <variant>
 #ifndef NDEBUG
 #  include <boost/stacktrace.hpp>
@@ -20,13 +21,8 @@ namespace stanly {
 
 using stanly::metaprogramming::rebind_t;
 
-class Idx {
+struct Idx {
   uint16_t idx_;
-  Idx(uint16_t idx)
-      : idx_(idx) {} // private constructor to make idx_to_text_reference safer
-public:
-  Idx() = delete;
-  friend class ProgramSourceTextIndex;
 };
 
 class ProgramSourceTextIndex {
@@ -38,9 +34,9 @@ class ProgramSourceTextIndex {
   std::vector<std::string_view> idx_to_text_reference_{};
   std::forward_list<std::string> program_source_texts_;
 public:
-  const Idx& insert_text_reference(std::string_view);
-  const std::string_view& idx_to_text_reference(Idx);
-  void add_program_source(std::string_view);
+  const Idx &insert_text_reference(std::string_view);
+  const std::string_view &idx_to_text_reference(Idx);
+  std::string_view add_program_source(std::string_view);
 };
 struct SourceTextLocation {
   int program;
@@ -50,8 +46,8 @@ struct SourceTextLocation {
   int row;
 };
 struct Subscript {
-  Idx object;
-  Idx field;
+  Idx object{};
+  Idx field{};
 };
 enum class kFirstOrderSyntax : char {
   kSetField,
@@ -63,20 +59,20 @@ enum class kFirstOrderSyntax : char {
 };
 struct BytePackedSyntax {
   union {
-    Subscript subscript;
+    Subscript subscript{};
     Idx text_idx;
     Idx record_idx;
     Idx load_var_rhs;
   };
-  Idx var_idx;
-  kFirstOrderSyntax syntax_tag;
+  Idx var_idx{};
+  kFirstOrderSyntax syntax_tag{};
 };
 class FirstOrderGraph {
   std::unordered_map<BytePackedSyntax, SourceTextLocation>
-      syntax_node_to_source_text_offsets_;
-  std::vector<BytePackedSyntax> syntax_nodes_;
-  std::unordered_map<Idx, RecordLiteral> record_literals_;
-  ProgramSourceTextIndex program_source_text_index_;
+      syntax_node_to_source_text_offsets_{};
+  std::vector<BytePackedSyntax> syntax_nodes_{};
+  std::unordered_map<Idx, RecordLiteral> record_literals_{};
+  ProgramSourceTextIndex program_source_text_index_{};
 
   void insert(rebind_t<std::variant, FirstOrderSyntaxNode>);
 public:
@@ -92,8 +88,8 @@ public:
 [[nodiscard]] decltype(auto) FirstOrderGraph::nodes_view() {
   using enum kFirstOrderSyntax;
   auto get = std::bind_front(
-    &ProgramSourceTextIndex::idx_to_text_reference, 
-    &program_source_text_index_);
+      &ProgramSourceTextIndex::idx_to_text_reference,
+      &program_source_text_index_);
   return ::ranges::views::transform(
       syntax_nodes_,
       [&](BytePackedSyntax n) -> rebind_t<std::variant, FirstOrderSyntaxNode> {
@@ -102,7 +98,7 @@ public:
         auto var = get(n.var_idx);
         auto text_literal = get(n.text_idx);
         auto load_var_rhs = get(n.load_var_rhs);
-        auto& record_literal = record_literals_[n.record_idx];
+        auto &record_literal = record_literals_[n.record_idx];
         switch (n.syntax_tag) {
         case kSetField: return SetField{var, object, field};
         case kLoadField: return LoadField{var, object, field};
@@ -114,11 +110,15 @@ public:
       });
 }
 
-Graph (*(make_parser)(std::string_view language))(std::string_view){
-  if (language == "firstorder") {
-    return [](std::string_view program) {
-      return FirstOrderGraph{progam};
-    };
-  }
+FirstOrderGraph::FirstOrderGraph(std::string_view program) {
+  program = program_source_text_index_.add_program_source(program);
+  auto syntax_nodes = parser::parse_firstorder(program);
+  for (auto node : syntax_nodes) {}
 }
+
+// Graph (*(make_parser)(std::string_view language))(std::string_view) {
+//   if (language == "firstorder") {
+//     ;
+//   }
+// }
 } // namespace stanly
