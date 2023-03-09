@@ -20,7 +20,9 @@ namespace stanly {
 
 using stanly::metaprogramming::rebind_t;
 
-struct Idx {uint16_t idx_;};
+struct Idx {
+  uint16_t idx_;
+};
 
 class ProgramSourceTextIndex {
   // all_text_references_: set because long strings slow to hash (?redex)
@@ -88,8 +90,7 @@ public:
       &ProgramSourceTextIndex::idx_to_text_reference,
       &program_source_text_index_);
   return ::ranges::views::transform(
-      syntax_nodes_,
-      [&](BytePackedSyntax n) -> Syntax {
+      syntax_nodes_, [&](BytePackedSyntax n) -> Syntax {
         auto object = get(n.subscript.object);
         auto field = get(n.subscript.field);
         auto var = get(n.var_idx);
@@ -110,9 +111,7 @@ public:
 FirstOrderGraph::FirstOrderGraph(std::string_view program) {
   program = program_source_text_index_.add_program_source(program);
   auto syntax_nodes = parse_firstorder(program);
-  for (auto node : *syntax_nodes){
-    insert(std::move(node));
-  }
+  for (auto node : *syntax_nodes) { insert(std::move(node)); }
 }
 
 // Graph (*(make_parser)(std::string_view language))(std::string_view) {

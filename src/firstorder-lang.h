@@ -4,8 +4,8 @@
 #include "DirectProductAbstractDomain.h"
 #include "HashedAbstractEnvironment.h"
 #include "HashedSetAbstractDomain.h"
-#include "metaprogramming.h"
 #include "iterator.h"
+#include "metaprogramming.h"
 #include <string_view>
 #include <variant>
 #include <vector>
@@ -37,6 +37,7 @@ using FirstOrderSyntaxNode = metaprogramming::TypeList<
     SetField, LoadField, LoadText, LoadRecord, LoadVar, LoadTop>;
 
 using Syntax = metaprogramming::rebind_t<std::variant, FirstOrderSyntaxNode>;
-std::unique_ptr<iterator::inpt_range<Syntax>> parse_firstorder(std::string_view);
+std::unique_ptr<iterator::inpt_range<Syntax>>
+    parse_firstorder(std::string_view);
 
 } // namespace stanly

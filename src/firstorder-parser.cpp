@@ -26,10 +26,10 @@ using std::string;
 using std::unique_ptr;
 using str = const std::string &;
 using fmt::format;
+using iterator::inpt_range;
 using stanly::metaprogramming::rebind_t;
 using std::make_unique;
 using std::string_view;
-using iterator::inpt_range;
 
 namespace treesitter { // every use of tree-sitter in this namespace
   class Parser;
@@ -193,8 +193,9 @@ namespace treesitter { // every use of tree-sitter in this namespace
 
 } // namespace treesitter
 
-std::unique_ptr<inpt_range<Syntax>> parse_firstorder(string_view program) {
-  return make_unique<treesitter::Parser>(program); // TODO: will this cause slicing? how will Parser's destructor be called?
+inpt_range<Syntax> parse_firstorder(string_view program) {
+  return {
+      &treesitter::Parser::next_node, &treesitter::Parser::is_done, program};
 }
 
 } // namespace stanly::parser

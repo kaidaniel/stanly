@@ -6,23 +6,21 @@
 
 namespace stanly::iterator {
 class iterator_sentinel {};
-
 template <class Return> class inpt_iterator {
 public:
   template <class Self>
   inpt_iterator(
-      // TODO: does this need to call the destructor for *self?
       Self *self, Return (Self::*generate)(),
       bool (Self::*is_exhausted)() const)
-      : generate_{[self, generate] { return (self->*generate)(); }},
-        is_exhausted_(
-            [self, is_exhausted] { return (self->*is_exhausted)(); }) {}
+      : self_{self},
+        is_exhausted{[self, is_exhausted] { return (self->*is_exhausted)(); }},
+        generate{[self, generate] { return (self->*generate)(); }} {}
   using iterator_concept = std::input_iterator_tag;
   using difference_type = std::ptrdiff_t;
   using reference_type = Return &;
   using value_type = Return;
   inpt_iterator &operator++() {
-    return_slot_ = generate_();
+    return_slot_ = generate();
     return *this;
   }
   inpt_iterator operator++(int) {
@@ -36,25 +34,36 @@ public:
     return left.self_ == right.self_;
   }
   friend bool operator==(const inpt_iterator &self, iterator_sentinel) {
-    return self.is_exhausted_();
+    return self.is_exhausted();
   }
 private:
-  std::function<Return()> generate_;
-  std::function<bool()> is_exhausted_;
+  void *self_;
+  std::function<bool()> is_exhausted;
+  std::function<Return()> generate;
   Return return_slot_{};
 };
 
 template <class Return> class inpt_range {
   using iter = inpt_iterator<Return>;
   using sentinel_type = iterator_sentinel;
+  void *self_;
   iter iter_;
+  void (*destroy)(void *);
 public:
-  template<class Derived> // TODO: instead of CRTP, use composition and give iter_ a unique_ptr<Derived>?
+  template <class Self, class... Args>
   inpt_range(
-      Return (Derived::*generate)(), bool (Derived::*is_exhausted)() const)
-      : iter_{&static_cast<Derived &>(*this), generate, is_exhausted} {}
+      Return (Self::*generate)(), bool (Self::*is_exhausted)() const,
+      Args &&...args)
+      : self_{new Self{std::forward<Self>(args)...}},
+        iter_{static_cast<Self *>(self_), generate, is_exhausted},
+        destroy{[](void *s) { delete static_cast<Self *>(s); }} {}
   [[nodiscard]] iter begin() const { return iter_; }
   [[nodiscard]] iterator_sentinel end() const { return iterator_sentinel{}; }
+  ~inpt_range() { destroy(self_); }
+  inpt_range(const inpt_range &) = default;
+  inpt_range(inpt_range &&) noexcept = default;
+  inpt_range &operator=(const inpt_range &) = default;
+  inpt_range &operator=(inpt_range &&) noexcept = default;
 };
 
 }; // namespace stanly::iterator
