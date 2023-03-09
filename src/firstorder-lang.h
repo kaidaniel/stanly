@@ -24,12 +24,23 @@ struct Value : public sparta::DirectProductAbstractDomain<Value, Text, Record> {
 /// Abstraction of the program state (Var -> Value).
 using Bindings = sparta::HashedAbstractEnvironment<Var, Value>;
 // clang-format off
+template<class Var, class TextLiteral, class RecordLiteral>
+union LanguageRep{
 struct SetField { Var rhs; Var target; Var field; };
 struct LoadField { Var lhs; Var source; Var field; };
 struct LoadText { Var lhs; TextLiteral text_literal; };
 struct LoadRecord { Var lhs; RecordLiteral record_literal; };
 struct LoadVar { Var lhs; Var rhs; };
 struct LoadTop { Var lhs; TextLiteral text_literal;};
+};
+using Language = LanguageRep<Var, TextLiteral, RecordLiteral>;
+using SetField = Language::SetField;
+using LoadField = Language::LoadField;
+using LoadText = Language::LoadText;
+using LoadRecord = Language::LoadRecord;
+using LoadVar = Language::LoadVar;
+using LoadTop = Language::LoadTop;
+
 // clang-format on
 
 using Kind = sparta::AbstractValueKind;
@@ -37,7 +48,6 @@ using FirstOrderSyntaxNode = metaprogramming::TypeList<
     SetField, LoadField, LoadText, LoadRecord, LoadVar, LoadTop>;
 
 using Syntax = metaprogramming::rebind_t<std::variant, FirstOrderSyntaxNode>;
-std::unique_ptr<iterator::inpt_range<Syntax>>
-    parse_firstorder(std::string_view);
+iterator::inpt_range<Syntax> parse_firstorder(std::string_view);
 
 } // namespace stanly

@@ -3,10 +3,7 @@
 #include "range/v3/view.hpp"
 #include "stanly-api.h"
 #include <variant>
-#ifndef NDEBUG
-#  include <boost/stacktrace.hpp>
-
-#endif
+#include <visit>
 #include <forward_list>
 #include <iostream>
 #include <set>
@@ -15,6 +12,7 @@
 #include <sys/types.h>
 #include <unordered_map>
 #include <vector>
+
 
 namespace stanly {
 
@@ -29,40 +27,19 @@ class ProgramSourceTextIndex {
   // program_source_texts_: adding to a forward list won't invalidate
   // references. insert_text_reference: bounds checked, <=
   // std::numeric_limits<Idx>::max() idx_to_text_reference: Not bounds checked
-  std::set<std::string_view> all_text_references_;
+  std::set<std::string_view> all_text_references_{};
   std::vector<std::string_view> idx_to_text_reference_{};
-  std::forward_list<std::string> program_source_texts_;
+  std::forward_list<std::string> program_source_texts_{};
 public:
   const Idx &insert_text_reference(std::string_view);
   const std::string_view &idx_to_text_reference(Idx);
   std::string_view add_program_source(std::string_view);
 };
-struct SourceTextLocation {
-  int program;
-  int start;
-  int end;
-  int col;
-  int row;
-};
-struct Subscript {
-  Idx object{};
-  Idx field{};
-};
-enum class kFirstOrderSyntax : char {
-  kSetField,
-  kLoadField,
-  kLoadText,
-  kLoadRecord,
-  kLoadVar,
-  kLoadTop,
-};
+struct SourceTextLocation { int program; int start; int end; int col; int row; };
+enum class kFirstOrderSyntax : char { kSetField, kLoadField, kLoadText, kLoadRecord, kLoadVar, kLoadTop,};
+using BytePacked = LanguageRep<Idx, Idx, Idx>;
 struct BytePackedSyntax {
-  union {
-    Subscript subscript{};
-    Idx text_idx;
-    Idx record_idx;
-    Idx load_var_rhs;
-  };
+  BytePacked syntax_node_{};
   Idx var_idx{};
   kFirstOrderSyntax syntax_tag{};
 };
@@ -109,9 +86,10 @@ public:
 }
 
 FirstOrderGraph::FirstOrderGraph(std::string_view program) {
+  using iterator::inpt_range;
   program = program_source_text_index_.add_program_source(program);
-  auto syntax_nodes = parse_firstorder(program);
-  for (auto node : *syntax_nodes) { insert(std::move(node)); }
+  for (auto nodes = parse_firstorder(program); Syntax node : nodes) {
+  }
 }
 
 // Graph (*(make_parser)(std::string_view language))(std::string_view) {

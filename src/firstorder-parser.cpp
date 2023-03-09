@@ -194,8 +194,8 @@ namespace treesitter { // every use of tree-sitter in this namespace
 } // namespace treesitter
 
 inpt_range<Syntax> parse_firstorder(string_view program) {
-  return {
-      &treesitter::Parser::next_node, &treesitter::Parser::is_done, program};
+  using parser = treesitter::Parser;
+  return {&parser::next_node, &parser::is_done, program};
 }
 
 } // namespace stanly::parser

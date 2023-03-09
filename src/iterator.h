@@ -60,10 +60,10 @@ public:
   [[nodiscard]] iter begin() const { return iter_; }
   [[nodiscard]] iterator_sentinel end() const { return iterator_sentinel{}; }
   ~inpt_range() { destroy(self_); }
-  inpt_range(const inpt_range &) = default;
-  inpt_range(inpt_range &&) noexcept = default;
-  inpt_range &operator=(const inpt_range &) = default;
-  inpt_range &operator=(inpt_range &&) noexcept = default;
+  inpt_range(const inpt_range &) = delete;
+  inpt_range(inpt_range &&) noexcept = delete;
+  inpt_range &operator=(const inpt_range &) = delete;
+  inpt_range &operator=(inpt_range &&) noexcept = delete;
 };
 
 }; // namespace stanly::iterator

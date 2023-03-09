@@ -38,7 +38,8 @@ TEST_CASE("count_to_five", "[iterator]") {
   REQUIRE(not range_was_destroyed);
   {
     int number = 0;
-    for (inpt_range ct5{&count_to_five::count, &count_to_five::over_five}; const auto &i : ct5) {
+    for (inpt_range ct5{&count_to_five::count, &count_to_five::over_five};
+         const auto &i : ct5) {
       REQUIRE(i == number);
       number++;
       REQUIRE(not range_was_destroyed);
