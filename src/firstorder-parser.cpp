@@ -1,5 +1,6 @@
 #include "firstorder-lang.h"
 #include "iterator.h"
+#include "metaprogramming.h"
 #include "stanly-api.h"
 #include <algorithm>
 #include <cassert>

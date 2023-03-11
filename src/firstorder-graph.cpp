@@ -3,7 +3,6 @@
 #include "range/v3/view.hpp"
 #include "stanly-api.h"
 #include <variant>
-#include <visit>
 #include <forward_list>
 #include <iostream>
 #include <set>
@@ -12,15 +11,25 @@
 #include <sys/types.h>
 #include <unordered_map>
 #include <vector>
+#include <string_view>
 
 
 namespace stanly {
 
-using stanly::metaprogramming::rebind_t;
+using std::is_same_v;
+using std::bind_front;
+using std::vector;
+using std::unordered_map;
+using std::set;
+using std::forward_list;
+using std::string_view;
+using std::visit;
+using std::decay;
+using ranges::views::transform;
+using stanly::metaprogramming::struct_to_tpl;
 
-struct Idx {
-  uint16_t idx_;
-};
+template<class Text> using lang = first_order<Text>;
+
 
 class ProgramSourceTextIndex {
   // all_text_references_: set because long strings slow to hash (?redex)
@@ -31,64 +40,47 @@ class ProgramSourceTextIndex {
   std::vector<std::string_view> idx_to_text_reference_{};
   std::forward_list<std::string> program_source_texts_{};
 public:
-  const Idx &insert_text_reference(std::string_view);
-  const std::string_view &idx_to_text_reference(Idx);
+  const idx &insert_text_reference(std::string_view);
+  const std::string_view &idx_to_text_reference(idx);
   std::string_view add_program_source(std::string_view);
 };
 struct SourceTextLocation { int program; int start; int end; int col; int row; };
-enum class kFirstOrderSyntax : char { kSetField, kLoadField, kLoadText, kLoadRecord, kLoadVar, kLoadTop,};
-using BytePacked = LanguageRep<Idx, Idx, Idx>;
-struct BytePackedSyntax {
-  BytePacked syntax_node_{};
-  Idx var_idx{};
-  kFirstOrderSyntax syntax_tag{};
-};
-class FirstOrderGraph {
-  std::unordered_map<BytePackedSyntax, SourceTextLocation>
-      syntax_node_to_source_text_offsets_{};
-  std::vector<BytePackedSyntax> syntax_nodes_{};
-  std::unordered_map<Idx, RecordLiteral> record_literals_{};
-  ProgramSourceTextIndex program_source_text_index_{};
 
-  void insert(Syntax);
+template<class Lang>
+class GraphT {
+  std::unordered_map<syntax_packed, SourceTextLocation>
+      syntax_node_to_source_text_offsets_;
+  std::vector<syntax_packed> syntax_nodes_{};
+  std::unordered_map<idx, packed::record> record_literals_{};
+  ProgramSourceTextIndex program_source_text_index_{};
 public:
   [[nodiscard]] decltype(auto) nodes_view();
-  FirstOrderGraph(std::string_view program);
-  FirstOrderGraph(const FirstOrderGraph &) = delete;
-  FirstOrderGraph(FirstOrderGraph &&) = delete;
-  FirstOrderGraph operator=(FirstOrderGraph &&) = delete;
-  FirstOrderGraph operator=(const FirstOrderGraph &) = delete;
-  ~FirstOrderGraph() = default;
+  GraphT(std::string_view program);
+  GraphT(const GraphT &) = delete;
+  GraphT(GraphT &&) = delete;
+  GraphT operator=(GraphT &&) = delete;
+  GraphT operator=(const GraphT &) = delete;
+  ~GraphT() = default;
 };
 
-[[nodiscard]] decltype(auto) FirstOrderGraph::nodes_view() {
-  using enum kFirstOrderSyntax;
-  auto get = std::bind_front(
+template<class Lang>
+[[nodiscard]] decltype(auto) GraphT<Lang>::nodes_view() {
+  auto get = bind_front(
       &ProgramSourceTextIndex::idx_to_text_reference,
       &program_source_text_index_);
-  return ::ranges::views::transform(
-      syntax_nodes_, [&](BytePackedSyntax n) -> Syntax {
-        auto object = get(n.subscript.object);
-        auto field = get(n.subscript.field);
-        auto var = get(n.var_idx);
-        auto text_literal = get(n.text_idx);
-        auto load_var_rhs = get(n.load_var_rhs);
-        auto &record_literal = record_literals_[n.record_idx];
-        switch (n.syntax_tag) {
-        case kSetField: return SetField{var, object, field};
-        case kLoadField: return LoadField{var, object, field};
-        case kLoadText: return LoadText{var, text_literal};
-        case kLoadRecord: return LoadRecord{var, record_literal};
-        case kLoadVar: return LoadVar{var, load_var_rhs};
-        case kLoadTop: return LoadTop{var, text_literal};
-        };
-      });
-}
+  return transform(
+      syntax_nodes_, [&](syntax_packed variant) -> syntax_printable {
+        return visit([&]<class T>(T&& n) -> syntax_printable{
+          using t = lookup<T, packed_typelist, printable_typelist>;
+          return tpl_to_struct<t>(transform_tpl(get, struct_to_tpl(n)));
+  }, variant);});};
 
-FirstOrderGraph::FirstOrderGraph(std::string_view program) {
+
+template<class Lang>
+GraphT<Lang>::GraphT(std::string_view program) {
   using iterator::inpt_range;
   program = program_source_text_index_.add_program_source(program);
-  for (auto nodes = parse_firstorder(program); Syntax node : nodes) {
+  for (auto nodes = parse_firstorder(program); print node : nodes) {
   }
 }
 
