@@ -1,10 +1,10 @@
 #pragma once
 
+#include "fmt/format.h"
 #include <functional>
 #include <iostream>
 #include <memory>
 #include <string>
-#include "fmt/format.h"
 
 namespace stanly {
 
@@ -36,7 +36,9 @@ namespace implements {
     };
     template <class T, class... Args> struct Model : Interface {
       Model(T (*parse)(Args...), Args... args) : t_{parse(args...)} {}
-      [[nodiscard]] std::string do_format() const override { return fmt::format("{}", t_); }
+      [[nodiscard]] std::string do_format() const override {
+        return fmt::format("{}", t_);
+      }
       [[nodiscard]] Result do_analyse() const override { return analyse(t_); }
     private:
       T t_;
@@ -71,29 +73,25 @@ public:
     {std::string{fmt::format(t)}};
     {Analysis{analyse(t)}};
   }
-  explicit Graph(const std::function<T(Args&&...)>& make_graph, Args&&... args)
+  explicit Graph(const std::function<T(Args &&...)> &make_graph, Args &&...args)
       : interface_{std::make_unique<Model<T, Args...>>(
             make_graph, std::forward<Args>(args)...)} {}
-  
-Graph (*(make_parser)(std::string_view language))(std::string_view program);
+
+  Graph (*(make_parser)(std::string_view language))(std::string_view program);
 };
 } // namespace stanly
 
-  
-template<>
-struct fmt::formatter<stanly::Graph>
-    : fmt::formatter<string_view> {
+template <> struct fmt::formatter<stanly::Graph> : fmt::formatter<string_view> {
   template <class FormatContext>
   auto format(const stanly::Graph &graph, FormatContext &ctx) const {
     return formatter<string_view>::format("{}", graph, ctx);
   }
-  };
+};
 
-template<>
-struct fmt::formatter<stanly::Analysis>
-    : fmt::formatter<string_view> {
+template <>
+struct fmt::formatter<stanly::Analysis> : fmt::formatter<string_view> {
   template <class FormatContext>
   auto format(const stanly::Analysis &analysis, FormatContext &ctx) const {
     return formatter<string_view>::format("{}", analysis, ctx);
   }
-  };
+};
