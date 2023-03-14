@@ -1,11 +1,9 @@
 #pragma once
 #include <boost/core/demangle.hpp>
-#include <cassert>
 #include <string>
 #include <string_view>
 #include <tuple>
 #include <type_traits>
-#include <typeinfo>
 
 namespace stanly::metaprogramming {
 
@@ -32,14 +30,20 @@ const std::string type_name = [] {
   return ret;
 }();
 
-template <class T> auto struct_to_tpl(T &&object) noexcept {
-  using type = std::decay_t<T>;
-  if constexpr (requires(type t) { type{{}, {}, {}}; }) {
+auto struct_to_tpl(auto &&object) noexcept {
+  using type = std::decay_t<decltype(object)>;
+  if constexpr (requires(type t) { type{{}, {}, {}, {}}; }) {
+    auto &&[p1, p2, p3, p4] = object;
+    return std::make_tuple(p1, p2, p3, p4);
+  } else if constexpr (requires(type t) { type{{}, {}, {}}; }) {
     auto &&[p1, p2, p3] = object;
     return std::make_tuple(p1, p2, p3);
   } else if constexpr (requires(type t) { type{{}, {}}; }) {
     auto &&[p1, p2] = object;
     return std::make_tuple(p1, p2);
+  } else if constexpr (requires(type t) { type{{}};}){
+    auto &&[p1] = object;
+    return std::make_tuple(p1);
   } else {
     return std::make_tuple();
   }
@@ -59,10 +63,6 @@ constexpr static bool is_any_of_v<T, TypeList<Args...>> =
     std::disjunction_v<std::is_same<T, Args>...>;
 
 template <class... T> using lookup = void;
-
-template <class T, class... Args> T tpl_to_struct(Args &&...args) {
-  return T{std::forward<Args>(args)...};
-}
 
 template <int Idx, template <class> class TL> struct get_s;
 
