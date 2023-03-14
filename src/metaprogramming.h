@@ -41,7 +41,7 @@ auto struct_to_tpl(auto &&object) noexcept {
   } else if constexpr (requires(type t) { type{{}, {}}; }) {
     auto &&[p1, p2] = object;
     return std::make_tuple(p1, p2);
-  } else if constexpr (requires(type t) { type{{}};}){
+  } else if constexpr (requires(type t) { type{{}}; }) {
     auto &&[p1] = object;
     return std::make_tuple(p1);
   } else {
