@@ -1,2 +1,8 @@
 CompileFlags:
     CompilationDatabase: "build-vscode"
+Diagnostics:
+    UnusedIncludes: Strict
+Hover:
+    ShowAKA: Yes
+Index:
+    StandardLibrary: Yes

@@ -14,5 +14,3 @@ find_package(range-v3 REQUIRED)
 
 enable_testing()
 add_subdirectory(src)
-add_subdirectory(docs)
-add_subdirectory(test)
