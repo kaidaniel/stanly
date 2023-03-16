@@ -4,13 +4,13 @@
 #include <functional>
 #include <string_view>
 
-using stanly::metaprogramming::is_any_of_v;
+using stanly::metaprogramming::contains;
 using stanly::metaprogramming::struct_to_tpl;
 using stanly::metaprogramming::type_name;
 using std::string_view;
 template <class T>
 using is_firstorder_syntax_node = std::enable_if_t<
-    is_any_of_v<T, stanly::first_order<stanly::text_ref>>, char>;
+    contains<stanly::first_order<stanly::text_ref>, T>, char>;
 
 template <typename T>
 struct fmt::formatter<T, is_firstorder_syntax_node<T>>

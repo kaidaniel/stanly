@@ -28,7 +28,7 @@ using std::unique_ptr;
 using str = const std::string &;
 using fmt::format;
 using iterator::inpt_range;
-using stanly::metaprogramming::rebind_t;
+using stanly::metaprogramming::rebind;
 using std::make_unique;
 using std::string_view;
 
