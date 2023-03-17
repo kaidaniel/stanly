@@ -54,7 +54,11 @@ class Analysis : public implements::Show {
   std::string do_format() { return interface_->do_format(); }
 public:
   template <class T>
-  requires requires(T t) { {std::string{show(t)}}; }
+  requires requires(T t) {
+    {
+      std::string { show(t) }
+    };
+  }
   explicit Analysis(T &&t)
       : interface_{std::make_unique<Model<T>>(std::forward<T>(t))} {}
 };
@@ -70,8 +74,12 @@ class Graph : public implements::ShowAndAnalyse<Analysis> {
 public:
   template <class T, class... Args>
   requires requires(T t) {
-    {std::string{fmt::format(t)}};
-    {Analysis{analyse(t)}};
+    {
+      std::string { fmt::format(t) }
+    };
+    {
+      Analysis { analyse(t) }
+    };
   }
   explicit Graph(const std::function<T(Args &&...)> &make_graph, Args &&...args)
       : interface_{std::make_unique<Model<T, Args...>>(

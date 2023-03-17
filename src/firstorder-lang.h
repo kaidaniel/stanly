@@ -12,11 +12,10 @@
 
 namespace stanly {
 template <typename D>
-concept abstract_domain = std::derived_from<
-    typename D::domain, sparta::AbstractDomain<typename D::domain>> &&
-    requires {
-  typename D::domain;
-};
+concept abstract_domain =
+    std::derived_from<
+        typename D::domain, sparta::AbstractDomain<typename D::domain>> &&
+    requires { typename D::domain; };
 } // namespace stanly
 
 namespace stanly::firstorder {

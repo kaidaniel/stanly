@@ -6,7 +6,8 @@
 
 namespace stanly {
 using idx = uint16_t;
-template <class T> concept language = requires {
+template <class T>
+concept language = requires {
   typename T::template typelist<void>;
   typename T::template nodes<void, void>;
 };

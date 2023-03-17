@@ -12,7 +12,9 @@ using std::tuple;
 struct s {};
 using a = s;
 class c__d {};
-template <class T> struct tt { using type = T; };
+template <class T> struct tt {
+  using type = T;
+};
 struct m {
   struct member {};
 };

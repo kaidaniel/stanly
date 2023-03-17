@@ -9,8 +9,8 @@ using stanly::metaprogramming::struct_to_tpl;
 using stanly::metaprogramming::type_name;
 using std::string_view;
 template <class T>
-using is_firstorder_syntax_node = std::enable_if_t<
-    contains<stanly::first_order<stanly::text_ref>, T>, char>;
+using is_firstorder_syntax_node =
+    std::enable_if_t<contains<stanly::first_order<stanly::text_ref>, T>, char>;
 
 template <typename T>
 struct fmt::formatter<T, is_firstorder_syntax_node<T>>
