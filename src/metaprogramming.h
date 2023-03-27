@@ -243,7 +243,7 @@ template <class t, TypeList T>
 static constexpr int index = index_s<t, T>::value;
 struct done{ static constexpr int value = -1; };
 template<class t, TypeList T> struct index_s<t, T, empty> { 
-  static_assert(not is_empty<T>, "type not found int TypeList");
+  static_assert(not is_empty<T>, "type not found in TypeList");
 };
 template<class t, TypeList T> 
 struct index_s<t, T, not_empty> {

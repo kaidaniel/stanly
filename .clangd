@@ -1,5 +1,5 @@
-CompileFlags:
-    CompilationDatabase: "build-vscode"
+#CompileFlags:
+#    CompilationDatabase: "build-vscode"
 Diagnostics:
     UnusedIncludes: Strict
 Hover:

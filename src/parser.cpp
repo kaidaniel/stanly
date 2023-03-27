@@ -1,31 +1,31 @@
-#include <fmt/core.h>
-#include <fmt/ranges.h>
 #include <tree_sitter/api.h>
 
 #include <cassert>
-#include <concepts>
 #include <cstring>
-#include <functional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
 #include <variant>
-#include <vector>
-
+#include "syntax.h"
 #include "firstorder-syntax.h"
 #include "iterator.h"
-#include "syntax.h"
+#include <fmt/core.h>
+#include <fmt/ranges.h>
+
+#include <concepts>
+#include <functional>
+#include <vector>
 
 extern "C" {
 TSLanguage *tree_sitter_python(void);
 }
 
 namespace stanly {
-using fmt::format;
 using std::same_as;
 using std::string;
-using std::string_view;
 using std::unique_ptr;
+using fmt::format;
+using std::string_view;
 using std::vector;
 class parser {
   string_view program_;
@@ -95,10 +95,10 @@ class parser {
   parser operator=(parser &&) = delete;
 
   [[nodiscard]] const TSNode &root() const { return root_; }
-  [[nodiscard]] TSSymbol symbol(const string &name) const {
+  [[nodiscard]] TSSymbol symbol(const string& name) const {
     return ts_language_symbol_for_name(language_, name.c_str(), name.length(), true);
   }
-  [[nodiscard]] TSFieldId field(const string &name) const {
+  [[nodiscard]] TSFieldId field(const string& name) const {
     return ts_language_field_id_for_name(language_, name.c_str(), name.size());
   }
   bool skip_concrete_nodes() {
@@ -156,31 +156,4 @@ class parser {
     return ts_node_is_null(ts_node_next_sibling(node())) and ts_node_child_count(node()) == 0;
   };
 };
-
-using fo = stanly::firstorder::syntax<string_view>;
-template <>
-inline fo::node parser::next_node<fo>() {
-  assert(at(&Symbols::expression_statement));
-  to_child();
-  assert(at(&Symbols::assignment));
-  to_child();
-  assert(at(&Fields::left, &Symbols::identifier));
-  fo::repr left{text()};
-  to_sibling();
-  assert(at(&Fields::right));
-  fo::repr right{text()};
-  // clang-format off
-  if (at(&Symbols::identifier)){ return fo::load_var   {left, right}; }
-  if (at(&Symbols::string)){     return fo::load_text  {left, right}; }
-  if (at(&Symbols::integer)){    return fo::load_text  {left, right}; }
-  if (at(&Symbols::dictionary)){ return fo::load_record{left, record()}; }
-  if (at(&Symbols::set)){        return fo::load_record{left, record()}; }
-  if (at(&Symbols::list)){       return fo::load_top   {left, right}; }
-  // clang-format on
-  throw std::domain_error(format("assigning ({} {}) not implemented", type(), right));
 }
-template <>
-iterator::inpt_range<fo::node> parse<fo>(string_view program) {
-  return {&parser::next_node<fo>, &parser::is_done, program};
-}
-}  // namespace stanly

@@ -1,45 +1,44 @@
-#include "firstorder-lang.h"
-#include "metaprogramming.h"
-#include "range/v3/view.hpp"
-#include "stanly-api.h"
+#include <sys/types.h>
+
 #include <forward_list>
 #include <iostream>
 #include <set>
 #include <string>
 #include <string_view>
-#include <sys/types.h>
+#include <tuple>
 #include <unordered_map>
 #include <variant>
 #include <vector>
 
+#include "range/v3/view.hpp"
+#include "syntax.h"
+
 namespace stanly {
 
 using ranges::views::transform;
-using stanly::metaprogramming::struct_to_tpl;
-using std::bind_front;
-using std::decay;
 using std::forward_list;
 using std::is_same_v;
+using std::make_from_tuple;
 using std::set;
+using std::string;
 using std::string_view;
 using std::unordered_map;
 using std::vector;
 using std::visit;
 
-template <class Text> using lang = first_order<Text>;
-
-class ProgramSourceTextIndex {
+class SourceTextIndex {
   // all_text_references_: set because long strings slow to hash (?redex)
   // program_source_texts_: adding to a forward list won't invalidate
   // references. insert_text_reference: bounds checked, <=
   // std::numeric_limits<Idx>::max() idx_to_text_reference: Not bounds checked
-  std::set<std::string_view> all_text_references_{};
-  std::vector<std::string_view> idx_to_text_reference_{};
-  std::forward_list<std::string> program_source_texts_{};
-public:
-  const idx &insert_text_reference(std::string_view);
-  const std::string_view &idx_to_text_reference(idx);
-  std::string_view add_program_source(std::string_view);
+  set<string_view> all_text_references_{};
+  vector<string_view> idx_to_text_reference_{};
+  forward_list<string> source_texts_{};
+
+ public:
+  const idx &insert_text_reference(string_view);
+  const string_view &idx_to_text_reference(idx);
+  string_view add_source_text(string_view);
 };
 struct SourceTextLocation {
   int program;
@@ -49,15 +48,37 @@ struct SourceTextLocation {
   int row;
 };
 
-template <class Lang> class GraphT {
-  std::unordered_map<syntax_packed, SourceTextLocation>
-      syntax_node_to_source_text_offsets_;
-  std::vector<syntax_packed> syntax_nodes_{};
-  std::unordered_map<idx, packed::record> record_literals_{};
-  ProgramSourceTextIndex program_source_text_index_{};
-public:
-  [[nodiscard]] decltype(auto) nodes_view();
-  GraphT(std::string_view program);
+template <class A, class B>
+struct rebind;
+
+template <template <class> class T, class x, class y>
+struct rebind<T<x>, y> {
+  using type = T<y>;
+};
+
+template <class A, class B>
+using rebind_t = typename rebind<A, B>::type;
+
+template <template <class> class S>
+  requires syntax<S<idx>> && syntax<S<string_view>>
+class GraphT {
+  using node = typename S<idx>::node;
+  using repr = typename S<idx>::repr;
+  unordered_map<node, SourceTextLocation> node_to_source_text_location_;
+  vector<node> nodes_{};
+  unordered_map<repr, std::vector<repr>> record_literals_{};
+  SourceTextIndex source_text_index_{};
+
+ public:
+  [[nodiscard]] decltype(auto) nodes() {
+    using node_view = typename S<string_view>::node;
+    auto idx_to_str = [&](idx idx) { return source_text_index_.idx_to_text_reference(idx); };
+    auto node_to_str_node = [&]<class N>(N &&n) {
+      return make_from_tuple<rebind_t<N, string_view>>(map_tpl(idx_to_str, to_tpl(n)));
+    };
+    return transform(nodes_, [&](node n) -> node_view { return {visit(node_to_str_node, n)}; });
+  };
+  GraphT(string_view program);
   GraphT(const GraphT &) = delete;
   GraphT(GraphT &&) = delete;
   GraphT operator=(GraphT &&) = delete;
@@ -65,30 +86,9 @@ public:
   ~GraphT() = default;
 };
 
-template <class Lang> [[nodiscard]] decltype(auto) GraphT<Lang>::nodes_view() {
-  auto get = bind_front(
-      &ProgramSourceTextIndex::idx_to_text_reference,
-      &program_source_text_index_);
-  return transform(
-      syntax_nodes_, [&](syntax_packed variant) -> syntax_printable {
-        return visit(
-            [&]<class T>(T &&n) -> syntax_printable {
-              using t = lookup<T, packed_typelist, printable_typelist>;
-              return tpl_to_struct<t>(transform_tpl(get, struct_to_tpl(n)));
-            },
-            variant);
-      });
-};
-
-template <class Lang> GraphT<Lang>::GraphT(std::string_view program) {
-  using iterator::inpt_range;
-  program = program_source_text_index_.add_program_source(program);
-  for (auto nodes = parse_firstorder(program); print node : nodes) {}
-}
-
 // Graph (*(make_parser)(std::string_view language))(std::string_view) {
 //   if (language == "firstorder") {
 //     ;
 //   }
 // }
-} // namespace stanly
+}  // namespace stanly

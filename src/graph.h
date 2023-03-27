@@ -1,5 +1,4 @@
-#include "language.h"
-#include "metaprogramming.h"
+#include "syntax.h"
 #include "range/v3/view.hpp"
 #include <forward_list>
 #include <iostream>
@@ -12,7 +11,7 @@
 #include <vector>
 
 namespace stanly {
-
+/*
 template <class F, class Container, language L, class Repr, class ReturnRepr>
 auto transmute_syntax_container(F &&f, Container &&c) {
   return ranges::views::transform(
@@ -26,6 +25,7 @@ auto transmute_syntax_container(F &&f, Container &&c) {
             std::forward<decltype(variant)>(variant));
       });
 }
+*/
 
 class ProgramSourceTextIndex {
   // all_text_references_: set because long strings slow to hash (?redex)
@@ -51,11 +51,11 @@ struct SourceTextLocation {
   int row;
 };
 
-template <language L> class GraphT {
-  std::unordered_map<packed<L>, SourceTextLocation>
+template <packed_syntax Syntax> class GraphT {
+  std::unordered_map<Syntax, SourceTextLocation>
       syntax_node_to_source_text_offsets_;
-  std::vector<packed<L>> syntax_nodes_;
-  std::unordered_map<idx, record<packed<L>>> record_literals_{};
+  std::vector<Syntax> syntax_nodes_;
+  std::unordered_map<repr_t<Syntax>, std::vector<Syntax>> record_literals_{};
   ProgramSourceTextIndex program_source_text_index_;
 public:
   [[nodiscard]] decltype(auto) nodes_view() {
@@ -68,7 +68,7 @@ public:
   GraphT(std::string_view program)
       : program_source_text_index_{program},
         syntax_nodes_{ranges::views::transform(
-            parse<L>(program),
+            parse<Syntax>(program),
             transmute_syntax<L, std::string_view, idx>(
                 [&](std::string_view sv) {
                   return program_source_text_index_.insert_text_reference(sv);
