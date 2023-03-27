@@ -6,12 +6,11 @@
 
 namespace stanly::iterator {
 class iterator_sentinel {};
-template <class Return> class inpt_iterator {
-public:
+template <class Return>
+class inpt_iterator {
+ public:
   template <class Self>
-  inpt_iterator(
-      Self *self, Return (Self::*generate)(),
-      bool (Self::*is_exhausted)() const)
+  inpt_iterator(Self *self, Return (Self::*generate)(), bool (Self::*is_exhausted)() const)
       : self_{self},
         is_exhausted{[self, is_exhausted] { return (self->*is_exhausted)(); }},
         generate{[self, generate] { return (self->*generate)(); }} {}
@@ -29,32 +28,32 @@ public:
     return copy;
   }
   const Return &operator*() const { return return_slot_; }
-  friend bool
-  operator==(const inpt_iterator &left, const inpt_iterator &right) {
+  friend bool operator==(const inpt_iterator &left, const inpt_iterator &right) {
     return left.self_ == right.self_;
   }
   friend bool operator==(const inpt_iterator &self, iterator_sentinel) {
     return self.is_exhausted();
   }
-private:
+
+ private:
   void *self_;
   std::function<bool()> is_exhausted;
   std::function<Return()> generate;
   Return return_slot_{};
 };
 
-template <class Return> class inpt_range {
+template <class Return>
+class inpt_range {
   using iter = inpt_iterator<Return>;
   using sentinel_type = iterator_sentinel;
   void *self_;
   iter iter_;
   void (*destroy)(void *);
-public:
+
+ public:
   template <class Self, class... Args>
-  inpt_range(
-      Return (Self::*generate)(), bool (Self::*is_exhausted)() const,
-      Args &&...args)
-      : self_{new Self{std::forward<Self>(args)...}},
+  inpt_range(Return (Self::*generate)(), bool (Self::*is_exhausted)() const, Args &&...args)
+      : self_{new Self{std::forward<Args>(args)...}},
         iter_{static_cast<Self *>(self_), generate, is_exhausted},
         destroy{[](void *s) { delete static_cast<Self *>(s); }} {}
   [[nodiscard]] iter begin() const { return iter_; }
@@ -66,4 +65,4 @@ public:
   inpt_range &operator=(inpt_range &&) noexcept = delete;
 };
 
-}; // namespace stanly::iterator
+};  // namespace stanly::iterator

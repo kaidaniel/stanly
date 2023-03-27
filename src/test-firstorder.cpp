@@ -1,7 +1,8 @@
-#include "firstorder-api.h"
-#include "stanly-api.h"
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators_all.hpp>
+
+#include "firstorder-api.h"
+#include "stanly-api.h"
 
 constexpr auto parse = stanly::parse_firstorder;
 

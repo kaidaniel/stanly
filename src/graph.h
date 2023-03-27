@@ -1,14 +1,16 @@
-#include "syntax.h"
-#include "range/v3/view.hpp"
+#include <sys/types.h>
+
 #include <forward_list>
 #include <iostream>
 #include <set>
 #include <string>
 #include <string_view>
-#include <sys/types.h>
 #include <unordered_map>
 #include <variant>
 #include <vector>
+
+#include "range/v3/view.hpp"
+#include "syntax.h"
 
 namespace stanly {
 /*
@@ -35,13 +37,12 @@ class ProgramSourceTextIndex {
   std::set<std::string_view> all_text_references_{};
   std::vector<std::string_view> idx_to_text_reference_{};
   std::forward_list<std::string> program_source_texts_{};
-public:
+
+ public:
   const idx &insert_text_reference(std::string_view);
   const std::string_view &idx_to_text_reference(idx);
   std::string_view add_program_source(std::string_view);
-  ProgramSourceTextIndex(std::string_view program) {
-    add_program_source(program);
-  }
+  ProgramSourceTextIndex(std::string_view program) { add_program_source(program); }
 };
 struct SourceTextLocation {
   int program;
@@ -51,28 +52,26 @@ struct SourceTextLocation {
   int row;
 };
 
-template <packed_syntax Syntax> class GraphT {
-  std::unordered_map<Syntax, SourceTextLocation>
-      syntax_node_to_source_text_offsets_;
+template <packed_syntax Syntax>
+class GraphT {
+  std::unordered_map<Syntax, SourceTextLocation> syntax_node_to_source_text_offsets_;
   std::vector<Syntax> syntax_nodes_;
   std::unordered_map<repr_t<Syntax>, std::vector<Syntax>> record_literals_{};
   ProgramSourceTextIndex program_source_text_index_;
-public:
+
+ public:
   [[nodiscard]] decltype(auto) nodes_view() {
     return transmute_syntax_container(
-        [&](idx idx) {
-          return program_source_text_index_.idx_to_text_reference(idx);
-        },
+        [&](idx idx) { return program_source_text_index_.idx_to_text_reference(idx); },
         syntax_nodes_);
   }
   GraphT(std::string_view program)
       : program_source_text_index_{program},
         syntax_nodes_{ranges::views::transform(
             parse<Syntax>(program),
-            transmute_syntax<L, std::string_view, idx>(
-                [&](std::string_view sv) {
-                  return program_source_text_index_.insert_text_reference(sv);
-                }))} {};
+            transmute_syntax<L, std::string_view, idx>([&](std::string_view sv) {
+              return program_source_text_index_.insert_text_reference(sv);
+            }))} {};
   GraphT(const GraphT &) = delete;
   GraphT(GraphT &&) = delete;
   GraphT operator=(GraphT &&) = delete;
@@ -80,4 +79,4 @@ public:
   ~GraphT() = default;
 };
 
-} // namespace stanly
+}  // namespace stanly

@@ -21,4 +21,11 @@ foreach(test test-iterator test-metaprogramming)
     catch_discover_tests(${test} EXTRA_ARGS --colour-mode ansi)
 endforeach()
 
+add_library(parser parser.cpp)
+target_link_libraries(parser PUBLIC tree-sitter tree-sitter-python)
+
+add_library(firstorder firstorder-parser.cpp)
+target_link_libraries(firstorder PUBLIC parser)
+
 include(project_props)
+

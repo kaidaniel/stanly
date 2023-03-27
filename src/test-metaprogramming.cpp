@@ -1,9 +1,10 @@
-#include "metaprogramming.h"
 #include <catch2/catch_test_macros.hpp>
 #include <tuple>
 #include <type_traits>
 
-namespace stanly::metaprogramming::test {
+#include "metaprogramming.h"
+
+namespace stanly::metaprogramming {
 
 using std::is_same_v;
 using std::make_tuple;
@@ -12,13 +13,15 @@ using std::tuple;
 struct s {};
 using a = s;
 class c__d {};
-template <class T> struct tt {
+template <class T>
+struct tt {
   using type = T;
 };
 struct m {
   struct member {};
 };
-template <class A, class B> struct qq {};
+template <class A, class B>
+struct qq {};
 
 TEST_CASE("type_name", "[metaprogramming]") {
   REQUIRE(type_name<s> == "s");
@@ -54,10 +57,7 @@ TEST_CASE("struct_to_tpl", "[metaprogramming]") {
 static_assert(is_same_v<decltype(struct_to_tpl(zero{})), tuple<>>);
 static_assert(is_same_v<decltype(struct_to_tpl(one{1})), tuple<int>>);
 static_assert(is_same_v<decltype(struct_to_tpl(two{1, 2})), tuple<int, int>>);
-static_assert(
-    is_same_v<decltype(struct_to_tpl(three{1, 2, 3})), tuple<int, int, int>>);
-static_assert(
-    is_same_v<
-        decltype(struct_to_tpl(four{1, 2, 3, 4})), tuple<int, int, int, int>>);
+static_assert(is_same_v<decltype(struct_to_tpl(three{1, 2, 3})), tuple<int, int, int>>);
+static_assert(is_same_v<decltype(struct_to_tpl(four{1, 2, 3, 4})), tuple<int, int, int, int>>);
 
-} // namespace stanly::metaprogramming::test
+}  // namespace stanly::metaprogramming

@@ -10,6 +10,11 @@ target_compile_options(project_props INTERFACE
 get_property(tgts DIRECTORY PROPERTY BUILDSYSTEM_TARGETS)
 foreach(tgt ${tgts})
     if(NOT "${tgt}" STREQUAL project_props)
-        target_link_libraries(${tgt} PRIVATE project_props fmt range-v3)
+        target_link_libraries(
+          ${tgt} PRIVATE 
+          project_props 
+          fmt 
+          range-v3
+          )
     endif()
 endforeach()
