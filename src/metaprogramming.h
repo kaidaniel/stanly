@@ -30,7 +30,14 @@ const std::string type_name = [] {
   return ret;
 }();
 
-auto struct_to_tpl(auto &&object) noexcept {
+template <class T>
+const std::string type_name_suffix = [] {
+  const boost::core::scoped_demangled_name type_name_of_T{typeid(T).name()};
+  const std::string_view v{type_name_of_T.get()};
+  return v.substr(std::max(v.find_last_of('>'), v.find_last_of(':') + 1)).data();
+}();
+
+auto to_tpl(auto &&object) noexcept {
   using type = std::decay_t<decltype(object)>;
   if constexpr (requires(type t) { type{{}, {}, {}, {}}; }) {
     auto &&[p1, p2, p3, p4] = object;

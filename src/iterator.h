@@ -1,8 +1,12 @@
 #pragma once
 
+#include <fmt/format.h>
+
 #include <cstddef>
 #include <functional>
 #include <iterator>
+#include <string_view>
+#include <vector>
 
 namespace stanly::iterator {
 class iterator_sentinel {};
@@ -42,6 +46,11 @@ class inpt_iterator {
   Return return_slot_{};
 };
 
+struct exhausted {
+  [[nodiscard]] static bool is_exhausted() { return true; };
+  static int generate() { throw "unreachable"; };
+};
+
 template <class Return>
 class inpt_range {
   using iter = inpt_iterator<Return>;
@@ -59,10 +68,38 @@ class inpt_range {
   [[nodiscard]] iter begin() const { return iter_; }
   [[nodiscard]] iterator_sentinel end() const { return iterator_sentinel{}; }
   ~inpt_range() { destroy(self_); }
-  inpt_range(const inpt_range &) = delete;
-  inpt_range(inpt_range &&) noexcept = delete;
-  inpt_range &operator=(const inpt_range &) = delete;
-  inpt_range &operator=(inpt_range &&) noexcept = delete;
+  inpt_range(const inpt_range &other)
+      : self_{other.self_}, iter_{other.iter_}, destroy{[](void *) {}} {};
+  inpt_range(inpt_range &&other) noexcept
+      : destroy{other.destroy}, self_{other.self_}, iter_{other.iter_} {
+    other.destroy = [](void *) {};
+    other.self_ = exhausted{};
+    other.iter_ = {other.self_, &exhausted::generate, &exhausted::is_exhausted};
+  };
+  inpt_range &operator=(const inpt_range &other) {
+    destroy(self_);
+    self_ = other.self_;
+    iter_ = other.iter_;
+    destroy = [](void *) {};
+  }
+  inpt_range &operator=(inpt_range &&other) noexcept {
+    destroy(self_);
+    destroy = other.destroy;
+    other.destroy = [](void *) {};
+    self_ = other.self_;
+    other.self_ = exhausted{};
+    iter_ = other.iter_;
+    other.iter_ = {other.self_, &exhausted::generate, &exhausted::is_exhausted};
+  }
+  // TODO add copy / move constructors (e.g. for use in fmt library)
 };
 
 };  // namespace stanly::iterator
+
+/*template<typename T>
+struct fmt::formatter<stanly::iterator::inpt_range<T>> : fmt::formatter<std::string_view> {
+  template<class FormatContext>
+  auto format(const stanly::iterator::inpt_range<T>&it, FormatContext &ctx) const {
+    return formatter<std::string_view>::format("{}", std::vector<T>{it}, ctx);
+  }
+};*/

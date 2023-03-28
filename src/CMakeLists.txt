@@ -27,5 +27,13 @@ target_link_libraries(parser PUBLIC tree-sitter tree-sitter-python)
 add_library(firstorder firstorder-parser.cpp)
 target_link_libraries(firstorder PUBLIC parser)
 
+add_executable(test-firstorder-format test-firstorder-format.cpp)
+target_link_libraries(test-firstorder-format PRIVATE Catch2::Catch2WithMain) 
+catch_discover_tests(test-firstorder-format EXTRA_ARGS --colour-mode ansi)
+
+#add_executable(test-firstorder test-firstorder.cpp)
+#target_link_libraries(test-firstorder PRIVATE Catch2::Catch2WithMain firstorder)
+#catch_discover_tests(test-firstorder EXTRA_ARGS --colour-mode ansi)
+
 include(project_props)
 

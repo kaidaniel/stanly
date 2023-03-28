@@ -48,16 +48,16 @@ struct four {
   int i, j, k, l;
 };
 TEST_CASE("struct_to_tpl", "[metaprogramming]") {
-  REQUIRE(struct_to_tpl(zero{}) == make_tuple());
-  REQUIRE(struct_to_tpl(one{1}) == make_tuple(1));
-  REQUIRE(struct_to_tpl(two{1, 2}) == make_tuple(1, 2));
-  REQUIRE(struct_to_tpl(three{1, 2, 3}) == make_tuple(1, 2, 3));
-  REQUIRE(struct_to_tpl(four{1, 2, 3, 4}) == make_tuple(1, 2, 3, 4));
+  REQUIRE(to_tpl(zero{}) == make_tuple());
+  REQUIRE(to_tpl(one{1}) == make_tuple(1));
+  REQUIRE(to_tpl(two{1, 2}) == make_tuple(1, 2));
+  REQUIRE(to_tpl(three{1, 2, 3}) == make_tuple(1, 2, 3));
+  REQUIRE(to_tpl(four{1, 2, 3, 4}) == make_tuple(1, 2, 3, 4));
 };
-static_assert(is_same_v<decltype(struct_to_tpl(zero{})), tuple<>>);
-static_assert(is_same_v<decltype(struct_to_tpl(one{1})), tuple<int>>);
-static_assert(is_same_v<decltype(struct_to_tpl(two{1, 2})), tuple<int, int>>);
-static_assert(is_same_v<decltype(struct_to_tpl(three{1, 2, 3})), tuple<int, int, int>>);
-static_assert(is_same_v<decltype(struct_to_tpl(four{1, 2, 3, 4})), tuple<int, int, int, int>>);
+static_assert(is_same_v<decltype(to_tpl(zero{})), tuple<>>);
+static_assert(is_same_v<decltype(to_tpl(one{1})), tuple<int>>);
+static_assert(is_same_v<decltype(to_tpl(two{1, 2})), tuple<int, int>>);
+static_assert(is_same_v<decltype(to_tpl(three{1, 2, 3})), tuple<int, int, int>>);
+static_assert(is_same_v<decltype(to_tpl(four{1, 2, 3, 4})), tuple<int, int, int, int>>);
 
 }  // namespace stanly::metaprogramming
