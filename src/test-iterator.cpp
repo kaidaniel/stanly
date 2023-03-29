@@ -24,7 +24,7 @@ struct count_to_five {
     return number_;
   }
   [[nodiscard]] bool over_five() const { return number_ >= 5; }
-  int number_{0};
+  int number_{-1};
   ~count_to_five() {
     number_ = -100;
     range_was_destroyed = true;

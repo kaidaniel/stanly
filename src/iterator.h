@@ -17,7 +17,7 @@ class inpt_iterator {
   inpt_iterator(Self *self, Return (Self::*generate)(), bool (Self::*is_exhausted)() const)
       : self_{self},
         is_exhausted{[self, is_exhausted] { return (self->*is_exhausted)(); }},
-        generate{[self, generate] { return (self->*generate)(); }} {}
+        generate{[self, generate] { return (self->*generate)(); }} { (*this)++; }
   using iterator_concept = std::input_iterator_tag;
   using difference_type = std::ptrdiff_t;
   using reference_type = Return &;
@@ -68,6 +68,7 @@ class inpt_range {
   [[nodiscard]] iter begin() const { return iter_; }
   [[nodiscard]] iterator_sentinel end() const { return iterator_sentinel{}; }
   ~inpt_range() { destroy(self_); }
+  
   inpt_range(const inpt_range &other)
       : self_{other.self_}, iter_{other.iter_}, destroy{[](void *) {}} {};
   inpt_range(inpt_range &&other) noexcept
@@ -91,15 +92,9 @@ class inpt_range {
     iter_ = other.iter_;
     other.iter_ = {other.self_, &exhausted::generate, &exhausted::is_exhausted};
   }
+
   // TODO add copy / move constructors (e.g. for use in fmt library)
 };
 
 };  // namespace stanly::iterator
 
-/*template<typename T>
-struct fmt::formatter<stanly::iterator::inpt_range<T>> : fmt::formatter<std::string_view> {
-  template<class FormatContext>
-  auto format(const stanly::iterator::inpt_range<T>&it, FormatContext &ctx) const {
-    return formatter<std::string_view>::format("{}", std::vector<T>{it}, ctx);
-  }
-};*/
