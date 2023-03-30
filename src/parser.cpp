@@ -26,7 +26,7 @@ parser::parser(string_view program)
     : program_(program),
       language_(tree_sitter_python()),
       parser_(ts_parser_new()),
-      tree_([&] {
+      tree_([this] {
         ts_parser_set_language(parser_, language_);
         return ts_parser_parse_string(parser_, nullptr, program_.begin(), program_.size());
       }()),
@@ -114,6 +114,7 @@ vector<string_view> parser::record() {
 }
 
 [[nodiscard]] bool parser::is_done() const {
-  return ts_node_is_null(ts_node_next_sibling(node())) and ts_node_child_count(node()) == 0;
+  return ts_node_is_null(ts_node_next_named_sibling(node())) &&
+         ts_node_named_child_count(node()) == 0;
 };
 }  // namespace stanly

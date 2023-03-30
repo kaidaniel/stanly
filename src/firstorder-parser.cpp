@@ -31,8 +31,4 @@ fo::node parser::next_node<fo>() {
   // clang-format on
   throw std::domain_error(format("assigning ({} {}) not implemented", type(), right));
 }
-template <>
-iterator::inpt_range<fo::node> parse<fo>(string_view program) {
-  return {&parser::next_node<fo>, &parser::is_done, program};
-}
 }  // namespace stanly

@@ -3,8 +3,7 @@
 #include <concepts>
 #include <string_view>
 #include <variant>
-
-#include "iterator.h"
+#include <vector>
 
 namespace stanly {
 
@@ -17,7 +16,4 @@ concept syntax = requires(typename S::node s) {
   { std::variant{s} } -> std::same_as<typename S::node>;
 };
 
-template <syntax S>
-  requires std::same_as<typename S::repr, std::string_view>
-iterator::inpt_range<typename S::node> parse(typename S::repr);
 }  // namespace stanly

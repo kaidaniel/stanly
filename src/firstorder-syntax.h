@@ -54,4 +54,5 @@ struct syntax {
   using node = std::variant<set_field, load_field, load_text, load_record, load_var, load_top>;
 };
 static_assert(stanly::syntax<firstorder::syntax<stanly::idx>>);
+
 }  // namespace stanly::firstorder

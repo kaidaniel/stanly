@@ -12,8 +12,6 @@
 #include <variant>
 #include <vector>
 
-#include "syntax.h"
-
 namespace stanly {
 class parser {
   std::string_view program_;
@@ -41,14 +39,6 @@ class parser {
     TSFieldId value;
   } fields_;
 
- public:
-  explicit parser(std::string_view program);
-  ~parser();
-  parser(const parser &) = delete;
-  parser operator=(const parser &) = delete;
-  parser(parser &&) = delete;
-  parser operator=(parser &&) = delete;
-
   [[nodiscard]] const TSNode &root() const;
   [[nodiscard]] TSSymbol symbol(const std::string &name) const;
   [[nodiscard]] TSFieldId field(const std::string &name) const;
@@ -65,10 +55,27 @@ class parser {
   std::string_view text();
   std::vector<std::string_view> record();
 
-  template <class S>
-    requires syntax<S> && std::same_as<typename S::repr, std::string_view>
+ public:
+  explicit parser(std::string_view program);
+  ~parser();
+  parser(const parser &) = delete;
+  parser operator=(const parser &) = delete;
+  parser(parser &&) = delete;
+  parser operator=(parser &&) = delete;
+
+  template <typename S>
   typename S::node next_node();
 
   [[nodiscard]] bool is_done() const;
 };
+
+template <typename S>
+std::vector<typename S::node> parse_language(std::string_view program) {
+  std::vector<typename S::node> ast{};
+  parser parser{program};
+  while (!parser.is_done()) {
+    ast.push_back(parser.next_node<S>());
+  }
+  return ast;
+}
 }  // namespace stanly

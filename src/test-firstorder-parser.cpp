@@ -1,41 +1,38 @@
-#include <fmt/ranges.h>
 #include <fmt/std.h>
 
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators_all.hpp>
+#include <valarray>
 #include <vector>
 
+#include "firstorder-format.h"
 #include "firstorder-syntax.h"
+#include "parser.h"
 
 using fmt::format;
-using fmt::join;
-using fmt::print;
-
+using std::string;
 namespace stanly::firstorder {
+constexpr auto parse = parse_language<syntax<std::string_view>>;
+
 TEST_CASE("parse single statements", "[first-order][parsing]") {
   // clang-format off
     auto v = GENERATE(chunk(2, values({
-        "x=y",                  "(LoadVar x=y)",
-        "x=1",                  "(LoadText x='1')",
-        "y=[]",                 "(DeclareLocalVar y)",
-        "z = {}",               "(LoadRecord z=[])",
-        "z = {1: 'x', 3: {}}",  "(LoadRecord z=[\"1\", \"3\"])",
-    /*  "abc = {1: 'x'}",       "(LoadRecord abc (Record 1))",
-        "abc_def = {1,2,3}",    "(Local abc_def)",
-        "a[b] = x",             "(StoreSubscript x a b)",
-        "x = a[b]",             "(LoadSubscript x a b)",
-        "x = y",                "(AssignVar x y)",
-        "x = 1",                "(AssignLiteral x 1)" */
+        "x=y",                  "ast[load_var(x y)]",
+        "x=1",                  "ast[load_text(x 1)]",
+        "y=[]",                 "ast[load_top(y [])]",
+        "z = {}",               "ast[load_record(z [])]",
+        "z = {1: 'x', 3: {}}",  "ast[load_record(z [1, 3])]",
+        "abc = {1: 'x'}",       "ast[load_record(abc [1])]",
+      // "abc_def = {1,2,3}",    "ast[load_top(abc_def [])]",
+      //  "a[b] = x",             "ast[set_field(x a b)",
+      //  "x = a[b]",             "ast[load_field(x a b)",
+        "x = y",                "ast[load_var(x y)]",
+        "x = 1",                "ast[load_text(x 1)]" 
     })));
   // clang-format on
-  const std::string &statement = v[0];
-  const std::string &translation = v[1];
-  std::string res{};
-  for (auto s : parse<syntax<std::string_view>>(statement)) {
-    res.append(format("{}", s));
-  }
-
-  REQUIRE(res == translation);
+  const string &statement = v[0];
+  const string &translation = v[1];
+  REQUIRE(format("{}", parse(statement)) == translation);
 }
 }  // namespace stanly::firstorder
 /*

@@ -15,7 +15,7 @@ include(Catch)
 set_target_properties(fmt range-v3 sparta tree-sitter tree-sitter-python Catch2
     PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
-foreach(test test-iterator test-metaprogramming)
+foreach(test test-iterator test-metaprogramming test-firstorder-format test-firstorder-parser)
     add_executable(${test} ${test}.cpp)
     target_link_libraries(${test} PRIVATE fmt Catch2::Catch2WithMain)
     catch_discover_tests(${test} EXTRA_ARGS --colour-mode ansi)
@@ -27,9 +27,7 @@ target_link_libraries(parser PUBLIC tree-sitter tree-sitter-python)
 add_library(firstorder firstorder-parser.cpp)
 target_link_libraries(firstorder PUBLIC parser)
 
-add_executable(test-firstorder-format test-firstorder-format.cpp)
-target_link_libraries(test-firstorder-format PRIVATE fmt Catch2::Catch2WithMain) 
-catch_discover_tests(test-firstorder-format EXTRA_ARGS --colour-mode ansi)
+target_link_libraries(test-firstorder-parser PRIVATE firstorder)
 
 #add_executable(test-firstorder test-firstorder.cpp)
 #target_link_libraries(test-firstorder PRIVATE Catch2::Catch2WithMain firstorder)
