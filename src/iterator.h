@@ -17,7 +17,9 @@ class inpt_iterator {
   inpt_iterator(Self *self, Return (Self::*generate)(), bool (Self::*is_exhausted)() const)
       : self_{self},
         is_exhausted{[self, is_exhausted] { return (self->*is_exhausted)(); }},
-        generate{[self, generate] { return (self->*generate)(); }} { (*this)++; }
+        generate{[self, generate] { return (self->*generate)(); }} {
+    (*this)++;
+  }
   using iterator_concept = std::input_iterator_tag;
   using difference_type = std::ptrdiff_t;
   using reference_type = Return &;
@@ -68,7 +70,7 @@ class inpt_range {
   [[nodiscard]] iter begin() const { return iter_; }
   [[nodiscard]] iterator_sentinel end() const { return iterator_sentinel{}; }
   ~inpt_range() { destroy(self_); }
-  
+
   inpt_range(const inpt_range &other)
       : self_{other.self_}, iter_{other.iter_}, destroy{[](void *) {}} {};
   inpt_range(inpt_range &&other) noexcept
@@ -97,4 +99,3 @@ class inpt_range {
 };
 
 };  // namespace stanly::iterator
-

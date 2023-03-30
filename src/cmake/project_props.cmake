@@ -4,7 +4,12 @@ target_compile_options(project_props INTERFACE
     -Wall 
     -Wextra 
     -Wpedantic 
-    "$<$<CONFIG:DEBUG>:-ffile-prefix-map=/home/kai/projects/src/=.>"
+    -gsimple-template-names
+    -fdiagnostics-show-template-tree
+    -fdiagnostics-show-option
+    -fdiagnostics-color=always
+    -fmessage-length=200
+    "$<$<CONFIG:DEBUG>:-ffile-prefix-map=/home/kai/projects/stanly/src/=.>"
     "$<$<CONFIG:DEBUG>:-ffile-prefix-map=.build/default/=BUILD>")
 
 get_property(tgts DIRECTORY PROPERTY BUILDSYSTEM_TARGETS)

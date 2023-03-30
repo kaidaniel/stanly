@@ -4,9 +4,12 @@
 
 #include <cstdio>
 #include <functional>
+#include <range/v3/numeric/accumulate.hpp>
+#include <range/v3/view.hpp>
 #include <string_view>
 
 #include "firstorder-syntax.h"
+#include "iterator.h"
 #include "metaprogramming.h"
 
 using stanly::metaprogramming::contains;
