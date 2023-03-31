@@ -7,14 +7,14 @@
             "generator": "Ninja",
             "warnings": {"systemVars": true},
             "errors": {"deprecated": true, "dev": true},
-            "binaryDir": "${sourceDir}/build/${presetName}",
+            "binaryDir": "${sourceDir}/build-${presetName}",
             "environment": {
                 "CMAKE_EXPORT_COMPILE_COMMANDS": "ON" , 
                 "CMAKE_COLOR_DIAGNOSTICS": "ON",
                 "CMAKE_BUILD_TYPE": "Debug"
             }
         },
-        {"name": "default", "environment": {"CXX": "clang++"}, "inherits": ["base"]}
+        {"name": "default", "inherits": ["base"], "toolchainFile": ".toolchain.cmake"}
     ],
     "buildPresets": [{"name": "default",  "jobs": 4, "configurePreset": "default"}],
     "testPresets": [

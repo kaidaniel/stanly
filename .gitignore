@@ -1,7 +1,7 @@
 /.cache/
 /.idea/
 /.vscode/
-/build/
+/build-default/
 /build-vscode/
 /.scratch/
 .bash

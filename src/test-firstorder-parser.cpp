@@ -3,6 +3,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators_all.hpp>
 #include <vector>
+#include <format>
 
 #include "firstorder-format.h"
 #include "firstorder-syntax.h"
@@ -34,6 +35,12 @@ TEST_CASE("parse single statements", "[first-order][parsing]") {
   REQUIRE(format("{}", parse(statement)) == translation);
 }
 }  // namespace stanly::firstorder
+
+//#include <format>
+
+//template<typename T>
+//struct std::formatter<stanly::firstorder::syntax<std::string_view>::node>
+
 /*
 // TODO remove the "." from ".first-order" to no longer skip the test.
 TEST_CASE("add two elements to a record", "[.first-order][analysis]") {
