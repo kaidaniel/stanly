@@ -68,19 +68,16 @@ struct std::formatter<N, CharT> : std::formatter<std::string_view, CharT> {
   auto format(const N &n, Ctx &ctx) const {
     using stanly::metaprogramming::to_tpl;
     using stanly::metaprogramming::type_name_suffix;
-    // clang-format off
-    auto to_ctx = [out = ctx.out()]<class T>(const T &x) {
-      constexpr bool is_string_view = std::is_same_v<T, std::string_view>;
-      if constexpr(is_string_view) { return std::format_to(out, "{}", x); }
+    auto send = [out = ctx.out()](const auto &x) {
+      if constexpr (requires { std::string{x}; }) {
+        return std::format_to(out, "{}", x);
+      }
       return std::format_to(out, "[err]");
     };
-    auto to_ctx_with_delim = [&](const auto &x) {to_ctx(" "); return to_ctx(x);};
     auto join = [&](const auto &tpl_head, const auto &...tpl_tail) {
-      to_ctx(tpl_head); return (to_ctx_with_delim(tpl_tail), ...);
+      return (send(tpl_head), ((send(" "), send(tpl_tail)), ...));
     };
-    // clang-format on
-    std::formatter<std::string_view, CharT>::format(type_name_suffix<N>, ctx);
-    return std::apply(join, to_tpl(n));
+    return (send(type_name_suffix<N>), send("("), std::apply(join, to_tpl(n)), send(")"));
   }
 };
 template <>
