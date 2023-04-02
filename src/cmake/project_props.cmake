@@ -8,7 +8,6 @@ target_compile_options(project_props INTERFACE
     -fdiagnostics-show-template-tree
     -fdiagnostics-show-option
     -fdiagnostics-color=always
-    -fmessage-length=200
     "$<$<CONFIG:DEBUG>:-ffile-prefix-map=/home/kai/projects/stanly/src/=.>"
     "$<$<CONFIG:DEBUG>:-ffile-prefix-map=.build/default/=BUILD>")
 

@@ -49,9 +49,8 @@ struct fmt::formatter<std::vector<stanly::firstorder::syntax<std::string_view>::
 template <class T>
 struct std::formatter<std::vector<T>> : std::formatter<T> {
   consteval auto parse(const std::format_parse_context &ctx) {
-    element_format = std::basic_format_string<char>(
-        std::string_view(std::begin(ctx), std::end(ctx))
-      );
+    element_format =
+        std::basic_format_string<char>(std::string_view(std::begin(ctx), std::end(ctx)));
     return std::end(ctx);
   }
   template <class FormatContext>
