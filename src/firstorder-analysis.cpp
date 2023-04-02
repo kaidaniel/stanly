@@ -19,15 +19,9 @@ void transition(const SetField &n, Bindings &b) {
       &Text::set_to_bottom,
       [&](Record *record) {
         switch (const auto &field{text(b, n.field)}; field.kind()) {
-          case Kind::Bottom:
-            record->set_to_bottom();
-            break;
-          case Kind::Top:
-            record->set_to_top();
-            break;
-          case Kind::Value:
-            record->add(*field.get_constant());
-            break;
+          case Kind::Bottom: record->set_to_bottom(); break;
+          case Kind::Top: record->set_to_top(); break;
+          case Kind::Value: record->add(*field.get_constant()); break;
         }
       },
       b, n.target);

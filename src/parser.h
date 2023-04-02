@@ -73,9 +73,7 @@ template <typename S>
 std::vector<typename S::node> parse_language(std::string_view program) {
   std::vector<typename S::node> ast{};
   parser parser{program};
-  while (!parser.is_done()) {
-    ast.push_back(parser.next_node<S>());
-  }
+  while (!parser.is_done()) { ast.push_back(parser.next_node<S>()); }
   return ast;
 }
 }  // namespace stanly

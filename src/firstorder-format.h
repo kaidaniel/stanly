@@ -48,36 +48,47 @@ struct fmt::formatter<std::vector<stanly::firstorder::syntax<std::string_view>::
 };
 template <class T>
 struct std::formatter<std::vector<T>> : std::formatter<T> {
+  consteval auto parse(const std::format_parse_context &ctx) {
+    element_format = std::basic_format_string<char>(
+        std::string_view(std::begin(ctx), std::end(ctx))
+      );
+    return std::end(ctx);
+  }
   template <class FormatContext>
   auto format(const std::vector<T> &vec, FormatContext &ctx) const {
     auto out = ctx.out();
     std::format_to(out, "{}", '[');
-    for (const T &it = vec.begin(); it != vec.end(); ++it) {
-      std::formatter<T>::format(*it, ctx);
-      if (++it != vec.end()) {
-        ctx << ", ";
-      }
+    for (auto it = vec.begin();; ++it) {
+      std::format_to(out, element_format, std::make_format_args(*it));
+      if (++it == vec.end()) { break; }
+      std::format_to(out, "{}", ", ");
     }
-    std::format_to(out, "{}", ']');
-    return ctx;
+    return std::format_to(out, "{}", ']');
   }
+
+ private:
+  std::basic_format_string<char> element_format;
 };
 template <firstorder_syntax_node N, class CharT>
 struct std::formatter<N, CharT> : std::formatter<std::string_view, CharT> {
   template <class Ctx>
   auto format(const N &n, Ctx &ctx) const {
-    using stanly::metaprogramming::to_tpl;
-    using stanly::metaprogramming::type_name_suffix;
-    auto send = [out = ctx.out()](const auto &x) {
+    /*auto send = [out = ctx.out()](const auto &x) {
       if constexpr (requires { std::string{x}; }) {
         return std::format_to(out, "{}", x);
       }
       return std::format_to(out, "[err]");
-    };
-    auto join = [&](const auto &tpl_head, const auto &...tpl_tail) {
-      return (send(tpl_head), ((send(" "), send(tpl_tail)), ...));
-    };
-    return (send(type_name_suffix<N>), send("("), std::apply(join, to_tpl(n)), send(")"));
+    };*/
+    auto send = [out = ctx.out()](const auto &x) { return std::format_to(out, "{}", x); };
+    return std::apply(
+        [&](const auto &tpl_head, const auto &...tpl_tail) {
+          send(stanly::metaprogramming::type_name_suffix<N>);
+          send("(");
+          send(tpl_head);
+          ((send(" "), send(tpl_tail)), ...);
+          return send(")");
+        },
+        stanly::metaprogramming::to_tpl(n));
   }
 };
 template <>

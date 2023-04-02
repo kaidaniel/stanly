@@ -105,9 +105,7 @@ vector<string_view> parser::record() {
     assert(at(&Fields::key));
     record_v.emplace_back(text());
     to_parent();
-    if (not to_sibling()) {
-      break;
-    }
+    if (not to_sibling()) { break; }
   }
 
   return record_v;

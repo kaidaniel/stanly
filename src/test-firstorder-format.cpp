@@ -32,18 +32,10 @@ class syntax_range {
  public:
   node generate() {
     ++state;
-    if (state == 1) {
-      return node{stx::load_field{"a", "b", "c"}};
-    }
-    if (state == 2) {
-      return node{stx::set_field{"a", "b", "c"}};
-    }
-    if (state == 3) {
-      return node{stx::load_top{"a", "b"}};
-    }
-    if (state == 4) {
-      return node{};
-    }
+    if (state == 1) { return node{stx::load_field{"a", "b", "c"}}; }
+    if (state == 2) { return node{stx::set_field{"a", "b", "c"}}; }
+    if (state == 3) { return node{stx::load_top{"a", "b"}}; }
+    if (state == 4) { return node{}; }
     throw "unreachable";
   }
   [[nodiscard]] bool is_exhausted() const { return state > 3; }
