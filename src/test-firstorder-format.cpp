@@ -1,5 +1,3 @@
-#include <fmt/core.h>
-
 #include <catch2/catch_test_macros.hpp>
 #include <string_view>
 
@@ -19,24 +17,10 @@ TEST_CASE("firstorder syntax nodes correctly formatted", "[format]") {
 }
 
 TEST_CASE("firstorder syntax variant correctly formatted", "[format]") {
-  REQUIRE(fmt::format("{}", node{stx::load_field{"a", "b", "c"}}) == "variant(load_field(a b c))");
-  REQUIRE(fmt::format("{}", node{stx::set_field{"a", "b", "c"}}) == "variant(set_field(a b c))");
-  REQUIRE(fmt::format("{}", node{stx::load_text{"a", "b"}}) == "variant(load_text(a b))");
-  REQUIRE(fmt::format("{}", node{stx::load_var{"a", "b"}}) == "variant(load_var(a b))");
-  REQUIRE(fmt::format("{}", node{stx::load_top{"a", "b"}}) == "variant(load_top(a b))");
+  REQUIRE(std::format("{}", node{stx::load_field{"a", "b", "c"}}) == "inj-load_field(a b c)");
+  REQUIRE(std::format("{}", node{stx::set_field{"a", "b", "c"}}) == "inj-set_field(a b c)");
+  REQUIRE(std::format("{}", node{stx::load_text{"a", "b"}}) == "inj-load_text(a b)");
+  REQUIRE(std::format("{}", node{stx::load_var{"a", "b"}}) == "inj-load_var(a b)");
+  REQUIRE(std::format("{}", node{stx::load_top{"a", "b"}}) == "inj-load_top(a b)");
+  REQUIRE(std::format("{}", node{stx::load_record{"a", {"b", "c"}}}) == "inj-load_record(a [b, c])");
 }
-
-class syntax_range {
-  int state{0};
-
- public:
-  node generate() {
-    ++state;
-    if (state == 1) { return node{stx::load_field{"a", "b", "c"}}; }
-    if (state == 2) { return node{stx::set_field{"a", "b", "c"}}; }
-    if (state == 3) { return node{stx::load_top{"a", "b"}}; }
-    if (state == 4) { return node{}; }
-    throw "unreachable";
-  }
-  [[nodiscard]] bool is_exhausted() const { return state > 3; }
-};

@@ -1,6 +1,6 @@
 alias cf='clang-format -i src/*.cpp src/*.h'
 alias ts='ctest --preset default'
 alias wf='CLICOLOR_FORCE=1 cmake --workflow --preset default 2>&1 | tee build-default/workflow_out | bat --pager "less +F -R"'
-alias bd='CLICOLOR_FORCE=1 cmake --build build-default 2>&1 | tee build-default/build_out | python3 process_build_output.py | bat --pager "less +F -R"'
+alias bd='CLICOLOR_FORCE=1 cmake --build build-default 2>&1 | tee build-default/build_out | python3 -u process_build_output.py | bat --pager "less +F -R"'
 #updatedb
 #locate

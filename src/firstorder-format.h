@@ -48,36 +48,23 @@ struct fmt::formatter<std::vector<stanly::firstorder::syntax<std::string_view>::
 };
 template <class T>
 struct std::formatter<std::vector<T>> : std::formatter<T> {
-  consteval auto parse(const std::format_parse_context &ctx) {
-    element_format =
-        std::basic_format_string<char>(std::string_view(std::begin(ctx), std::end(ctx)));
-    return std::end(ctx);
-  }
+  using unit = std::formatter<T>;
   template <class FormatContext>
   auto format(const std::vector<T> &vec, FormatContext &ctx) const {
     auto out = ctx.out();
     std::format_to(out, "{}", '[');
-    for (auto it = vec.begin();; ++it) {
-      std::format_to(out, element_format, std::make_format_args(*it));
-      if (++it == vec.end()) { break; }
-      std::format_to(out, "{}", ", ");
+    for (auto it = vec.begin(); it != vec.end(); ++it) {
+      unit::format(*it, ctx);
+      if ((it + 1) == vec.end()) { break; }
+      unit::format(", ", ctx);
     }
     return std::format_to(out, "{}", ']');
   }
-
- private:
-  std::basic_format_string<char> element_format;
 };
 template <firstorder_syntax_node N, class CharT>
 struct std::formatter<N, CharT> : std::formatter<std::string_view, CharT> {
   template <class Ctx>
   auto format(const N &n, Ctx &ctx) const {
-    /*auto send = [out = ctx.out()](const auto &x) {
-      if constexpr (requires { std::string{x}; }) {
-        return std::format_to(out, "{}", x);
-      }
-      return std::format_to(out, "[err]");
-    };*/
     auto send = [out = ctx.out()](const auto &x) { return std::format_to(out, "{}", x); };
     return std::apply(
         [&](const auto &tpl_head, const auto &...tpl_tail) {
@@ -96,8 +83,7 @@ struct std::formatter<stanly::firstorder::syntax<std::string_view>::node>
   template <class FormatContext>
   auto format(const stanly::firstorder::syntax<std::string_view>::node &node,
               FormatContext &ctx) const {
-    std::format_to(ctx.out(), "'");  // mark as "marker to indicate type as variant<N>, not just N"
-    return std::visit([&ctx]<class N>(const N &n) { return std::formatter<N>::format(n, ctx); },
-                      node);
-  }
+    std::format_to(ctx.out(), "inj-");  // variants are like Σ-types, introduced by inj.
+    return std::visit(
+        [&ctx]<class Node>(const Node &n) {return std::formatter<Node>{}.format(n, ctx); }, node);}
 };
