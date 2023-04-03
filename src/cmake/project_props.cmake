@@ -4,12 +4,8 @@ target_compile_options(project_props INTERFACE
     -Wall 
     -Wextra 
     -Wpedantic 
-    -gsimple-template-names
-    -fdiagnostics-show-template-tree
     -fdiagnostics-show-option
-    -fdiagnostics-color=always
-    "$<$<CONFIG:DEBUG>:-ffile-prefix-map=/home/kai/projects/stanly/src/=.>"
-    "$<$<CONFIG:DEBUG>:-ffile-prefix-map=.build/default/=BUILD>")
+    -fdiagnostics-color=always)
 
 get_property(tgts DIRECTORY PROPERTY BUILDSYSTEM_TARGETS)
 foreach(tgt ${tgts})
@@ -17,7 +13,6 @@ foreach(tgt ${tgts})
         target_link_libraries(
           ${tgt} PRIVATE 
           project_props 
-          fmt 
           range-v3
           )
     endif()

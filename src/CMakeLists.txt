@@ -1,12 +1,12 @@
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 include(Catch)
 
-set_target_properties(fmt range-v3 sparta tree-sitter tree-sitter-python Catch2
+set_target_properties(range-v3 sparta tree-sitter tree-sitter-python Catch2
     PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
-foreach(test test-metaprogramming test-firstorder-format test-firstorder-parser)
+foreach(test test-firstorder-format test-firstorder-parser)
     add_executable(${test} ${test}.cpp)
-    target_link_libraries(${test} PRIVATE fmt Catch2::Catch2WithMain)
+    target_link_libraries(${test} PRIVATE Catch2::Catch2WithMain)
     catch_discover_tests(${test} EXTRA_ARGS --colour-mode ansi)
 endforeach()
 

@@ -22,5 +22,6 @@ TEST_CASE("firstorder syntax variant correctly formatted", "[format]") {
   REQUIRE(std::format("{}", node{stx::load_text{"a", "b"}}) == "inj-load_text(a b)");
   REQUIRE(std::format("{}", node{stx::load_var{"a", "b"}}) == "inj-load_var(a b)");
   REQUIRE(std::format("{}", node{stx::load_top{"a", "b"}}) == "inj-load_top(a b)");
-  REQUIRE(std::format("{}", node{stx::load_record{"a", {"b", "c"}}}) == "inj-load_record(a [b, c])");
+  REQUIRE(std::format("{}", node{stx::load_record{"a", {"b", "c"}}}) ==
+          "inj-load_record(a [b, c])");
 }

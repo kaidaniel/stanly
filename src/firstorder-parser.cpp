@@ -1,13 +1,12 @@
-#include <fmt/core.h>
-
 #include <cassert>
+#include <format>
 #include <string_view>
 
 #include "firstorder-syntax.h"
 #include "parser.h"
 
 namespace stanly {
-using fmt::format;
+using std::format;
 using std::string_view;
 using fo = firstorder::syntax<string_view>;
 template <>
