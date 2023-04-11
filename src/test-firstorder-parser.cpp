@@ -6,14 +6,12 @@
 #include "firstorder-syntax.h"
 #include "parser.h"
 
-using std::string;
 namespace stanly::firstorder {
-using stx = syntax<std::string_view>;
-constexpr auto parse = parse_language<syntax<std::string_view>>;
+using fo = syntax<std::string_view>;
 
-template <class Tpl, std::size_t... Idxs>
-bool parses_to_(std::string_view program, const Tpl& nodes, std::index_sequence<Idxs...>) {
-  std::vector parsed_vector{parse(program)};
+template <std::size_t... Idxs>
+bool parses_to_impl(std::string_view program, const auto& nodes, std::index_sequence<Idxs...>) {
+  std::vector parsed_vector{parse_language<fo>(program)};
   if (sizeof...(Idxs) != parsed_vector.size()) {
     constexpr std::string_view msg{"expected {} nodes, but parsed {}: {}"};
     UNSCOPED_INFO(std::format(msg, sizeof...(Idxs), parsed_vector.size(), parsed_vector));
@@ -34,35 +32,29 @@ bool parses_to_(std::string_view program, const Tpl& nodes, std::index_sequence<
   return (is_type(std::get<Idxs>(nodes), Idxs) && ...);
 }
 
-template <class... Arg>
-bool parses_to__(std::string_view program, const std::tuple<Arg...>& nodes) {
-  auto idxs = std::make_index_sequence<std::tuple_size_v<std::decay_t<decltype(nodes)>>>{};
-  return parses_to_(program, nodes, idxs);
-}
-
-template <class... Node>
-bool parses_to(std::string_view program, const Node&... node) {
-  return parses_to__(program, std::tuple<Node...>{node...});
+bool parses_to(std::string_view program, const auto&... node) {
+  auto idxs = std::make_index_sequence<sizeof...(node)>{};
+  return parses_to_impl(program, std::tuple<decltype(node)...>{node...}, idxs);
 }
 TEST_CASE("single statements", "[firstorder][parsing]") {
-  CHECK(parses_to("x=y", stx::load_var{"x", "y"}));
-  CHECK(parses_to("x=1", stx::load_text{"x", "1"}));
-  CHECK(parses_to("y=[]", stx::load_top{"y", "[]"}));
-  CHECK(parses_to("z = {}", stx::load_record{"z", {}}));
-  CHECK(parses_to("z = {1: 'x', 3: {}}", stx::load_record{"z", {"1", "3"}}));
-  CHECK(parses_to("abc = {1: 'x'}", stx::load_record{"abc", {"1"}}));
-  CHECK(parses_to("abc_def = {1,2,3}", stx::load_top{"abc_def", "{1,2,3}"}));
-  CHECK(parses_to("a[b] = x", stx::set_field{"x", "a", "b"}));
-  CHECK(parses_to("x = a[b]", stx::load_field{"x", "a", "b"}));
-  CHECK(parses_to("x = y", stx::load_var{"x", "y"}));
-  CHECK(parses_to("x = 1", stx::load_text{"x", "1"}));
+  CHECK(parses_to("x=y", fo::load_var{"x", "y"}));
+  CHECK(parses_to("x=1", fo::load_text{"x", "1"}));
+  CHECK(parses_to("y=[]", fo::load_top{"y", "[]"}));
+  CHECK(parses_to("z = {}", fo::load_record{"z", {}}));
+  CHECK(parses_to("z = {1: 'x', 3: {}}", fo::load_record{"z", {"1", "3"}}));
+  CHECK(parses_to("abc = {1: 'x'}", fo::load_record{"abc", {"1"}}));
+  CHECK(parses_to("abc_def = {1,2,3}", fo::load_top{"abc_def", "{1,2,3}"}));
+  CHECK(parses_to("a[b] = x", fo::set_field{"x", "a", "b"}));
+  CHECK(parses_to("x = a[b]", fo::load_field{"x", "a", "b"}));
+  CHECK(parses_to("x = y", fo::load_var{"x", "y"}));
+  CHECK(parses_to("x = 1", fo::load_text{"x", "1"}));
 }
 
 TEST_CASE("multiple statements", "[firstorder][parsing]") {
-  CHECK(parses_to("z={}; x=a[b]", stx::load_record{"z", {}}, stx::load_field{"x", "a", "b"}));
-  CHECK(parses_to("x=y; y=[]", stx::load_var{"x", "y"}, stx::load_top{"y", "[]"}));
-  CHECK(parses_to("x=y\ny=[]\nz=1", stx::load_var{"x", "y"}, stx::load_top{"y", "[]"},
-                  stx::load_text{"z", "1"}));
+  CHECK(parses_to("z={}; x=a[b]", fo::load_record{"z", {}}, fo::load_field{"x", "a", "b"}));
+  CHECK(parses_to("x=y; y=[]", fo::load_var{"x", "y"}, fo::load_top{"y", "[]"}));
+  CHECK(parses_to("x=y\ny=[]\nz=1", fo::load_var{"x", "y"}, fo::load_top{"y", "[]"},
+                  fo::load_text{"z", "1"}));
 }
 
 }  // namespace stanly::firstorder
