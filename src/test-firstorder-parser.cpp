@@ -10,34 +10,9 @@ using std::string;
 namespace stanly::firstorder {
 using stx = syntax<std::string_view>;
 constexpr auto parse = parse_language<syntax<std::string_view>>;
-template <class Node>
-bool parses_to(std::string_view program, const Node& node) {
-  auto parsed_variant{parse(program).at(0)};
-  try {
-    Node parsed_node{std::get<Node>(parsed_variant)};
-    return to_tpl(parsed_node) == to_tpl(node);
-  } catch (std::bad_variant_access&) {
-    constexpr std::string_view msg{"expected \"{}\" to parse to 'inj-{}', but got '{}'."};
-    UNSCOPED_INFO(std::format(msg, program, node, parsed_variant));
-    return false;
-  }
-}
-TEST_CASE("single statements", "[firstorder][parsing]") {
-  CHECK(parses_to("x=y", stx::load_var{"x", "y"}));
-  CHECK(parses_to("x=1", stx::load_text{"x", "1"}));
-  CHECK(parses_to("y=[]", stx::load_top{"y", "[]"}));
-  CHECK(parses_to("z = {}", stx::load_record{"z", {}}));
-  CHECK(parses_to("z = {1: 'x', 3: {}}", stx::load_record{"z", {"1", "3"}}));
-  CHECK(parses_to("abc = {1: 'x'}", stx::load_record{"abc", {"1"}}));
-  CHECK(parses_to("abc_def = {1,2,3}", stx::load_top{"abc_def", "{1,2,3}"}));
-  CHECK(parses_to("a[b] = x", stx::set_field{"x", "a", "b"}));
-  CHECK(parses_to("x = a[b]", stx::load_field{"x", "a", "b"}));
-  CHECK(parses_to("x = y", stx::load_var{"x", "y"}));
-  CHECK(parses_to("x = 1", stx::load_text{"x", "1"}));
-}
 
 template <class Tpl, std::size_t... Idxs>
-bool parses_to_multiple_(std::string_view program, const Tpl& nodes, std::index_sequence<Idxs...>) {
+bool parses_to_(std::string_view program, const Tpl& nodes, std::index_sequence<Idxs...>) {
   std::vector parsed_vector{parse(program)};
   if (sizeof...(Idxs) != parsed_vector.size()) {
     constexpr std::string_view msg{"expected {} nodes, but parsed {}: {}"};
@@ -59,28 +34,37 @@ bool parses_to_multiple_(std::string_view program, const Tpl& nodes, std::index_
   return (is_type(std::get<Idxs>(nodes), Idxs) && ...);
 }
 
-template<class... Arg>
-bool parses_to(std::string_view program, const std::tuple<Arg...>& nodes) {
+template <class... Arg>
+bool parses_to__(std::string_view program, const std::tuple<Arg...>& nodes) {
   auto idxs = std::make_index_sequence<std::tuple_size_v<std::decay_t<decltype(nodes)>>>{};
-  return parses_to_multiple_(program, nodes, idxs);
+  return parses_to_(program, nodes, idxs);
 }
 
-TEST_CASE("multiple statements2", "[firstorder][parsing]") {
-  CHECK(parses_to("z={}; x=a[b]",
-                           std::tuple{stx::load_record{"z", {}}, stx::load_field{"x", "a", "b"}}));
+template <class... Node>
+bool parses_to(std::string_view program, const Node&... node) {
+  return parses_to__(program, std::tuple<Node...>{node...});
 }
-TEST_CASE("multiple statements", "[.firstorder][parsing]") {
-  auto v =
-      GENERATE(chunk(2, values({
-                            // clang-format off
-    "x=a[b]; z={}; y={2}",  "[inj-load_field(x a b), inj-load_record(z []), inj-load_top(y {2})]",
-    "x=y; y=[]",            "[inj-load_var(x y), inj-load_top(y [])]",
-    "x=y\ny=[]",            "[inj-load_var(x y), inj-load_top(y [])]",
-                            // clang-format on
-                        })));
-  auto statement = parse(v[0]);
-  REQUIRE(std::format("{}", statement) == v[1]);
+TEST_CASE("single statements", "[firstorder][parsing]") {
+  CHECK(parses_to("x=y", stx::load_var{"x", "y"}));
+  CHECK(parses_to("x=1", stx::load_text{"x", "1"}));
+  CHECK(parses_to("y=[]", stx::load_top{"y", "[]"}));
+  CHECK(parses_to("z = {}", stx::load_record{"z", {}}));
+  CHECK(parses_to("z = {1: 'x', 3: {}}", stx::load_record{"z", {"1", "3"}}));
+  CHECK(parses_to("abc = {1: 'x'}", stx::load_record{"abc", {"1"}}));
+  CHECK(parses_to("abc_def = {1,2,3}", stx::load_top{"abc_def", "{1,2,3}"}));
+  CHECK(parses_to("a[b] = x", stx::set_field{"x", "a", "b"}));
+  CHECK(parses_to("x = a[b]", stx::load_field{"x", "a", "b"}));
+  CHECK(parses_to("x = y", stx::load_var{"x", "y"}));
+  CHECK(parses_to("x = 1", stx::load_text{"x", "1"}));
 }
+
+TEST_CASE("multiple statements", "[firstorder][parsing]") {
+  CHECK(parses_to("z={}; x=a[b]", stx::load_record{"z", {}}, stx::load_field{"x", "a", "b"}));
+  CHECK(parses_to("x=y; y=[]", stx::load_var{"x", "y"}, stx::load_top{"y", "[]"}));
+  CHECK(parses_to("x=y\ny=[]\nz=1", stx::load_var{"x", "y"}, stx::load_top{"y", "[]"},
+                  stx::load_text{"z", "1"}));
+}
+
 }  // namespace stanly::firstorder
 
 // #include <format>
