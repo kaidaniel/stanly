@@ -27,6 +27,7 @@ fo::node parser::next_node<fo>() {
   assert(at(&Symbols::assignment));
   to_child();
   assert(at(&Fields::left));
+
   if (at(&Symbols::identifier)) {
     fo::repr left{text()};
     to_sibling();
@@ -45,13 +46,16 @@ fo::node parser::next_node<fo>() {
       auto [variable, field] = unpack_subscript();
       return fo::load_field{left, variable, field};
     }
-  } else if (at(&Symbols::subscript)) {
+  }
+
+  if (at(&Symbols::subscript)) {
     auto [variable, field] = unpack_subscript();
     to_parent();
     to_sibling();
     assert(at(&Fields::right, &Symbols::identifier));
     return fo::set_field{text(), variable, field};
   };
+
   throw std::domain_error(format("assigning ({} {}) not implemented", type(), text()));
 }
 }  // namespace stanly
