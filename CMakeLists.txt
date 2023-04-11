@@ -6,7 +6,7 @@ find_package(Boost 1.81 REQUIRED)
 find_package(sparta REQUIRED)  # defines target 'sparta'
 find_package(Catch2 REQUIRED)  # defines target 'Catch2::Catch2WithMain'
 find_package(tree-sitter REQUIRED)  # defines target 'tree-sitter' and 'tree-sitter-python'
-find_package(range-v3 REQUIRED)
+# find_package(range-v3 REQUIRED)
 
 enable_testing()
 add_subdirectory(src)

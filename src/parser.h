@@ -31,12 +31,14 @@ class parser {
     TSSymbol pair;
     TSSymbol list;
     TSSymbol set;
+    TSSymbol subscript;
   } symbols_;
   struct Fields {
     TSFieldId left;
     TSFieldId right;
     TSFieldId key;
     TSFieldId value;
+    TSFieldId subscript;
   } fields_;
 
   [[nodiscard]] const TSNode &root() const;
@@ -52,6 +54,7 @@ class parser {
   bool at(const TSFieldId Fields::*field);
   bool at(const TSFieldId Fields::*field, const TSSymbol Symbols::*symbol);
   [[nodiscard]] std::string type() const;
+  [[nodiscard]] std::unique_ptr<char> s_expr() const;
   std::string_view text();
   std::vector<std::string_view> record();
 
@@ -65,7 +68,6 @@ class parser {
 
   template <typename S>
   typename S::node next_node();
-
   [[nodiscard]] bool is_done() const;
 };
 

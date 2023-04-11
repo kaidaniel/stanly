@@ -19,10 +19,10 @@ TEST_CASE("parse single statements", "[first-order][parsing]") {
         "y=[]",                 "[inj-load_top(y [])]",
         "z = {}",               "[inj-load_record(z [])]",
         "z = {1: 'x', 3: {}}",  "[inj-load_record(z [1, 3])]",
-      //  "abc = {1: 'x'}",       "ast[load_record(abc [1])]",
-      // "abc_def = {1,2,3}",    "ast[load_top(abc_def [])]",
-      //  "a[b] = x",             "ast[set_field(x a b)",
-      //  "x = a[b]",             "ast[load_field(x a b)",
+        "abc = {1: 'x'}",       "[inj-load_record(abc [1])]",
+        "abc_def = {1,2,3}",    "[inj-load_top(abc_def {1,2,3})]",
+        "a[b] = x",             "[inj-set_field(x a b)]",
+        "x = a[b]",             "[inj-load_field(x a b)]",
         "x = y",                "[inj-load_var(x y)]",
         "x = 1",                "[inj-load_text(x 1)]" 
     })));

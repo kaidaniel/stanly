@@ -1,6 +1,8 @@
 #include <cassert>
 #include <format>
+#include <iostream>
 #include <string_view>
+#include <tuple>
 
 #include "firstorder-syntax.h"
 #include "parser.h"
@@ -11,23 +13,45 @@ using std::string_view;
 using fo = firstorder::syntax<string_view>;
 template <>
 fo::node parser::next_node<fo>() {
+  auto unpack_subscript = [this] {
+    to_child();
+    assert(at(&Fields::value, &Symbols::identifier));
+    fo::repr variable{text()};
+    to_sibling();
+    assert(at(&Fields::subscript, &Symbols::identifier));
+    fo::repr field{text()};
+    return std::tuple{variable, field};
+  };
   assert(at(&Symbols::expression_statement));
   to_child();
   assert(at(&Symbols::assignment));
   to_child();
-  assert(at(&Fields::left, &Symbols::identifier));
-  fo::repr left{text()};
-  to_sibling();
-  assert(at(&Fields::right));
-  fo::repr right{text()};
-  // clang-format off
-  if (at(&Symbols::identifier)){ return fo::load_var   {left, right}; }
-  if (at(&Symbols::string)){     return fo::load_text  {left, right}; }
-  if (at(&Symbols::integer)){    return fo::load_text  {left, right}; }
-  if (at(&Symbols::dictionary)){ return fo::load_record{left, record()}; }
-  if (at(&Symbols::set)){        return fo::load_record{left, record()}; }
-  if (at(&Symbols::list)){       return fo::load_top   {left, right}; }
-  // clang-format on
-  throw std::domain_error(format("assigning ({} {}) not implemented", type(), right));
+  assert(at(&Fields::left));
+  if (at(&Symbols::identifier)) {
+    fo::repr left{text()};
+    to_sibling();
+    assert(at(&Fields::right));
+    fo::repr right{text()};
+    if (at(&Symbols::identifier)) { return fo::load_var{left, right}; }
+    if (at(&Symbols::string)) { return fo::load_text{left, right}; }
+    if (at(&Symbols::integer)) { return fo::load_text{left, right}; }
+    if (at(&Symbols::dictionary)) { return fo::load_record{left, record()}; }
+    if (at(&Symbols::set) || at(&Symbols::list)) {
+      to_child();
+      while (to_sibling()) {};  // ignore children.
+      return fo::load_top{left, right};
+    }
+    if (at(&Symbols::subscript)) {
+      auto [variable, field] = unpack_subscript();
+      return fo::load_field{left, variable, field};
+    }
+  } else if (at(&Symbols::subscript)) {
+    auto [variable, field] = unpack_subscript();
+    to_parent();
+    to_sibling();
+    assert(at(&Fields::right, &Symbols::identifier));
+    return fo::set_field{text(), variable, field};
+  };
+  throw std::domain_error(format("assigning ({} {}) not implemented", type(), text()));
 }
 }  // namespace stanly

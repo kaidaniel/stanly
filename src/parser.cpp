@@ -43,12 +43,14 @@ parser::parser(string_view program)
           .pair = symbol("pair"),
           .list = symbol("list"),
           .set = symbol("set"),
+          .subscript = symbol("subscript"),
       }),
       fields_({
           .left = field("left"),
           .right = field("right"),
           .key = field("key"),
           .value = field("value"),
+          .subscript = field("subscript"),
       }) {
   assert(at(&Symbols::module));
   to_child();
@@ -91,6 +93,9 @@ bool parser::at(const TSFieldId Fields::*field, const TSSymbol Symbols::*symbol)
   return at(field) and at(symbol);
 }
 [[nodiscard]] string parser::type() const { return ts_node_type(node()); }
+[[nodiscard]] std::unique_ptr<char> parser::s_expr() const {
+  return std::unique_ptr<char>{ts_node_string(node())};
+}
 string_view parser::text() {
   return {std::begin(program_) + ts_node_start_byte(node()),
           std::begin(program_) + ts_node_end_byte(node())};

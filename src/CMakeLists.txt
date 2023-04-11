@@ -1,7 +1,7 @@
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 include(Catch)
 
-set_target_properties(range-v3 sparta tree-sitter tree-sitter-python Catch2
+set_target_properties(sparta tree-sitter tree-sitter-python Catch2
     PROPERTIES EXCLUDE_FROM_ALL TRUE)
 add_library(project_props INTERFACE)
 target_compile_features(project_props INTERFACE cxx_std_20)
