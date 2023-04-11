@@ -39,5 +39,7 @@ add_library(tree-sitter-python
   ${tree_sitter_python_dir}/src/parser.c
   ${tree_sitter_python_dir}/src/scanner.cc)
 
+target_link_libraries(tree-sitter-python PUBLIC tree-sitter)
+
 set_target_properties(tree-sitter-python PROPERTIES
   C_STANDARD 99 C_STANDARD_REQUIRED ON POSITION_INDEPENDENT_CODE ON)

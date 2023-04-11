@@ -16,7 +16,7 @@
         },
         {"name": "default", "inherits": ["base"], "toolchainFile": ".toolchain.cmake"}
     ],
-    "buildPresets": [{"name": "default",  "jobs": 4, "configurePreset": "default"}],
+    "buildPresets": [{"name": "default",  "jobs": 14, "configurePreset": "default"}],
     "testPresets": [
         {"name": "default", "configurePreset": "default", "output": {"outputOnFailure": true}},
         {"name": "summary", "inherits": ["default"], "output": {"outputOnFailure": false}}

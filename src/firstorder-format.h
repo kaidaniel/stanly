@@ -59,9 +59,9 @@ auto to_tpl(auto &&object) noexcept {
   }
 }
 
-template <class T>
-struct std::formatter<std::vector<T>> : std::formatter<T> {
-  std::formatter<T> unit{};
+template <class T, class CharT>
+struct std::formatter<std::vector<T>, CharT> : std::formatter<T, CharT> {
+  std::formatter<T, CharT> unit{};
   template <class FormatContext>
   auto format(const std::vector<T> &vec, FormatContext &ctx) const {
     auto out = ctx.out();
@@ -69,7 +69,7 @@ struct std::formatter<std::vector<T>> : std::formatter<T> {
     for (auto it = vec.begin(); it != vec.end(); ++it) {
       unit.format(*it, ctx);
       if ((it + 1) == vec.end()) { break; }
-      unit.format(", ", ctx);
+      std::format_to(out, "{}", ", ");
     }
     return std::format_to(out, "{}", ']');
   }
@@ -81,7 +81,7 @@ template <syntax_node N, class CharT>
 struct std::formatter<N, CharT> : std::formatter<std::string_view, CharT> {
   template <class Ctx>
   auto format(const N &n, Ctx &ctx) const {
-    auto send = [out = ctx.out()](const auto &x) { return std::format_to(out, "{}", x); };
+    auto send = [out = ctx.out()]<class T>(const T &x) { return std::format_to(out, "{}", x); };
     return std::apply(
         [&](const auto &tpl_head, const auto &...tpl_tail) {
           send(type_name_suffix<N>);
@@ -93,9 +93,9 @@ struct std::formatter<N, CharT> : std::formatter<std::string_view, CharT> {
         to_tpl(n));
   }
 };
-template <class... Ts>
+template <class... Ts, class CharT>
   requires(syntax_node<Ts> && ...)
-struct std::formatter<std::variant<Ts...>> : std::formatter<std::string_view> {
+struct std::formatter<std::variant<Ts...>, CharT> : std::formatter<std::string_view> {
   template <class FormatContext>
   auto format(const stanly::firstorder::syntax<std::string_view>::node &node,
               FormatContext &ctx) const {

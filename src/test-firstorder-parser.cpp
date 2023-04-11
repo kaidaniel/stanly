@@ -14,23 +14,23 @@ constexpr auto parse = parse_language<syntax<std::string_view>>;
 TEST_CASE("parse single statements", "[first-order][parsing]") {
   // clang-format off
     auto v = GENERATE(chunk(2, values({
-        "x=y",                  "ast[load_var(x y)]",
-        "x=1",                  "ast[load_text(x 1)]",
-        "y=[]",                 "ast[load_top(y [])]",
-        "z = {}",               "ast[load_record(z [])]",
-        "z = {1: 'x', 3: {}}",  "ast[load_record(z [1, 3])]",
-        "abc = {1: 'x'}",       "ast[load_record(abc [1])]",
+        "x=y",                  "[inj-load_var(x y)]",
+        "x=1",                  "[inj-load_text(x 1)]",
+        "y=[]",                 "[inj-load_top(y [])]",
+        "z = {}",               "[inj-load_record(z [])]",
+        "z = {1: 'x', 3: {}}",  "[inj-load_record(z [1, 3])]",
+      //  "abc = {1: 'x'}",       "ast[load_record(abc [1])]",
       // "abc_def = {1,2,3}",    "ast[load_top(abc_def [])]",
       //  "a[b] = x",             "ast[set_field(x a b)",
       //  "x = a[b]",             "ast[load_field(x a b)",
-        "x = y",                "ast[load_var(x y)]",
-        "x = 1",                "ast[load_text(x 1)]" 
+        "x = y",                "[inj-load_var(x y)]",
+        "x = 1",                "[inj-load_text(x 1)]" 
     })));
   // clang-format on
   const string &statement = v[0];
   const string &translation = v[1];
   auto stmt = parse(statement);
-  // REQUIRE(std::format("{}", stmt) == translation);
+  REQUIRE(std::format("{}", stmt) == translation);
 }
 }  // namespace stanly::firstorder
 
