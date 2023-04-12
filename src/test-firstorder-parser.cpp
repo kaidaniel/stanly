@@ -6,6 +6,7 @@
 
 namespace stanly::firstorder {
 using std::bad_variant_access;
+using std::decay_t;
 using std::format;
 using std::get;
 using std::index_sequence;
@@ -22,32 +23,32 @@ using load_record = stx::load_record;
 using load_field = stx::load_field;
 using set_field = stx::set_field;
 
-template <size_t... Idxs>
-bool parses_to_impl(string_view program, const auto& nodes, index_sequence<Idxs...>) {
+bool parses_to(string_view program, const auto&... nodes) {
+  tuple<decltype(nodes)...> node_tpl{nodes...};
   auto parsed_vector{parse<stx>(program)};
-  if (sizeof...(Idxs) != parsed_vector.size()) {
+  constexpr size_t n_nodes{sizeof...(nodes)};
+  if (n_nodes != parsed_vector.size()) {
     constexpr string_view msg{"expected {} nodes, but parsed {}: {}"};
-    UNSCOPED_INFO(std::format(msg, sizeof...(Idxs), parsed_vector.size(), parsed_vector));
+    UNSCOPED_INFO(format(msg, n_nodes, parsed_vector.size(), parsed_vector));
     return false;
   }
-  auto is_type = [&]<class N>(const N& node, const size_t i) -> bool {
-    try {
-      N parsed_node{get<N>(parsed_vector.at(i))};
-      bool const result{to_tpl(parsed_node) == to_tpl(node)};
-      if (!result) { UNSCOPED_INFO(format("expected {}, but got {}", node, parsed_node)); }
-      return result;
-    } catch (bad_variant_access&) {
-      constexpr string_view msg{"statement #{} of \"{}\" parsed to wrong node '{}'"};
-      UNSCOPED_INFO(format(msg, i + 1, program, parsed_vector.at(i)));
-      return false;
-    }
-  };
-  return (is_type(get<Idxs>(nodes), Idxs) && ...);
-}
 
-bool parses_to(string_view program, const auto&... node) {
-  constexpr auto idxs = make_index_sequence<sizeof...(node)>{};
-  return parses_to_impl(program, tuple<decltype(node)...>{node...}, idxs);
+  auto parses_to_impl = [&]<size_t... Idx>(index_sequence<Idx...>) -> bool {
+    auto vector_index_equals = [&](const size_t idx, const auto& node_i) -> bool {
+      try {
+        auto parsed_node{get<decay_t<decltype(node_i)>>(parsed_vector.at(idx))};
+        bool const result{to_tpl(parsed_node) == to_tpl(node_i)};
+        if (!result) { UNSCOPED_INFO(format("expected {}, but got {}", node_i, parsed_node)); }
+        return result;
+      } catch (bad_variant_access&) {
+        constexpr string_view msg{"statement #{} of \"{}\" parsed to wrong node '{}'"};
+        UNSCOPED_INFO(format(msg, idx + 1, program, parsed_vector.at(idx)));
+        return false;
+      }
+    };
+    return (vector_index_equals(Idx, get<Idx>(node_tpl)) && ...);
+  };
+  return parses_to_impl(make_index_sequence<n_nodes>{});
 }
 
 TEST_CASE("single statements", "[firstorder][parsing]") {
@@ -72,14 +73,8 @@ TEST_CASE("multiple statements", "[firstorder][parsing]") {
 
 }  // namespace stanly::firstorder
 
-// #include <format>
-
-// template<typename T>
-// struct std::formatter<stanly::firstorder::syntax<std::string_view>::node>
-
 /*
-// TODO remove the "." from ".first-order" to no longer skip the test.
-TEST_CASE("add two elements to a record", "[.first-order][analysis]") {
+TEST_CASE("add two elements to a record", "[first-order][analysis]") {
   const auto graph = parse(
       R"python(
 e = 1
