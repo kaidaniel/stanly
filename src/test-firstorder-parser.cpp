@@ -24,25 +24,24 @@ using load_field = stx::load_field;
 using set_field = stx::set_field;
 
 template <class T, class... Ts>
-constexpr static size_t idx_of_type = -1;
+constexpr static size_t idx = -1;
 template <class T, class... Tail>
-constexpr static size_t idx_of_type<T, T, Tail...> = 0;
+constexpr static size_t idx<T, T, Tail...> = 0;
 template <class T, class Head, class... Tail>
-constexpr static size_t idx_of_type<T, Head, Tail...> = idx_of_type<T, Tail...> + 1;
+constexpr static size_t idx<T, Head, Tail...> = idx<T, Tail...> + 1;
 
 template <class... T>
 bool parses_to(string_view program, T... nodes) {
   auto parsed_vector{parse<stx>(program)};
-  std::tuple nodes_tpl{nodes...};
   constexpr size_t n_nodes{sizeof...(T)};
   if (n_nodes != parsed_vector.size()) {
     constexpr string_view msg{"expected {} nodes, but parsed {}: {}"};
     UNSCOPED_INFO(format(msg, n_nodes, parsed_vector.size(), parsed_vector));
     return false;
   }
-  auto vector_index_equals = [&](const size_t idx, const auto& node_i) -> bool {
+  auto vector_index_equals = [&]<class N>(const size_t idx, const N& node_i) -> bool {
     try {
-      auto parsed_node{get<decay_t<decltype(node_i)>>(parsed_vector.at(idx))};
+      auto parsed_node{get<N>(parsed_vector.at(idx))};
       bool const result{to_tpl(parsed_node) == to_tpl(node_i)};
       if (!result) { UNSCOPED_INFO(format("expected {}, but got {}", node_i, parsed_node)); }
       return result;
@@ -52,7 +51,7 @@ bool parses_to(string_view program, T... nodes) {
       return false;
     }
   };
-  return (vector_index_equals(idx_of_type<T, T...>, get<T>(nodes_tpl)) && ...);
+  return (vector_index_equals(idx<T, T...>, get<T>(tuple{nodes...})) && ...);
 }
 
 TEST_CASE("single statements", "[firstorder][parsing]") {
