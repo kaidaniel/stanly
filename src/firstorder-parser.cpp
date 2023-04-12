@@ -12,14 +12,14 @@ using std::format;
 using std::string_view;
 using fo = firstorder::syntax<string_view>;
 template <>
-fo::node parser::next_node<fo>() {
+fo::node parser::parse_statement<fo>() {
   auto unpack_subscript = [this] {
     to_child();
     assert(at(&Fields::value, &Symbols::identifier));
-    fo::repr variable{text()};
+    fo::repr const variable{text()};
     to_sibling();
     assert(at(&Fields::subscript, &Symbols::identifier));
-    fo::repr field{text()};
+    fo::repr const field{text()};
     return std::tuple{variable, field};
   };
   assert(at(&Symbols::expression_statement));
@@ -29,10 +29,10 @@ fo::node parser::next_node<fo>() {
   assert(at(&Fields::left));
 
   if (at(&Symbols::identifier)) {
-    fo::repr left{text()};
+    fo::repr const left{text()};
     to_sibling();
     assert(at(&Fields::right));
-    fo::repr right{text()};
+    fo::repr const right{text()};
     if (at(&Symbols::identifier)) { return fo::load_var{left, right}; }
     if (at(&Symbols::string)) { return fo::load_text{left, right}; }
     if (at(&Symbols::integer)) { return fo::load_text{left, right}; }

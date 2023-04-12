@@ -115,9 +115,13 @@ vector<string_view> parser::record() {
 
   return record_v;
 }
-
-[[nodiscard]] bool parser::is_done() const {
-  return ts_node_is_null(ts_node_next_named_sibling(node())) &&
-         ts_node_named_child_count(node()) == 0;
-};
+void parser::save() {
+  assert(!save_.has_value());
+  save_ = ts_tree_cursor_copy(&cursor_);
+}
+void parser::reset() {
+  assert(save_.has_value());
+  cursor_ = *save_;
+  save_ = std::nullopt;
+}
 }  // namespace stanly

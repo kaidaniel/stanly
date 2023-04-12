@@ -6,6 +6,7 @@
 #include <cstring>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -40,15 +41,14 @@ class parser {
     TSFieldId value;
     TSFieldId subscript;
   } fields_;
+  std::optional<TSTreeCursor> save_{std::nullopt};
 
   [[nodiscard]] const TSNode &root() const;
   [[nodiscard]] TSSymbol symbol(const std::string &name) const;
   [[nodiscard]] TSFieldId field(const std::string &name) const;
   bool skip_concrete_nodes();
   bool to_child();
-  bool to_sibling();
   bool to_parent();
-  [[nodiscard]] TSNode node() const;
   [[nodiscard]] TSSymbol symbol() const;
   bool at(const TSSymbol Symbols::*symbol);
   bool at(const TSFieldId Fields::*field);
@@ -67,15 +67,22 @@ class parser {
   parser operator=(parser &&) = delete;
 
   template <typename S>
-  typename S::node next_node();
-  [[nodiscard]] bool is_done() const;
+  typename S::node parse_statement();
+  bool to_sibling();
+  [[nodiscard]] TSNode node() const;
+  void reset();
+  void save();
 };
 
 template <typename S>
-std::vector<typename S::node> parse_language(std::string_view program) {
+std::vector<typename S::node> parse(std::string_view program) {
   std::vector<typename S::node> ast{};
   parser parser{program};
-  while (!parser.is_done()) { ast.push_back(parser.next_node<S>()); }
+  do {
+    parser.save();
+    ast.push_back(parser.parse_statement<S>());
+    parser.reset();
+  } while (parser.to_sibling());
   return ast;
 }
 }  // namespace stanly
