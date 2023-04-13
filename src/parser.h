@@ -6,7 +6,6 @@
 #include <cstring>
 #include <functional>
 #include <memory>
-#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -41,7 +40,6 @@ class parser {
     TSFieldId value;
     TSFieldId subscript;
   } fields_;
-  std::optional<TSTreeCursor> save_{std::nullopt};
 
   [[nodiscard]] const TSNode &root() const;
   [[nodiscard]] TSSymbol symbol(const std::string &name) const;
@@ -57,21 +55,21 @@ class parser {
   [[nodiscard]] std::unique_ptr<char> s_expr() const;
   std::string_view text();
   std::vector<std::string_view> record();
+  [[nodiscard]] TSNode node() const;
 
  public:
-  explicit parser(std::string_view program);
   ~parser();
   parser(const parser &) = delete;
   parser operator=(const parser &) = delete;
   parser(parser &&) = delete;
   parser operator=(parser &&) = delete;
 
+  explicit parser(std::string_view program);
   template <typename S>
-  typename S::node parse_statement();
+  [[nodiscard]] typename S::node parse_statement();
   bool to_sibling();
-  [[nodiscard]] TSNode node() const;
-  void reset();
-  void save();
+  [[nodiscard]] TSTreeCursor copy_cursor() const;
+  void set_cursor(TSTreeCursor);
 };
 
 template <typename S>
@@ -79,9 +77,9 @@ std::vector<typename S::node> parse(std::string_view program) {
   std::vector<typename S::node> ast{};
   parser parser{program};
   do {
-    parser.save();
+    auto cursor = parser.copy_cursor();
     ast.push_back(parser.parse_statement<S>());
-    parser.reset();
+    parser.set_cursor(cursor);
   } while (parser.to_sibling());
   return ast;
 }

@@ -3,14 +3,8 @@
 #include <tree_sitter/api.h>
 
 #include <cassert>
-#include <concepts>
-#include <cstring>
 #include <functional>
 #include <memory>
-#include <stdexcept>
-#include <string>
-#include <string_view>
-#include <variant>
 #include <vector>
 
 extern "C" {
@@ -69,7 +63,7 @@ parser::~parser() {
 }
 bool parser::skip_concrete_nodes() {
   while (not ts_node_is_named(node()) and
-         (to_sibling() or to_child())) { /* side-effects in loop head */
+         (to_sibling() or to_child())) { /* side effects in loop head */
   };
   return true;
 }
@@ -115,13 +109,6 @@ vector<string_view> parser::record() {
 
   return record_v;
 }
-void parser::save() {
-  assert(!save_.has_value());
-  save_ = ts_tree_cursor_copy(&cursor_);
-}
-void parser::reset() {
-  assert(save_.has_value());
-  cursor_ = *save_;
-  save_ = std::nullopt;
-}
+[[nodiscard]] TSTreeCursor parser::copy_cursor() const { return ts_tree_cursor_copy(&cursor_); }
+void parser::set_cursor(TSTreeCursor cursor) { cursor_ = cursor; };
 }  // namespace stanly

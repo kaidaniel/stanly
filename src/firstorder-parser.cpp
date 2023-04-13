@@ -1,8 +1,6 @@
 #include <cassert>
 #include <format>
-#include <iostream>
 #include <string_view>
-#include <tuple>
 
 #include "firstorder-syntax.h"
 #include "parser.h"

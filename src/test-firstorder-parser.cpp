@@ -23,7 +23,7 @@ using load_record = stx::load_record;
 using load_field = stx::load_field;
 using set_field = stx::set_field;
 
-template <class T, class... Ts>
+template <class... Ts>
 constexpr static size_t idx = -1;
 template <class T, class... Tail>
 constexpr static size_t idx<T, T, Tail...> = 0;
