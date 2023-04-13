@@ -2,9 +2,12 @@
 
 #include "firstorder-format.h"
 #include "firstorder-syntax.h"
-#include "parser.h"
 
-namespace stanly::firstorder {
+namespace stanly {
+template <class T>
+std::vector<typename T::node> parse(std::string_view program);
+
+namespace firstorder {
 using std::bad_variant_access;
 using std::decay_t;
 using std::format;
@@ -54,7 +57,7 @@ bool parses_to(string_view program, T... nodes) {
   return (vector_index_equals(idx<T, T...>, get<T>(tuple{nodes...})) && ...);
 }
 
-TEST_CASE("single statements", "[firstorder][parsing]") {
+TEST_CASE("parse firstorder single statements", "[firstorder][parser]") {
   CHECK(parses_to("x=y", load_var{"x", "y"}));
   CHECK(parses_to("x=1", load_text{"x", "1"}));
   CHECK(parses_to("y=[]", load_top{"y", "[]"}));
@@ -68,13 +71,13 @@ TEST_CASE("single statements", "[firstorder][parsing]") {
   CHECK(parses_to("x = 1", load_text{"x", "1"}));
 }
 
-TEST_CASE("multiple statements", "[firstorder][parsing]") {
+TEST_CASE("parse firstorder multiple statements", "[firstorder][parser]") {
   CHECK(parses_to("z={}; x=a[b]", load_record{"z", {}}, load_field{"x", "a", "b"}));
   CHECK(parses_to("x=y; y=[]", load_var{"x", "y"}, load_top{"y", "[]"}));
   CHECK(parses_to("x=y\ny=[]\nz=1", load_var{"x", "y"}, load_top{"y", "[]"}, load_text{"z", "1"}));
 }
-
-}  // namespace stanly::firstorder
+}  // namespace firstorder
+}  // namespace stanly
 
 /*
 TEST_CASE("add two elements to a record", "[first-order][analysis]") {

@@ -13,7 +13,7 @@ target_compile_options(project_props INTERFACE
     -fdiagnostics-color=always)
 target_include_directories(project_props INTERFACE ${Boost_INCLUDE_DIRS})
 
-foreach(test test-firstorder-format test-firstorder-parser)
+foreach(test test-format test-parser)
     add_executable(${test} ${test}.cpp)
     target_link_libraries(${test} PRIVATE project_props Catch2::Catch2WithMain)
     catch_discover_tests(${test} EXTRA_ARGS --colour-mode ansi)
@@ -22,7 +22,7 @@ endforeach()
 add_library(parser parser.cpp)
 target_link_libraries(parser PUBLIC tree-sitter tree-sitter-python project_props)
 
-add_library(firstorder firstorder-parser.cpp)
+add_library(firstorder firstorder-parse-statement.cpp)
 target_link_libraries(firstorder PUBLIC parser)
 
-target_link_libraries(test-firstorder-parser PRIVATE firstorder)
+target_link_libraries(test-parser PRIVATE firstorder)
