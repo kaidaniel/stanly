@@ -57,7 +57,7 @@ template <class CharT, class Ctx>
 struct format {
   Ctx *ctx_;
   template <class T>
-  decltype(ctx_->out()) fmt(const T &t) {
+  void fmt(const T &t) {
     if constexpr (instance_of<T, std::vector>) {
       fmt("[");
       for (const auto &el : t) {
@@ -81,9 +81,11 @@ struct format {
     } else {
       std::formatter<T, CharT>{}.format(t, *ctx_);
     }
+  }
+  decltype(auto) operator()(const auto &t) {
+    fmt(t);
     return ctx_->out();
   }
-  decltype(auto) operator()(const auto &t) { return fmt(t); }
 };
 template <class Ctx>
 format(Ctx *ctx) -> format<typename Ctx::char_type, Ctx>;
