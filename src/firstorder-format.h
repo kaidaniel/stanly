@@ -39,72 +39,65 @@ auto to_tpl(auto &&object) noexcept {
   }
 }
 
+template <class x, template <class...> class T>
+constexpr static bool is_instance_of = false;
+template <class... xs, template <class...> class T>
+constexpr static bool is_instance_of<T<xs...>, T> = true;
+template <class T>
+concept tuple_instance = is_instance_of<T, std::tuple>;
+template <class T>
+concept vector_instance = is_instance_of<T, std::vector>;
+template <class T>
+concept variant_instance = is_instance_of<T, std::variant>;
+template <class T>
+concept syntax_node = stanly::contains<stanly::firstorder::syntax<std::string_view>, T>;
+
 template <class CharT, class Ctx>
 struct format {
   Ctx &ctx_;
   template <class T>
-  decltype(auto) join(const std::vector<T> &vec) {
-    for (const auto &el : vec) {
-      (*this)(el);
-      if (&el != &*(vec.end() - 1)) { (*this)(", "); }
+  decltype(auto) join(const T &t) {
+    if constexpr (vector_instance<T>) {
+      for (const auto &el : t) {
+        fmt(el);
+        if (&el != &*(t.end() - 1)) { fmt(", "); }
+      }
+      return ctx_.out();
+    } else if constexpr (tuple_instance<T>) {
+      return std::apply(
+          [&](const auto &x, const auto &...xs) { return fmt(x), ((fmt(" "), fmt(xs)), ...); }, t);
+    } else {
+      throw "can't be joined";
     }
-    return ctx_.out();
-  }
-  template <class... Ts>
-  decltype(auto) join(const std::tuple<Ts...> &tpl) {
-    auto sep = [this](const auto &head, const auto &...tail) {
-      return (*this)(head), (((*this)(" "), (*this)(tail)), ...);
-    };
-    return std::apply(sep, tpl);
   }
   template <class T>
-  decltype(auto) operator()(const T &t) {
-    using type = std::conditional_t<std::same_as<std::decay_t<T>, char *>, std::string_view, T>;
-    const type &tt = t;
-    return std::formatter<type, CharT>{}.format(tt, ctx_);
+  decltype(ctx_.out()) fmt(const T &t) {
+    if constexpr (vector_instance<T>) {
+      return fmt("["), join(t), fmt("]");
+    } else if constexpr (variant_instance<T>) {
+      return fmt("inj-"), std::visit(*this, t);
+    } else if constexpr (tuple_instance<T>) {
+      return fmt("("), join(t), fmt(")");
+    } else if constexpr (std::same_as<std::decay_t<T>, char *>) {
+      return std::formatter<std::string_view, CharT>{}.format(std::string_view{t}, ctx_);
+    } else if constexpr (syntax_node<T>) {
+      return fmt(type_name<T>), fmt(to_tpl(t));
+    } else {
+      return std::formatter<T, CharT>{}.format(t, ctx_);
+    }
   }
-  decltype(auto) operator()(const auto &t, const auto &...ts) {
-    return (*this)(t), ((*this)(ts), ...);
-  }
-  template <class T>
-  decltype(auto) operator()(const std::vector<T> &v) {
-    return (*this)("["), join(v), (*this)("]");
-  }
-  template <class... Ts>
-  decltype(auto) operator()(const std::tuple<Ts...> &t) {
-    return (*this)("("), join(t), (*this)(")");
-  }
-  template <class... Ts>
-  decltype(auto) operator()(const std::variant<Ts...> &v) {
-    // variants are like Σ-types, introduced by inj.
-    return (*this)("inj-"), std::visit(*this, v);
-  }
+  decltype(auto) operator()(const auto &t) { return fmt(t); }
 };
 template <class Ctx>
 format(Ctx &ctx) -> format<typename Ctx::char_type, Ctx>;
 }  // namespace stanly
 
 template <class T, class CharT>
-struct std::formatter<std::vector<T>, CharT> : std::formatter<T, CharT> {
+  requires stanly::tuple_instance<T> || stanly::vector_instance<T> || stanly::variant_instance<T> ||
+           stanly::syntax_node<T>
+struct std::formatter<T, CharT> : std::formatter<std::string_view, CharT> {
   template <class Ctx>
-  auto format(const std::vector<T> &vec, Ctx &ctx) const {
-    return stanly::format{ctx}(vec);
-  }
-};
-template <class T>
-concept syntax_node = stanly::contains<stanly::firstorder::syntax<std::string_view>, T>;
-
-template <syntax_node SyntaxNode, class CharT>
-struct std::formatter<SyntaxNode, CharT> : std::formatter<std::string_view, CharT> {
-  template <class Ctx>
-  auto format(const SyntaxNode &syntax_node, Ctx &ctx) const {
-    return stanly::format{ctx}(stanly::type_name<SyntaxNode>, stanly::to_tpl(syntax_node));
-  }
-};
-template <syntax_node... SyntaxNodes, class CharT>
-struct std::formatter<std::variant<SyntaxNodes...>, CharT> : std::formatter<std::string_view> {
-  template <class Ctx>
-  auto format(const std::variant<SyntaxNodes...> &variant, Ctx &ctx) const {
-    return stanly::format{ctx}(variant);
+  auto format(const T &t, Ctx &ctx) const {
+    return stanly::format{ctx}(t);
   }
 };
