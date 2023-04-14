@@ -1,5 +1,4 @@
 #pragma once
-
 /*
 #include <string_view>
 
@@ -42,10 +41,11 @@ static_assert(::stanly::abstract_domain<abstract_domain>);
 template <class Repr>
 struct syntax {
   // clang-format off
+  using record = std::conditional_t<std::same_as<Repr, std::string_view>, std::vector<Repr>, Repr>;
   struct set_field   { Repr rhs; Repr target; Repr field; };
   struct load_field  { Repr lhs; Repr source; Repr field; };
   struct load_text   { Repr lhs; Repr literal; };
-  struct load_record { Repr lhs; std::vector<Repr> literal; };
+  struct load_record { Repr lhs; record record; };
   struct load_var    { Repr lhs; Repr rhs; };
   struct load_top    { Repr lhs; Repr literal; };
   // clang-format on
