@@ -57,36 +57,31 @@ template <class CharT, class Ctx>
 struct format {
   Ctx *ctx_;
   template <class T>
-  decltype(ctx_->out()) join(const T &t) {
-    if constexpr (instance_of<T, std::vector>) {
-      for (const auto &el : t) {
-        fmt(el);
-        if (&el != &*(t.end() - 1)) { fmt(", "); }
-      }
-      return ctx_->out();
-    } else if constexpr (instance_of<T, std::tuple>) {
-      return std::apply(
-          [this](const auto &x, const auto &...xs) { return fmt(x), ((fmt(" "), fmt(xs)), ...); },
-          t);
-    } else {
-      throw "can't be joined";
-    }
-  }
-  template <class T>
   decltype(ctx_->out()) fmt(const T &t) {
     if constexpr (instance_of<T, std::vector>) {
-      return fmt("["), join(t), fmt("]");
+      fmt("[");
+      for (const auto &el : t) {
+        if (&el != &*(t.begin())) { fmt(", "); }
+        fmt(el);
+      }
+      fmt("]");
     } else if constexpr (instance_of<T, std::variant>) {
-      return fmt("inj-"), std::visit(*this, t);
+      fmt("inj-");
+      std::visit(*this, t);
     } else if constexpr (instance_of<T, std::tuple>) {
-      return fmt("("), join(t), fmt(")");
+      fmt("(");
+      std::apply([this](const auto &x, const auto &...xs) { fmt(x), ((fmt(" "), fmt(xs)), ...); },
+                 t);
+      fmt(")");
     } else if constexpr (std::same_as<std::decay_t<T>, char *>) {
-      return std::formatter<std::string_view, CharT>{}.format(std::string_view{t}, *ctx_);
+      std::formatter<std::string_view, CharT>{}.format(std::string_view{t}, *ctx_);
     } else if constexpr (syntax_node<T>) {
-      return fmt(type_name<T>), fmt(to_tpl(t));
+      fmt(type_name<T>);
+      fmt(to_tpl(t));
     } else {
-      return std::formatter<T, CharT>{}.format(t, *ctx_);
+      std::formatter<T, CharT>{}.format(t, *ctx_);
     }
+    return ctx_->out();
   }
   decltype(auto) operator()(const auto &t) { return fmt(t); }
 };
