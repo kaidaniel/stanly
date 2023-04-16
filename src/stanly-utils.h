@@ -46,6 +46,8 @@ auto to_tpl(auto &&object) noexcept {
 #ifndef NDEBUG
   std::cerr << std::format("Unreachable. {}\n", msg);
   std::abort();
+#else
+  __builtin_unreachable()
 #endif
 }
 

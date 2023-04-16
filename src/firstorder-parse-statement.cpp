@@ -17,12 +17,16 @@ stx::node parse_statement<stx>(TSTreeCursor* cursor, string_view program) {
   auto symbol = [&] { return ts_node_symbol(node()); };
   auto field = [&] { return ts_tree_cursor_current_field_id(cursor); };
   auto goto_child = [&] { return ts_tree_cursor_goto_first_child(cursor); };
+
   auto goto_sibling = [&] { return ts_tree_cursor_goto_next_sibling(cursor); };
   auto goto_parent = [&] { return ts_tree_cursor_goto_parent(cursor); };
 
   auto text = [&](const TSNode node) -> string_view {
     return {std::begin(program) + ts_node_start_byte(node),
             std::begin(program) + ts_node_end_byte(node)};
+  };
+  auto child_text = [&](TSFieldId field) {
+    return text(ts_node_child_by_field_id(ts_tree_cursor_current_node(cursor), field));
   };
 
   auto parse_dictionary_keys = [&] {
@@ -33,7 +37,7 @@ stx::node parse_statement<stx>(TSTreeCursor* cursor, string_view program) {
     while (goto_sibling() && text(node()) != "}") {  // dictionary(... <pair(...)> ...)
       // pair(key:expression ":" value:expression)
       stanly_assert(symbol() == symbols.pair);
-      dictionary_keys.emplace_back(text(ts_node_child_by_field_id(node(), fields.key)));
+      dictionary_keys.emplace_back(child_text(fields.key));
       goto_sibling();  // dictionary(... <','> ...)
     }
     goto_parent();  // <dictionary(...)>

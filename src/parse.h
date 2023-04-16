@@ -11,10 +11,10 @@ TSLanguage* tree_sitter_python(void);
 }
 
 namespace stanly::parser {
-TSSymbol lookup_symbol(std::string_view name) {
+inline TSSymbol lookup_symbol(std::string_view name) {
   return ts_language_symbol_for_name(tree_sitter_python(), name.data(), name.length(), true);
 }
-TSFieldId lookup_field(std::string_view name) {
+inline TSFieldId lookup_field(std::string_view name) {
   return ts_language_field_id_for_name(tree_sitter_python(), name.data(), name.size());
 }
 struct symbols {
@@ -37,6 +37,8 @@ struct fields {
   TSFieldId value = lookup_field("value");
   TSFieldId subscript = lookup_field("subscript");
 } const fields{};
+
+struct Cursor {};
 
 template <typename S>
 typename S::node parse_statement(TSTreeCursor*, std::string_view);
