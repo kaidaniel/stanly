@@ -1,4 +1,3 @@
-#include <format>
 #include <string_view>
 #include <vector>
 
@@ -7,7 +6,6 @@
 #include "stanly-utils.h"
 
 namespace stanly {
-using std::format;
 using std::string_view;
 using std::vector;
 using stx = firstorder::syntax<string_view>;

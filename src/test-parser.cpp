@@ -11,7 +11,7 @@ namespace firstorder {
 using std::bad_variant_access;
 using std::decay_t;
 using std::format;
-using std::get;
+using std::get_if;
 using std::index_sequence;
 using std::make_index_sequence;
 using std::size_t;
@@ -43,16 +43,14 @@ bool parses_to(string_view program, T... nodes) {
     return false;
   }
   auto vector_index_equals = [&]<class N>(const size_t idx, const N& node_i) -> bool {
-    try {
-      auto parsed_node{get<N>(parsed_vector.at(idx))};
-      bool const result{to_tpl(parsed_node) == to_tpl(node_i)};
-      if (!result) { UNSCOPED_INFO(format("expected {}, but got {}", node_i, parsed_node)); }
+    if (auto* parsed_node = get_if<N>(&parsed_vector.at(idx))) {
+      bool const result = {to_tpl(*parsed_node) == to_tpl(node_i)};
+      if (!result) { UNSCOPED_INFO(format("expected {}, but got {}", node_i, *parsed_node)); }
       return result;
-    } catch (bad_variant_access&) {
-      constexpr string_view msg{"statement #{} of \"{}\" parsed to wrong node '{}'"};
-      UNSCOPED_INFO(format(msg, idx + 1, program, parsed_vector.at(idx)));
-      return false;
     }
+    constexpr string_view msg{"statement #{} of \"{}\" parsed to wrong node '{}'"};
+    UNSCOPED_INFO(format(msg, idx + 1, program, parsed_vector.at(idx)));
+    return false;
   };
   return (vector_index_equals(idx<T, T...>, get<T>(tuple{nodes...})) && ...);
 }
