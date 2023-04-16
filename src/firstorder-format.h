@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "firstorder-syntax.h"
+#include "stanly-utils.h"
 
 namespace stanly {
 
@@ -16,28 +17,6 @@ constexpr std::string_view type_name = []<class S = T> {
   return sv.substr(sv.find_last_of(':') + 1);
 }
 ();
-
-auto to_tpl(auto &&object) noexcept {
-  using type = std::decay_t<decltype(object)>;
-  if constexpr (requires(type t) { type{{}, {}, {}, {}, {}}; }) {
-    auto &&[p1, p2, p3, p4, p5] = object;
-    return std::make_tuple(p1, p2, p3, p4, p5);
-  } else if constexpr (requires(type t) { type{{}, {}, {}, {}}; }) {
-    auto &&[p1, p2, p3, p4] = object;
-    return std::make_tuple(p1, p2, p3, p4);
-  } else if constexpr (requires(type t) { type{{}, {}, {}}; }) {
-    auto &&[p1, p2, p3] = object;
-    return std::make_tuple(p1, p2, p3);
-  } else if constexpr (requires(type t) { type{{}, {}}; }) {
-    auto &&[p1, p2] = object;
-    return std::make_tuple(p1, p2);
-  } else if constexpr (requires(type t) { type{{}}; }) {
-    auto &&[p1] = object;
-    return std::make_tuple(p1);
-  } else {
-    return std::make_tuple();
-  }
-}
 
 template <class x, template <class...> class T>
 constexpr static bool is_instance_of = false;

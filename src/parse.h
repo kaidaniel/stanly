@@ -1,9 +1,10 @@
 #pragma once
 #include <tree_sitter/api.h>
 
-#include <cassert>
 #include <exception>
 #include <string>
+
+#include "stanly-utils.h"
 
 extern "C" {
 TSLanguage* tree_sitter_python(void);
@@ -48,7 +49,7 @@ std::vector<typename S::node> parse(std::string_view program) {
     throw std::domain_error{"couldn't set treesitter language"};
   };
   auto* tree = ts_parser_parse_string(parser, nullptr, program.begin(), program.size());
-  assert(ts_node_symbol(ts_tree_root_node(tree)) == parser::symbols.module);
+  stanly_assert(ts_node_symbol(ts_tree_root_node(tree)) == parser::symbols.module);
   auto cursor = ts_tree_cursor_new(ts_node_named_child(ts_tree_root_node(tree), 0));
 
   std::vector<typename S::node> statements{};
