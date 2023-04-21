@@ -19,6 +19,12 @@ inline void stanly_assert(bool condition, std::string_view msg = "",
 #endif
 
 namespace stanly {
+template <class T>
+constexpr std::string_view type_name = []<class S = T> {
+  std::string_view sv{__PRETTY_FUNCTION__, sizeof(__PRETTY_FUNCTION__) - 2};
+  return sv.substr(sv.find_last_of(':') + 1);
+}
+();
 
 auto to_tpl(auto &&object) noexcept {
   using type = std::decay_t<decltype(object)>;

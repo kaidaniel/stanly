@@ -4,19 +4,17 @@
 #include <exception>
 #include <string>
 
+#include "any"
 #include "stanly-utils.h"
+#include "syntax.h"
 
 extern "C" {
 TSLanguage* tree_sitter_python(void);
 }
 
-namespace stanly::parser {
-inline TSSymbol lookup_symbol(std::string_view name) {
-  return ts_language_symbol_for_name(tree_sitter_python(), name.data(), name.length(), true);
-}
-inline TSFieldId lookup_field(std::string_view name) {
-  return ts_language_field_id_for_name(tree_sitter_python(), name.data(), name.size());
-}
+namespace stanly {
+auto lookup_symbol(std::string_view) -> TSSymbol;
+auto lookup_field(std::string_view) -> TSFieldId;
 struct symbols {
   TSSymbol expression_statement = lookup_symbol("expression_statement");
   TSSymbol assignment = lookup_symbol("assignment");
@@ -37,34 +35,50 @@ struct fields {
   TSFieldId value = lookup_field("value");
   TSFieldId subscript = lookup_field("subscript");
 } const fields{};
+class parser {
+  template <class T, auto Deleter>
+  using uptr = std::unique_ptr<T, decltype([](T* t) { Deleter(t); })>;
+  std::string_view program_;
+  uptr<TSParser, ts_parser_delete> parser_;
+  uptr<TSTree, ts_tree_delete> tree_;
+  uptr<TSTreeCursor, ts_tree_cursor_delete> cursor_;
 
-struct Cursor {};
+ public:
+  parser(std::string_view program);
+  TSTreeCursor* cursor();
+};
+class cursor {
+  TSTreeCursor* cursor_;
+  std::string_view program_;
+  auto node() -> TSNode;
+  auto text(const TSNode) -> std::string_view;
 
-template <typename S>
-typename S::node parse_statement(TSTreeCursor*, std::string_view);
-}  // namespace stanly::parser
+ public:
+  cursor(TSTreeCursor*, std::string_view);
+  auto field() -> TSFieldId;
+  auto symbol() -> TSSymbol;
+  auto goto_child() -> bool;
+  auto goto_sibling() -> bool;
+  auto goto_parent() -> bool;
+  auto text() -> std::string_view;
+  auto text(TSFieldId) -> std::string_view;
+};
+
+}  // namespace stanly
 namespace stanly {
-template <typename S>
+template <syntax S>
+typename S::node parse_statement(TSTreeCursor*, std::string_view);
+template <syntax S>
 std::vector<typename S::node> parse(std::string_view program) {
-  auto* parser = ts_parser_new();
-  if (!ts_parser_set_language(parser, tree_sitter_python())) {
-    throw std::domain_error{"couldn't set treesitter language"};
-  };
-  auto* tree = ts_parser_parse_string(parser, nullptr, program.begin(), program.size());
-  stanly_assert(ts_node_symbol(ts_tree_root_node(tree)) == parser::symbols.module);
-  auto cursor = ts_tree_cursor_new(ts_node_named_child(ts_tree_root_node(tree), 0));
-
-  std::vector<typename S::node> statements{};
+  parser prsr{program};
+  std::vector<typename S::node> nodes{};
   while (true) {
-    auto next_named_sibling = ts_node_next_named_sibling(ts_tree_cursor_current_node(&cursor));
-    statements.push_back(parser::parse_statement<S>(&cursor, program));
-    if (ts_node_is_null(next_named_sibling)) { break; }
-    ts_tree_cursor_reset(&cursor, next_named_sibling);
+    auto sibling = ts_node_next_named_sibling(ts_tree_cursor_current_node(prsr.cursor()));
+    nodes.push_back(parse_statement<S>(prsr.cursor(), program));
+    if (ts_node_is_null(sibling)) { break; }
+    ts_tree_cursor_reset(prsr.cursor(), sibling);
   }
-
-  ts_tree_delete(tree);
-  ts_parser_delete(parser);
-  ts_tree_cursor_delete(&cursor);
-  return statements;
+  return nodes;
 }
+
 }  // namespace stanly

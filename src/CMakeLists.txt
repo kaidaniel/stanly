@@ -19,7 +19,7 @@ foreach(test test-format test-parser)
     catch_discover_tests(${test} EXTRA_ARGS --colour-mode ansi)
 endforeach()
 
-add_library(parser firstorder-parse-statement.cpp)
+add_library(parser firstorder-cursor.cpp parser.cpp)
 target_link_libraries(parser PUBLIC tree-sitter tree-sitter-python project_props)
 
 target_link_libraries(test-parser PRIVATE parser)

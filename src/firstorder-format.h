@@ -11,13 +11,6 @@
 
 namespace stanly {
 
-template <class T>
-constexpr std::string_view type_name = []<class S = T> {
-  std::string_view sv{__PRETTY_FUNCTION__, sizeof(__PRETTY_FUNCTION__) - 2};
-  return sv.substr(sv.find_last_of(':') + 1);
-}
-();
-
 template <class x, template <class...> class T>
 constexpr static bool is_instance_of = false;
 template <class... xs, template <class...> class T>

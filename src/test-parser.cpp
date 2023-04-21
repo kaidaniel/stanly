@@ -2,13 +2,11 @@
 
 #include "firstorder-format.h"
 #include "firstorder-syntax.h"
+#include "parse.h"
 
 namespace stanly {
-template <class T>
-std::vector<typename T::node> parse(std::string_view program);
 
 namespace firstorder {
-using std::bad_variant_access;
 using std::decay_t;
 using std::format;
 using std::get_if;
