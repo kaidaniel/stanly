@@ -6,7 +6,6 @@
 
 #include "any"
 #include "stanly-utils.h"
-#include "syntax.h"
 
 extern "C" {
 TSLanguage* tree_sitter_python(void);
@@ -38,7 +37,6 @@ struct fields {
 class parser {
   template <class T, auto Deleter>
   using uptr = std::unique_ptr<T, decltype([](T* t) { Deleter(t); })>;
-  std::string_view program_;
   uptr<TSParser, ts_parser_delete> parser_;
   uptr<TSTree, ts_tree_delete> tree_;
   uptr<TSTreeCursor, ts_tree_cursor_delete> cursor_;
@@ -66,15 +64,15 @@ class cursor {
 
 }  // namespace stanly
 namespace stanly {
-template <syntax S>
-typename S::node parse_statement(TSTreeCursor*, std::string_view);
-template <syntax S>
-std::vector<typename S::node> parse(std::string_view program) {
+template <class Result>
+Result parse_statement(TSTreeCursor*, std::string_view);
+template <class Node>
+std::vector<Node> parse(std::string_view program) {
   parser prsr{program};
-  std::vector<typename S::node> nodes{};
+  std::vector<Node> nodes{};
   while (true) {
     auto sibling = ts_node_next_named_sibling(ts_tree_cursor_current_node(prsr.cursor()));
-    nodes.push_back(parse_statement<S>(prsr.cursor(), program));
+    nodes.push_back(parse_statement<Node>(prsr.cursor(), program));
     if (ts_node_is_null(sibling)) { break; }
     ts_tree_cursor_reset(prsr.cursor(), sibling);
   }

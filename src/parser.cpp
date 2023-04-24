@@ -26,8 +26,7 @@ auto cursor::text(TSFieldId field) -> std::string_view {
 }
 
 parser::parser(std::string_view program)
-    : program_{program},
-      parser_{[] {
+    : parser_{[] {
         auto* p = ts_parser_new();
         ts_parser_set_language(p, tree_sitter_python());
         return p;

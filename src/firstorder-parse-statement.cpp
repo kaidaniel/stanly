@@ -38,7 +38,7 @@ struct firstorder_cursor : public cursor {
     stanly_assert(symbol() == symbols.identifier);
     return {variable, text()};
   };
-  stx::node operator()() {
+  stx::node parse_statement() {
     stanly_assert(symbol() == symbols.expression_statement);
     goto_child();
     stanly_assert(symbol() == symbols.assignment);
@@ -80,8 +80,8 @@ struct firstorder_cursor : public cursor {
   }
 };
 template <>
-firstorder::syntax<string_view>::node parse_statement<firstorder::syntax<string_view>>(
+firstorder::syntax<string_view>::node parse_statement<firstorder::syntax<string_view>::node>(
     TSTreeCursor* cursor, string_view program) {
-  return firstorder_cursor{cursor, program}();
+  return firstorder_cursor{cursor, program}.parse_statement();
 };
 }  // namespace stanly

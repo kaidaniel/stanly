@@ -4,9 +4,7 @@
 #include "firstorder-syntax.h"
 #include "parse.h"
 
-namespace stanly {
-
-namespace firstorder {
+namespace stanly::firstorder {
 using std::decay_t;
 using std::format;
 using std::get_if;
@@ -33,7 +31,7 @@ constexpr static size_t idx<T, Head, Tail...> = idx<T, Tail...> + 1;
 
 template <class... T>
 bool parses_to(string_view program, T... nodes) {
-  auto parsed_vector{parse<stx>(program)};
+  auto parsed_vector{parse<stx::node>(program)};
   constexpr size_t n_nodes{sizeof...(T)};
   if (n_nodes != parsed_vector.size()) {
     constexpr string_view msg{"expected {} nodes, but parsed {}: {}"};
@@ -72,8 +70,7 @@ TEST_CASE("parse firstorder multiple statements", "[firstorder][parser]") {
   CHECK(parses_to("x=y; y=[]", load_var{"x", "y"}, load_top{"y", "[]"}));
   CHECK(parses_to("x=y\ny=[]\nz=1", load_var{"x", "y"}, load_top{"y", "[]"}, load_text{"z", "1"}));
 }
-}  // namespace firstorder
-}  // namespace stanly
+}  // namespace stanly::firstorder
 
 /*
 TEST_CASE("add two elements to a record", "[first-order][analysis]") {
