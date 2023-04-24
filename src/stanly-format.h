@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "stanly-utils.h"
+#include "syntax.h"
 
 namespace stanly {
 
@@ -19,7 +20,7 @@ concept instance_of = is_instance_of<x, T>;
 
 template <class T>
 concept formatted_type = instance_of<T, std::vector> || instance_of<T, std::tuple> ||
-                         instance_of<T, std::variant> || is_syntax_node<T>::value;
+                         instance_of<T, std::variant> || syntax_node<T>;
 
 template <class CharT, class Ctx>
 struct format {
@@ -43,7 +44,7 @@ struct format {
       fmt(")");
     } else if constexpr (std::same_as<std::decay_t<T>, char *>) {
       std::formatter<std::string_view, CharT>{}.format(std::string_view{t}, *ctx_);
-    } else if constexpr (is_syntax_node<T>::value) {
+    } else if constexpr (syntax_node<T>) {
       fmt(type_name<T>);
       fmt(to_tpl(t));
     } else {

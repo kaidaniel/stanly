@@ -65,6 +65,6 @@ struct is_syntax_node<T> {
   constexpr static bool value = true;
 };
 
-static_assert(syntax<firstorder::syntax<idx>::node>);
+static_assert(packed_syntax<firstorder::syntax<idx>::node>);
 static_assert(syntax<firstorder::syntax<std::string_view>::node>);
 }  // namespace stanly

@@ -22,7 +22,7 @@ namespace stanly {
 template <class T, class x>
 constexpr bool contains = false;
 template <class x, class... xs>
-constexpr bool contains<std::variant<xs...>, x> = std::disjunction_v<std::__2::is_same<x, xs>...>;
+constexpr bool contains<std::variant<xs...>, x> = std::disjunction_v<std::is_same<x, xs>...>;
 
 template <template <class> class Predicate, class Variant>
 struct holds_for_all_types_of;
@@ -41,6 +41,18 @@ constexpr std::string_view type_name = []<class S = T> {
   return sv.substr(sv.find_last_of(':') + 1);
 }
 ();
+
+template <class T, class Variant>
+struct search_same_name;
+
+template <class T, class Variant>
+using search_same_name_t = typename search_same_name<T, Variant>::type;
+
+template <class T, class x, class... xs>
+struct search_same_name<T, std::variant<x, xs...>> {
+  using type =
+      std::conditional<type_name<x> == type_name<T>, x, search_same_name_t<T, std::variant<xs...>>>;
+};
 
 auto to_tpl(auto &&object) noexcept {
   using type = std::decay_t<decltype(object)>;
