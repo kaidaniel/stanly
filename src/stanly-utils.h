@@ -19,6 +19,22 @@ inline void stanly_assert(bool condition, std::string_view msg = "",
 #endif
 
 namespace stanly {
+template <class T, class x>
+constexpr bool contains = false;
+template <class x, class... xs>
+constexpr bool contains<std::variant<xs...>, x> = std::disjunction_v<std::__2::is_same<x, xs>...>;
+
+template <template <class> class Predicate, class Variant>
+struct holds_for_all_types_of;
+
+template <template <class> class Predicate, class... xs>
+struct holds_for_all_types_of<Predicate, std::variant<xs...>> {
+  constexpr static bool value = (Predicate<xs>::value && ...);
+};
+
+template <template <class> class Predicate, class Variant>
+concept all = holds_for_all_types_of<Predicate, Variant>::value;
+
 template <class T>
 constexpr std::string_view type_name = []<class S = T> {
   std::string_view sv{__PRETTY_FUNCTION__, sizeof(__PRETTY_FUNCTION__) - 2};

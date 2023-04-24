@@ -6,7 +6,6 @@
 #include <variant>
 #include <vector>
 
-#include "firstorder-syntax.h"
 #include "stanly-utils.h"
 
 namespace stanly {
@@ -16,14 +15,11 @@ constexpr static bool is_instance_of = false;
 template <class... xs, template <class...> class T>
 constexpr static bool is_instance_of<T<xs...>, T> = true;
 template <class x, template <class...> class T>
-
 concept instance_of = is_instance_of<x, T>;
-template <class T>
-concept syntax_node = contains<firstorder::syntax<std::string_view>, T>;
 
 template <class T>
 concept formatted_type = instance_of<T, std::vector> || instance_of<T, std::tuple> ||
-                         instance_of<T, std::variant> || syntax_node<T>;
+                         instance_of<T, std::variant> || is_syntax_node<T>::value;
 
 template <class CharT, class Ctx>
 struct format {
@@ -47,7 +43,7 @@ struct format {
       fmt(")");
     } else if constexpr (std::same_as<std::decay_t<T>, char *>) {
       std::formatter<std::string_view, CharT>{}.format(std::string_view{t}, *ctx_);
-    } else if constexpr (syntax_node<T>) {
+    } else if constexpr (is_syntax_node<T>::value) {
       fmt(type_name<T>);
       fmt(to_tpl(t));
     } else {

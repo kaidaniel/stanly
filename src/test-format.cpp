@@ -2,8 +2,8 @@
 #include <string_view>
 #include <vector>
 
-#include "firstorder-format.h"
 #include "firstorder-syntax.h"
+#include "stanly-format.h"
 
 using stx = stanly::firstorder::syntax<std::string_view>;
 using load_var = stx::load_var;

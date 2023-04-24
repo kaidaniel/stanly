@@ -11,7 +11,7 @@ target_compile_options(project_props INTERFACE
     -Wpedantic 
     -fdiagnostics-show-option
     -fdiagnostics-color=always)
-target_include_directories(project_props INTERFACE ${Boost_INCLUDE_DIRS})
+#target_include_directories(project_props INTERFACE ${Boost_INCLUDE_DIRS})
 
 foreach(test test-format test-parse)
     add_executable(${test} ${test}.cpp)

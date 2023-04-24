@@ -11,6 +11,7 @@
 #include <variant>
 #include <vector>
 
+#include "stanly-utils.h"
 #include "syntax.h"
 namespace stanly {
 /*
@@ -49,9 +50,21 @@ struct syntax {
   struct load_var    { Repr lhs; Repr rhs; };
   struct load_top    { Repr lhs; Repr literal; };
   // clang-format on
-  using repr = Repr;
   using node = std::variant<set_field, load_field, load_text, load_record, load_var, load_top>;
 };
-static_assert(stanly::syntax<firstorder::syntax<stanly::idx>>);
-
 }  // namespace stanly::firstorder
+namespace stanly {
+template <class T>
+  requires contains<firstorder::syntax<idx>::node, T>
+struct is_syntax_node<T> {
+  constexpr static bool value = true;
+};
+template <class T>
+  requires contains<firstorder::syntax<std::string_view>::node, T>
+struct is_syntax_node<T> {
+  constexpr static bool value = true;
+};
+
+static_assert(syntax<firstorder::syntax<idx>::node>);
+static_assert(syntax<firstorder::syntax<std::string_view>::node>);
+}  // namespace stanly

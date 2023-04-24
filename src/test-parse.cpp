@@ -1,8 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "firstorder-format.h"
 #include "firstorder-syntax.h"
 #include "parse.h"
+#include "stanly-format.h"
 
 namespace stanly::firstorder {
 using std::decay_t;
