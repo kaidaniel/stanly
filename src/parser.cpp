@@ -31,12 +31,8 @@ parser::parser(std::string_view program)
         ts_parser_set_language(p, tree_sitter_python());
         return p;
       }()},
-      tree_{[program, this] {
-        return ts_parser_parse_string(parser_.get(), nullptr, program.begin(), program.size());
-      }()},
-      cursor_{[this] {
-        return new TSTreeCursor(
-            ts_tree_cursor_new(ts_node_named_child(ts_tree_root_node(tree_.get()), 0)));
-      }()} {}
-TSTreeCursor* parser::cursor() { return cursor_.get(); }
+      tree_{ts_parser_parse_string(parser_.get(), nullptr, program.begin(), program.size())},
+      cursor_{ts_tree_cursor_new(ts_node_named_child(ts_tree_root_node(tree_.get()), 0))} {}
+TSTreeCursor* parser::cursor() { return &cursor_; }
+parser::~parser() { ts_tree_cursor_delete(cursor()); };
 }  // namespace stanly

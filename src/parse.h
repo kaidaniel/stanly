@@ -34,22 +34,28 @@ struct fields {
   TSFieldId value = lookup_field("value");
   TSFieldId subscript = lookup_field("subscript");
 } const fields{};
+
 class parser {
   template <class T, auto Deleter>
   using uptr = std::unique_ptr<T, decltype([](T* t) { Deleter(t); })>;
   uptr<TSParser, ts_parser_delete> parser_;
   uptr<TSTree, ts_tree_delete> tree_;
-  uptr<TSTreeCursor, ts_tree_cursor_delete> cursor_;
+  TSTreeCursor cursor_;
 
  public:
   parser(std::string_view program);
+  ~parser();
+  parser(const parser&) = delete;
+  parser& operator=(const parser&) = delete;
+  parser(parser&&) = delete;
+  parser& operator=(parser&&) = delete;
   TSTreeCursor* cursor();
 };
 class cursor {
   TSTreeCursor* cursor_;
   std::string_view program_;
   auto node() -> TSNode;
-  auto text(const TSNode) -> std::string_view;
+  auto text(TSNode) -> std::string_view;
 
  public:
   cursor(TSTreeCursor*, std::string_view);
