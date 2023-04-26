@@ -1,3 +1,5 @@
+#pragma once
+
 #include <sys/types.h>
 
 #include <forward_list>
@@ -10,25 +12,23 @@
 #include <variant>
 #include <vector>
 
+#include "stanly-utils.h"
 #include "syntax.h"
 
 namespace stanly {
 
-template <template <class> class VariantFor, class x, class y>
-auto map_to_same_name(const std::vector<VariantFor<x>> &vec, const std::function<y(x const &)> f) {
-  auto inj_x_to_inj_y = [&]<class InjX>(InjX &&inj_x) {
-    using inj_y = search_same_name_t<InjX, VariantFor<y>>;
-    return std::apply([&](auto &&...i) -> inj_y { return {f(i)...}; }, to_tpl(inj_x));
+template <class Variant2, class Variant1>
+  requires variants_with_same_type_names<Variant1, Variant2> &&
+           variants_with_same_tuple_sizes<Variant1, Variant2>
+auto map_to_same_name(const std::vector<Variant1> &vec, auto &&map_member) {
+  auto to_variant2 = [&]<class InjV1>(InjV1 &&inj_v1) {
+    using inj_v2 = search_same_name_t<InjV1, Variant2>;
+    return std::apply([&](auto &&...m) -> inj_v2 { return {map_member(m)...}; }, to_tpl(inj_v1));
   };
   using std::ranges::views::transform;
-  return vec | transform(std::bind_front(std::visit, inj_x_to_inj_y));
+  return vec | transform(std::bind_front(std::visit, to_variant2));
 }
 
-//  auto variant_to_variant = [&](VariantFor<x> &&variant) -> VariantFor<y> {
-//    return std::visit(inj_x_to_inj_y, variant);
-//  };
-
-/*
 class StringIndex {
   // all_text_references_: set because long strings slow to hash (?redex)
   // program_source_texts_: adding to a forward list won't invalidate references.
@@ -64,19 +64,9 @@ class Graph {
   StringIndex string_index_;
 
  public:
-  auto nodes_view() {
-    return std::ranges::views::transform(
-        [this](packed_stx &&packed_stx) -> unpacked_stx {
-          return std::visit(
-              [this]<class PackedNode>(PackedNode &&packed_node) {
-                using unpacked_node = type_with_same_name_in_t<PackedNode, unpacked_stx>;
-                return std::apply(
-                    [this](auto... i) -> unpacked_node { return {string_index_.get_sv(i)...}; },
-                    to_tpl(packed_node));
-              },
-              packed_stx);
-        },
-        syntax_nodes_);
+  auto view_of_unpacked_nodes() {
+    return map_to_same_name<unpacked_stx>(syntax_nodes_,
+                                          [this](auto &&i) { return string_index_.get_sv(i); });
   }
   Graph(std::string_view);
   //  Graph(std::string_view program)
@@ -92,5 +82,5 @@ class Graph {
   Graph operator=(const Graph &) = delete;
   ~Graph() = default;
 };
-*/
+
 }  // namespace stanly

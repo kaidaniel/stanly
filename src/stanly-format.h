@@ -11,13 +11,6 @@
 
 namespace stanly {
 
-template <class x, template <class...> class T>
-constexpr static bool is_instance_of = false;
-template <class... xs, template <class...> class T>
-constexpr static bool is_instance_of<T<xs...>, T> = true;
-template <class x, template <class...> class T>
-concept instance_of = is_instance_of<x, T>;
-
 template <class T>
 concept formatted_type = instance_of<T, std::vector> || instance_of<T, std::tuple> ||
                          instance_of<T, std::variant> || syntax_node<T>;
