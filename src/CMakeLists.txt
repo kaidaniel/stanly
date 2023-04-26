@@ -13,7 +13,7 @@ target_compile_options(project_props INTERFACE
     -fdiagnostics-color=always)
 #target_include_directories(project_props INTERFACE ${Boost_INCLUDE_DIRS})
 
-foreach(test test-format test-parse)
+foreach(test test-format test-parse test-stanly-utils)
     add_executable(${test} ${test}.cpp)
     target_link_libraries(${test} PRIVATE project_props Catch2::Catch2WithMain)
     catch_discover_tests(${test} EXTRA_ARGS --colour-mode ansi)
