@@ -40,24 +40,20 @@ struct SourceTextLocation {
   int row;
 };
 
-template <template <class> class SyntaxT>
-  requires packed_syntax<typename SyntaxT<idx>::node> &&
-           syntax<typename SyntaxT<std::string_view>::node>
+template <packed_syntax Syntax, syntax UnpackedSyntax>
 class Graph {
-  using packed_stx = SyntaxT<idx>::node;
-  using unpacked_stx = SyntaxT<std::string_view>::node;
-  std::unordered_map<packed_stx, SourceTextLocation> syntax_node_to_source_text_offsets_;
-  std::vector<packed_stx> syntax_nodes_;
-  std::unordered_map<idx, std::vector<packed_stx>> record_literals_{};
+  std::unordered_map<Syntax, SourceTextLocation> syntax_node_to_source_text_offsets_;
+  std::vector<Syntax> syntax_nodes_;
+  std::unordered_map<idx, std::vector<Syntax>> record_literals_{};
   StringIndex string_index_;
 
  public:
-  auto view_of_unpacked_nodes() {
-    //    return map_to_same_name<unpacked_stx>(syntax_nodes_,
-    //                                          [this](auto &&i) { return string_index_.get_sv(i);
-    //                                          });
+  auto view_syntax() {
+    auto get = [this](idx i) { return string_index_.get_sv(i); };
+    auto unpack = map_to_same_name<Syntax, UnpackedSyntax>(get);
+    return syntax_nodes_ | std::ranges::views::transform(unpack);
   }
-  Graph(std::string_view);
+  Graph(std::vector<Syntax> syntax_nodes_);
   //  Graph(std::string_view program)
   //      : program_source_text_index_{program},
   //        syntax_nodes_{std::ranges::views::transform(
