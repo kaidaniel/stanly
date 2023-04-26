@@ -2,6 +2,7 @@
 
 #include <format>
 #include <iostream>
+#include <ranges>
 #include <source_location>
 #include <string_view>
 
@@ -40,6 +41,15 @@ auto to_tpl(auto &&object) noexcept {
   }
 }
 
+template <template <class...> class T, class... xs>
+auto map_members(auto &&f) {
+  return [&]<class X>(X &&x) -> T<X, xs...> {
+    return std::apply(
+        [&]<class... El>(El &&...el) { return T<X, xs...>{f(std::forward<El>(el))...}; },
+        to_tpl(std::forward<X>(x)));
+  };
+}
+
 namespace stanly {
 template <class T, class x>
 constexpr bool contains = false;
@@ -65,16 +75,19 @@ constexpr std::string_view type_name = []<class S = T> {
 ();
 
 template <class T, class Variant>
-struct search_same_name;
-
-template <class T, class Variant>
-using search_same_name_t = typename search_same_name<T, Variant>::type;
+struct search_same_name {
+  using type = std::false_type;
+};
 
 template <class T, class x, class... xs>
 struct search_same_name<T, std::variant<x, xs...>> {
   using type =
-      std::conditional<type_name<x> == type_name<T>, x, search_same_name_t<T, std::variant<xs...>>>;
+      std::conditional_t<type_name<std::remove_cvref_t<x>> == type_name<std::remove_cvref_t<T>>, x,
+                         typename search_same_name<T, std::variant<xs...>>::type>;
 };
+
+template <class T, class Variant>
+using search_same_name_t = typename search_same_name<T, Variant>::type;
 
 template <class x, template <class...> class T>
 constexpr static bool is_instance_of = false;
@@ -103,6 +116,16 @@ concept variants_with_same_tuple_sizes =
                    std::declval<std::variant_alternative_t<Is, Variant2>>()))>)&&...);
     }(std::make_index_sequence<std::variant_size_v<Variant1>>{});
 
+// exists [a], [b]. A: variant<a...>, B: variant<b...>, len(A)==len(B), len(a)==len(b)&&...,
+// type_name<a>==type_name<b>&&..., map_to_same_name: (intersect(a_i->b_i)...) -> A -> B
+template <class A, class B, class F>
+  requires variants_with_same_type_names<A, B> && variants_with_same_tuple_sizes<A, B>
+constexpr auto map_to_same_name(F &&member_a_to_member_b) {
+  auto inja_to_injb = map_members<search_same_name_t, B>(member_a_to_member_b);
+  auto inja_to_b = [=](auto &&inja) { return B{inja_to_injb(inja)}; };
+  return [=](auto &&a) { return std::visit(inja_to_b, a); };
+}
+
 namespace detail {
 template <class T>
 struct x {
@@ -127,6 +150,30 @@ static_assert(!variants_with_same_type_names<variant1, same_tuple_sizes_differen
 static_assert(variants_with_same_tuple_sizes<variant1, variant2>);
 static_assert(variants_with_same_tuple_sizes<variant1, same_tuple_sizes_different_type_names>);
 static_assert(!variants_with_same_tuple_sizes<variant1, same_type_names_different_tuple_sizes>);
+
+static_assert(std::same_as<x<int>::a, search_same_name_t<x<int>::a, variant1>>);
+static_assert(std::same_as<x<int>::a, search_same_name_t<x<struct anything>::a, variant1>>);
+static_assert(std::same_as<x<int>::a, search_same_name_t<struct a, variant1>>);
+static_assert(!search_same_name_t<struct d, variant1>::value);
+
+template <class T>
+using x_int_b = x<int>::b;
+
+using mapped_t = decltype(map_members<x_int_b>([](bool) { return 1; })(x<bool>::b{}));
+static_assert(std::same_as<mapped_t, x<int>::b>);
+
+auto mapper = map_members<search_same_name_t, variant1>([](auto &&) { return 1; });
+static_assert(std::same_as<decltype(mapper(x<float>::b{})), x<int>::b>);
+static_assert(std::same_as<decltype(mapper(x<float>::a{})), x<int>::a>);
+
+// auto vecc = std::vector<variant2>{variant2{x<float>::b{1, 2}}, variant2{x<float>::b{3, 4}},
+//                                   variant2{x<float>::b{5.5, 6.6}}};
+// auto mapper2 = map_to_same_name<variant1, variant2>([](auto &&x) -> float { return x + 0.5; });
+
+static_assert(std::same_as<decltype(map_to_same_name<variant1, variant2>([](auto &&x) -> float {
+                             return x + 0.5;
+                           })(variant1{x<int>::a{}})),
+                           variant2>);
 }  // namespace detail
 
 [[noreturn]] inline void unreachable(std::string_view msg = "") {
