@@ -4,8 +4,8 @@
 
 #include <forward_list>
 #include <iostream>
+#include <map>
 #include <ranges>
-#include <set>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -22,45 +22,45 @@ class StringIndex {
   // program_source_texts_: adding to a forward list won't invalidate references.
   // insert_text_reference: bounds checked, <= std::numeric_limits<Idx>::max()
   // idx_to_text_reference: Not bounds checked
-  std::set<std::string_view> all_text_references_{};
-  std::vector<std::string_view> idx_to_text_reference_{};
+  std::map<std::string_view, idx> string_view_to_idx_{};
+  std::vector<std::string_view> idx_to_string_view_{};
   std::forward_list<std::string> strings_{};
 
  public:
-  const idx &insert(std::string_view);
-  const std::string_view &get_sv(idx);
-  std::string_view add_string(std::string_view);
-  StringIndex(std::string_view program);
-};
-struct SourceTextLocation {
-  int program;
-  int start;
-  int end;
-  int col;
-  int row;
+  idx insert(std::string_view sv) {
+    auto [it, did_insert] = string_view_to_idx_.insert({sv, idx{idx_to_string_view_.size()}});
+    if (did_insert) { idx_to_string_view_.push_back(sv); }
+    stanly_assert(idx_to_string_view_.size() == string_view_to_idx_.size());
+    return it->second;
+  };
+  std::string_view get_sv(idx idx) { return idx_to_string_view_[static_cast<size_t>(idx)]; };
+  std::string_view add_string_to_index(std::string string) {
+    strings_.push_front(std::move(string));
+    return {*strings_.begin()};
+  };
 };
 
-template <packed_syntax Syntax, syntax UnpackedSyntax>
+template <packed_syntax Syntax>
 class Graph {
-  std::unordered_map<Syntax, SourceTextLocation> syntax_node_to_source_text_offsets_;
-  std::vector<Syntax> syntax_nodes_;
-  std::unordered_map<idx, std::vector<Syntax>> record_literals_{};
-  StringIndex string_index_;
+  // TODO: make parser return the context of each node so that it can be recorded here.
+  std::unordered_map<size_t, std::string_view> syntax_node_idx_to_source_text_{};
+  std::vector<Syntax> syntax_nodes_{};
+  StringIndex string_index_{};
+  using unpacked_syntax = associated_unpacked_syntax_t<Syntax>;
 
  public:
   auto view_syntax() {
     auto get = [this](idx i) { return string_index_.get_sv(i); };
-    auto unpack = map_to_same_name<Syntax, UnpackedSyntax>(get);
+    auto unpack = map_to_same_name<Syntax, unpacked_syntax>(get);
     return syntax_nodes_ | std::ranges::views::transform(unpack);
   }
-  Graph(std::vector<Syntax> syntax_nodes_);
-  //  Graph(std::string_view program)
-  //      : program_source_text_index_{program},
-  //        syntax_nodes_{std::ranges::views::transform(
-  //            parse<Syntax>(program),
-  //            transmute_syntax<L, std::string_view, idx>([&](std::string_view sv) {
-  //              return program_source_text_index_.insert_text_reference(sv);
-  //            }))} {};
+  Graph(const std::function<std::vector<Syntax>(std::string_view)> &parse,
+        const std::function<std::string()> &read_program) {
+    auto insert_sv_to_index = [this](std::string_view sv) { return string_index_.insert(sv); };
+    std::ranges::transform(parse(string_index_.add_string_to_index(read_program())),
+                           std::back_inserter(syntax_nodes_),
+                           map_to_same_name<unpacked_syntax, Syntax>(insert_sv_to_index));
+  };
   Graph(const Graph &) = delete;
   Graph(Graph &&) = delete;
   Graph operator=(Graph &&) = delete;
