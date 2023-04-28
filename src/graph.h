@@ -40,32 +40,39 @@ class StringIndex {
   };
 };
 
-template <packed_syntax Syntax>
-class Graph {
+template <class VariantT, class UnpackedVariantT>
+class graph {
   // TODO: make parser return the context of each node so that it can be recorded here.
   std::unordered_map<size_t, std::string_view> syntax_node_idx_to_source_text_{};
-  std::vector<Syntax> syntax_nodes_{};
+  std::vector<VariantT> syntax_nodes_{};
   StringIndex string_index_{};
-  using unpacked_syntax = associated_unpacked_syntax_t<Syntax>;
 
  public:
   auto view_syntax() {
     auto get = [this](idx i) { return string_index_.get_sv(i); };
-    auto unpack = map_to_same_name<Syntax, unpacked_syntax>(get);
+    auto unpack = map_to_same_name<VariantT, UnpackedVariantT>(get);
     return syntax_nodes_ | std::ranges::views::transform(unpack);
   }
-  Graph(const std::function<std::vector<Syntax>(std::string_view)> &parse,
+  graph(const std::function<std::vector<UnpackedVariantT>(std::string_view)> &parse,
         const std::function<std::string()> &read_program) {
-    auto insert_sv_to_index = [this](std::string_view sv) { return string_index_.insert(sv); };
+    auto insert_var_or_record = [this](auto &&x) {
+      using type = std::decay_t<decltype(x)>;
+      if constexpr (std::same_as<type, std::string_view>) {
+        return string_index_.insert(x);
+      } else {
+        static_assert(std::same_as<type, std::vector<std::string_view>>;
+        // TODO: add record to index and return its index
+      }
+    };
     std::ranges::transform(parse(string_index_.add_string_to_index(read_program())),
                            std::back_inserter(syntax_nodes_),
-                           map_to_same_name<unpacked_syntax, Syntax>(insert_sv_to_index));
+                           map_to_same_name<UnpackedVariantT, VariantT>(insert_var_or_record));
   };
-  Graph(const Graph &) = delete;
-  Graph(Graph &&) = delete;
-  Graph operator=(Graph &&) = delete;
-  Graph operator=(const Graph &) = delete;
-  ~Graph() = default;
+  graph(const graph &) = delete;
+  graph(graph &&) = delete;
+  graph operator=(graph &&) = delete;
+  graph operator=(const graph &) = delete;
+  ~graph() = default;
 };
 
 }  // namespace stanly

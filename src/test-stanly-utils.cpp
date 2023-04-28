@@ -22,7 +22,9 @@ struct x {
 using variant1 = std::variant<x<int>::a, x<int>::b>;
 using variant2 = std::variant<x<float>::a, x<float>::b>;
 using same_tuple_sizes_different_type_names = std::variant<x<float>::a, x<float>::c>;
-using same_type_names_different_tuple_sizes = std::variant<struct a, struct b>;
+struct a {};
+struct b {};
+using same_type_names_different_tuple_sizes = std::variant<a, b>;
 
 static_assert(variants_with_same_type_names<variant1, variant2>);
 static_assert(variants_with_same_type_names<variant1, same_type_names_different_tuple_sizes>);

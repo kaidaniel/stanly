@@ -37,6 +37,7 @@ auto to_tpl(auto &&object) noexcept {
     auto &&[p1] = object;
     return std::make_tuple(p1);
   } else {
+    static_assert(std::default_initializable<type>);
     return std::make_tuple();
   }
 }

@@ -18,6 +18,7 @@ class idx {
                   std::format("{}-byte index can't support more than {} elements.",
                               sizeof(idx::repr), (std::numeric_limits<idx::repr>::max() - 2)));
   };
+  idx() : value{0} {};
 
  private:
   repr value;
