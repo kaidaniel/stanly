@@ -23,3 +23,7 @@ add_library(parser firstorder-parse-statement.cpp parser.cpp)
 target_link_libraries(parser PUBLIC tree-sitter tree-sitter-python project_props)
 
 target_link_libraries(test-parse PRIVATE parser)
+
+
+add_executable(test-treesitter-query test-treesitter-query.cpp)
+target_link_libraries(test-treesitter-query PUBLIC tree-sitter tree-sitter-python project_props)

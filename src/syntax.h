@@ -36,8 +36,9 @@ template <class T>
 concept syntax =
     all<is_syntax_node, T> && requires(T t) { std::visit([](auto&&) { return 1; }, t); };
 
+const int kN_BYTES_PACKED = 8;
 template <class T>
-concept packed_syntax = syntax<T> && sizeof(std::declval<T>()) <= 8;
+concept packed_syntax = syntax<T> && sizeof(std::declval<T>()) <= kN_BYTES_PACKED;
 
 template <packed_syntax T>
 struct associated_unpacked_syntax;

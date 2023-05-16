@@ -60,7 +60,7 @@ class graph {
       if constexpr (std::same_as<type, std::string_view>) {
         return string_index_.insert(x);
       } else {
-        static_assert(std::same_as<type, std::vector<std::string_view>>;
+        static_assert(std::same_as<type, std::vector<std::string_view>>);
         // TODO: add record to index and return its index
       }
     };

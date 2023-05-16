@@ -11,7 +11,6 @@
 #include <variant>
 #include <vector>
 
-#include "stanly-utils.h"
 #include "syntax.h"
 namespace stanly {
 /*
@@ -42,15 +41,15 @@ static_assert(::stanly::abstract_domain<abstract_domain>);
 template <class Repr>
 struct syntax {
   // clang-format off
-  using record = std::conditional_t<std::same_as<Repr, std::string_view>, std::vector<Repr>, Repr>;
-  struct set_field   { Repr rhs; Repr target; Repr field; };
-  struct load_field  { Repr lhs; Repr source; Repr field; };
-  struct load_text   { Repr lhs; Repr literal; };
-  struct load_record { Repr lhs; record record; };
-  struct load_var    { Repr lhs; Repr rhs; };
-  struct load_top    { Repr lhs; Repr literal; };
+  using record_repr = std::conditional_t<std::same_as<Repr, std::string_view>, std::vector<Repr>, Repr>;
+  struct store   { Repr target; Repr field; Repr src; };
+  struct load  { Repr var; Repr src; Repr field; };
+  struct text   { Repr var; Repr literal; };
+  struct record { Repr var; record_repr record; };
+  struct ref    { Repr var; Repr src; };
+  struct top    { Repr var; Repr literal; };
   // clang-format on
-  using node = std::variant<set_field, load_field, load_text, load_record, load_var, load_top>;
+  using node = std::variant<store, load, text, record, ref, top>;
 };
 }  // namespace stanly::firstorder
 namespace stanly {

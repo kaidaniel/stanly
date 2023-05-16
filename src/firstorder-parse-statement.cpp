@@ -8,7 +8,7 @@
 namespace stanly {
 using std::string_view;
 using std::vector;
-using stx = firstorder::syntax<string_view>;
+using syn = firstorder::syntax<string_view>;
 
 struct firstorder_cursor : public cursor {
   using cursor::cursor;
@@ -38,7 +38,7 @@ struct firstorder_cursor : public cursor {
     stanly_assert(symbol() == symbols.identifier);
     return {variable, text()};
   };
-  stx::node parse_statement() {
+  syn::node parse_statement() {
     stanly_assert(symbol() == symbols.expression_statement);
     goto_child();
     stanly_assert(symbol() == symbols.assignment);
@@ -54,15 +54,15 @@ struct firstorder_cursor : public cursor {
 
       symbol_ = symbol();
       auto const right = text();
-      if (symbol_ == symbols.identifier) { return stx::load_var{left, right}; }
-      if (symbol_ == symbols.string) { return stx::load_text{left, right}; }
-      if (symbol_ == symbols.integer) { return stx::load_text{left, right}; }
-      if (symbol_ == symbols.dictionary) { return stx::load_record{left, parse_dictionary_keys()}; }
-      if (symbol_ == symbols.set) { return stx::load_top{left, right}; }
-      if (symbol_ == symbols.list) { return stx::load_top{left, right}; }
+      if (symbol_ == symbols.identifier) { return syn::ref{left, right}; }
+      if (symbol_ == symbols.string) { return syn::text{left, right}; }
+      if (symbol_ == symbols.integer) { return syn::text{left, right}; }
+      if (symbol_ == symbols.dictionary) { return syn::record{left, parse_dictionary_keys()}; }
+      if (symbol_ == symbols.set) { return syn::top{left, right}; }
+      if (symbol_ == symbols.list) { return syn::top{left, right}; }
       if (symbol_ == symbols.subscript) {
         auto [variable, field_] = parse_variable_and_field_from_subscript();
-        return stx::load_field{left, variable, field_};
+        return syn::load{left, variable, field_};
       }
       unreachable();
     }
@@ -73,7 +73,7 @@ struct firstorder_cursor : public cursor {
       goto_sibling();  // skip "="
       goto_sibling();
       stanly_assert(symbol() == symbols.identifier);
-      return stx::set_field{text(), variable, field_};
+      return syn::store{variable, field_, text()};
     };
 
     unreachable();
