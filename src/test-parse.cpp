@@ -69,6 +69,7 @@ TEST_CASE("parse firstorder multiple statements", "[firstorder][parser]") {
   CHECK(parses_to("z={}; x=a[b]", record{"z", {}}, load{"x", "a", "b"}));
   CHECK(parses_to("x=y; y=[]", ref{"x", "y"}, top{"y", "[]"}));
   CHECK(parses_to("x=y\ny=[]\nz=1", ref{"x", "y"}, top{"y", "[]"}, text{"z", "1"}));
+  CHECK(parses_to("e=1; r={}; r[e]=f", text{"e", "1"}, record{"r", {}}, store{"r", "e", "f"}));
 }
 }  // namespace stanly::firstorder
 
