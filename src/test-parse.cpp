@@ -1,10 +1,10 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators_range.hpp>
+#include <ranges>
 
 #include "catch2/matchers/catch_matchers_range_equals.hpp"
 #include "firstorder-syntax.h"
 #include "parse.h"
-#include "stanly-format.h"
 
 namespace stanly::firstorder {
 TEST_CASE("parse firstorder", "[parser]") {
@@ -21,20 +21,16 @@ TEST_CASE("parse firstorder", "[parser]") {
         {"x = a[b]", {load{"x", "a", "b"}}},
         {"x = y", {ref{"x", "y"}}},
         {"x = 1", {text{"x", "1"}}},
-        {"z={}; x=a[b]", {record{"z", {}}, load{"x", "a", "b"}}},
+        {"z={}; x=a[b]", {record{"z"}, load{"x", "a", "b"}}},
         {"x=y; y=[]", {ref{"x", "y"}, top{"y", "[]"}}},
         {"x=y\ny=[]\nz=1", {ref{"x", "y"}, top{"y", "[]"}, text{"z", "1"}}},
-        {"e=1; r={}; r[e]=f", {text{"e", "1"}, record{"r", {}}, store{"r", "e", "f"}}},
+        {"e=1;f=2;r={};r[e]=f",
+         {text{"e", "1"}, text{"f", "2"}, record{"r"}, store{"r", "e", "f"}}},
     };
     static std::vector<node> pparse(std::string_view program) { return parse<node>(program); }
   };
+
   auto [program, nodes] = GENERATE(from_range(statements{}.value));
-  auto tpl_compare = []<class T, class S>(T&& v1, S&& v2) {
-    UNSCOPED_INFO(std::format("{} / {}", v1, v2));
-    if constexpr (std::same_as<T, S>) { return to_tpl(v1) == to_tpl(v2); }
-    return false;
-  };
-  auto variant_compare = [&](auto&& v1, auto&& v2) { return std::visit(tpl_compare, v1, v2); };
-  CHECK_THAT(statements::pparse(program), Catch::Matchers::RangeEquals(nodes, variant_compare));
+  CHECK_THAT(statements::pparse(program), Catch::Matchers::RangeEquals(nodes));
 }
 }  // namespace stanly::firstorder

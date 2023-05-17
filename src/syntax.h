@@ -33,8 +33,13 @@ template <class T>
 concept syntax_node = is_syntax_node<T>::value;
 
 template <class T>
-concept syntax =
-    all<is_syntax_node, T> && requires(T t) { std::visit([](auto&&) { return 1; }, t); };
+concept syntax = all<is_syntax_node, std::decay_t<T>> &&
+                 requires(T t) { std::visit([](auto&&) { return 1; }, t); };
+
+template <class T>
+struct is_syntax {
+  constexpr static bool value = syntax<T>;
+};
 
 const int kN_BYTES_PACKED = 8;
 template <class T>
@@ -48,5 +53,21 @@ using associated_unpacked_syntax_t = typename associated_unpacked_syntax<T>::typ
 
 // template<template<class>class T, class x> requires packed_syntax<T<x>>
 // struct resolve_idx { using type = T<};
-
+template <class T>
+  requires syntax_node<T> || stanly::syntax<T>
+std::ostream& operator<<(std::ostream& os, T const& x) {
+  os << std::format("{}", std::forward<T>(x));
+  return os;
+}
+template <syntax_node X, syntax_node Y>
+bool operator==(X&& x, Y&& y) {
+  if constexpr (std::same_as<X, Y>) {
+    return to_tpl(std::forward<X>(x)) == to_tpl(std::forward<Y>(y));
+  }
+  return false;
+};
+template <stanly::syntax S>
+bool operator==(S&& s1, S&& s2) {
+  return std::visit(std::equal_to{}, std::forward<S>(s1), std::forward<S>(s2));
+}
 }  // namespace stanly

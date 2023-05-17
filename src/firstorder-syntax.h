@@ -8,9 +8,11 @@
 #include "HashedSetAbstractDomain.h"
 #include "language.h"
 */
+#include <ostream>
 #include <variant>
 #include <vector>
 
+#include "stanly-format.h"
 #include "syntax.h"
 namespace stanly {
 /*
@@ -43,25 +45,43 @@ struct syntax {
   struct store  { Repr target; Repr field; Repr src; };
   struct load   { Repr var; Repr src; Repr field; };
   struct text   { Repr var; Repr literal; };
-  struct record { Repr var; record_repr record; };
+  struct record { Repr var; record_repr record{}; };
   struct ref    { Repr var; Repr src; };
   struct top    { Repr var; Repr literal; };
   // clang-format on
   using node = std::variant<store, load, text, record, ref, top>;
 };
 }  // namespace stanly::firstorder
+
 namespace stanly {
 template <class T>
-  requires contains<firstorder::syntax<idx>::node, T>
-struct is_syntax_node<T> {
-  constexpr static bool value = true;
-};
-template <class T>
-  requires contains<firstorder::syntax<std::string_view>::node, T>
+  requires contains<firstorder::syntax<idx>::node, std::decay_t<T>> ||
+           contains<firstorder::syntax<std::string_view>::node, std::decay_t<T>>
 struct is_syntax_node<T> {
   constexpr static bool value = true;
 };
 
-static_assert(packed_syntax<firstorder::syntax<idx>::node>);
-static_assert(syntax<firstorder::syntax<std::string_view>::node>);
+namespace firstorder {
+auto operator==(auto&& x, auto&& y) -> decltype(stanly::operator==(x, y)) {
+  return stanly::operator==(x, y);
+};
+namespace detail {
+struct static_assertions_string_view : syntax<std::string_view> {
+  static_assert(all<is_syntax_node, std::variant<load, const text&, text&&, top&>>);
+  static_assert(all<is_syntax, std::variant<node, node&&, const node, const node&, const node&&>>);
+  static_assert(requires(node node) { std::cout << node; });
+  static_assert(requires(store store) { std::cout << store; });
+};
+struct static_assertions_idx : syntax<idx> {
+  static_assert(all<is_syntax_node, std::variant<load, const text&, text&&, top&>>);
+  static_assert(all<is_syntax, std::variant<node, node&&, const node, const node&, const node&&>>);
+  static_assert(requires(node node) { std::cout << node; });
+  static_assert(requires(store store) { std::cout << store; });
+};
+static_assert(packed_syntax<syntax<idx>::node>);
+static_assert(packed_syntax<const syntax<idx>::node&>);
+}  // namespace detail
+
+}  // namespace firstorder
+
 }  // namespace stanly

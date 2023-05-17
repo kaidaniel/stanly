@@ -5,7 +5,6 @@
 #include <vector>
 
 #include "firstorder-syntax.h"
-#include "stanly-format.h"
 
 namespace stanly::firstorder {
 TEST_CASE("format firstorder::syntax<...>::node", "[format]") {

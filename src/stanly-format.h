@@ -15,7 +15,6 @@ namespace stanly {
 template <class T>
 concept formatted_type = instance_of<T, std::vector> || instance_of<T, std::tuple> ||
                          instance_of<T, std::variant> || syntax_node<T>;
-
 template <class CharT, class Ctx>
 struct format {
   Ctx *ctx_;
