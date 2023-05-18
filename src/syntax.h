@@ -20,6 +20,7 @@ class idx {
                               sizeof(idx::repr), (std::numeric_limits<idx::repr>::max() - 2)));
   };
   idx() : value{0} {};
+  bool operator<=>(const idx& other) const = default;
 
  private:
   repr value;
@@ -64,3 +65,18 @@ bool operator==(S&& s1, S&& s2) {
   return std::visit(std::equal_to{}, std::forward<S>(s1), std::forward<S>(s2));
 }
 }  // namespace stanly
+
+template <>
+struct std::hash<stanly::idx> {
+  auto operator()(const stanly::idx& idx) const {
+    return std::hash<size_t>{}(static_cast<size_t>(idx));
+  }
+};
+
+template <class CharT>
+struct std::formatter<stanly::idx, CharT> : std::formatter<std::string_view, CharT> {
+  template <class Ctx>
+  auto format(const stanly::idx& idx, Ctx& ctx) const {
+    return std::formatter<std::size_t, CharT>{}.format(static_cast<std::size_t>(idx), ctx);
+  }
+};

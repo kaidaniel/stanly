@@ -1,6 +1,3 @@
-#include <__concepts/assignable.h>
-#include <__concepts/convertible_to.h>
-
 #include <catch2/catch_test_macros.hpp>
 #include <ranges>
 #include <string_view>
@@ -23,24 +20,28 @@ struct domain {
   using object = std::variant<str, record, recordv, top, bottom>;
   using env = std::unordered_map<Repr, object>;
  };
+ std::ostream& operator<<(std::ostream& os, std::vector<domain<std::size_t>::env> vec) { 
+  return (os << std::format("{}", vec));
+  }
 }
 namespace stanly{
   template<class T>
-  requires contains<firstorder::domain<int>::object, std::decay_t<T>>
+  requires contains<firstorder::domain<std::size_t>::object, std::decay_t<T>>
   struct is_syntax_node<T> { constexpr static bool value = true; };
-
 
 namespace firstorder{
 // clang-format on
-auto const analyse = [](auto&&) -> domain<int>::env { return domain<int>::env{}; };
-struct programs : syntax<int> {
+auto const analyse = [](auto&&) -> domain<std::size_t>::env { return domain<std::size_t>::env{}; };
+struct programs : syntax<idx> {
   std::vector<std::vector<node>> operator()() {
-    return {{text{0, 1}, record{2, 100}, store{2, 3, 0}, store{2, 4, 0}},
-            {record{0, 101}, load{3, 0, 1}, load{4, 0, 5}, ref{6, 0}},
-            {top{0, 1}, store{0, 2, 0}, load{3, 0, 4}}};
+    return {{text{idx{0}, idx{1}}, record{idx{2}, idx{100}}, store{idx{2}, idx{3}, idx{0}},
+             store{idx{2}, idx{4}, idx{0}}},
+            {record{idx{0}, idx{101}}, load{idx{3}, idx{0}, idx{1}}, load{idx{4}, idx{0}, idx{5}},
+             ref{idx{6}, idx{0}}},
+            {top{idx{0}, idx{1}}, store{idx{0}, idx{2}, idx{0}}, load{idx{3}, idx{0}, idx{4}}}};
   }
 };
-struct bindings : domain<int> {
+struct bindings : domain<std::size_t> {
   std::vector<env> operator()() {
     return {{{0, str{1}}, {2, record{3, 4}}},
             {{0, record{1, 2}}, {3, top{}}, {4, bottom{}}, {6, bottom{}}},

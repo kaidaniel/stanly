@@ -6,10 +6,23 @@
 
 #include "firstorder-syntax.h"
 
+namespace stanly {
+struct test_node {};
+template <>
+struct is_syntax_node<test_node> {
+  constexpr static bool value = true;
+};
+using test_variant = std::variant<test_node>;
+}  // namespace stanly
+
 namespace stanly::firstorder {
 TEST_CASE("format firstorder::syntax<...>::node", "[format]") {
   constexpr auto fformat = [](auto&& n) { return std::format("{}", n); };
 
+  SECTION("empty node") {
+    CHECK(fformat(test_node{}) == "test_node()");
+    CHECK(fformat(test_variant{test_node{}}) == "inj-test_node()");
+  }
   SECTION("node") {
     struct syntax_nodes : syntax<std::string_view> {
       std::vector<std::pair<node, std::string>> value = {
@@ -34,7 +47,8 @@ TEST_CASE("format firstorder::syntax<...>::node", "[format]") {
   SECTION("std::unordered_map<int, node>") {
     struct maps : syntax<std::string_view> {
       std::vector<std::pair<std::unordered_map<int, node>, std::string>> value = {
-          {{{2, top{"c", "d"}}, {0, text{"a", "b"}}}, "{0: inj-text(a b), 2: inj-top(c d)}"},
+          {{{2, top{"c", "d"}}, {0, text{"a", "b"}}, {-3, store{"a", "b", "c"}}},
+           "{-3: inj-store(a b c), 0: inj-text(a b), 2: inj-top(c d)}"},
           {{}, "{}"}};
     };
     auto [map, str] = GENERATE(from_range(maps{}.value));

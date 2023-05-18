@@ -34,8 +34,10 @@ struct format {
       std::visit(*this, t);
     } else if constexpr (instance_of<T, std::tuple>) {
       fmt("(");
-      std::apply([this](const auto &x, const auto &...xs) { fmt(x), ((fmt(" "), fmt(xs)), ...); },
-                 t);
+      if constexpr (!std::same_as<T, std::tuple<>>) {
+        std::apply([this](const auto &x, const auto &...xs) { fmt(x), ((fmt(" "), fmt(xs)), ...); },
+                   t);
+      }
       fmt(")");
     } else if constexpr (instance_of<T, std::unordered_map>) {
       fmt("{");
