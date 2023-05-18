@@ -2,6 +2,7 @@
 
 #include <concepts>
 #include <string_view>
+#include <unordered_map>
 #include <variant>
 #include <vector>
 
@@ -45,18 +46,10 @@ const int kN_BYTES_PACKED = 8;
 template <class T>
 concept packed_syntax = syntax<T> && sizeof(std::declval<T>()) <= kN_BYTES_PACKED;
 
-template <packed_syntax T>
-struct associated_unpacked_syntax;
-
-template <packed_syntax T>
-using associated_unpacked_syntax_t = typename associated_unpacked_syntax<T>::type;
-
-// template<template<class>class T, class x> requires packed_syntax<T<x>>
-// struct resolve_idx { using type = T<};
 template <class T>
-  requires syntax_node<T> || stanly::syntax<T>
+  requires syntax<T> || syntax_node<T> || instance_of<T, std::unordered_map>
 std::ostream& operator<<(std::ostream& os, T const& x) {
-  os << std::format("{}", std::forward<T>(x));
+  os << std::format("{}", std::forward<T const&>(x));
   return os;
 }
 template <syntax_node X, syntax_node Y>

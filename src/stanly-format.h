@@ -4,6 +4,7 @@
 #include <iostream>
 #include <string_view>
 #include <tuple>
+#include <unordered_map>
 #include <variant>
 #include <vector>
 
@@ -13,8 +14,9 @@
 namespace stanly {
 
 template <class T>
-concept formatted_type = instance_of<T, std::vector> || instance_of<T, std::tuple> ||
-                         instance_of<T, std::variant> || syntax_node<T>;
+concept formatted_type =
+    instance_of<T, std::vector> || instance_of<T, std::tuple> || instance_of<T, std::variant> ||
+    instance_of<T, std::unordered_map> || syntax_node<T>;
 template <class CharT, class Ctx>
 struct format {
   Ctx *ctx_;
@@ -35,6 +37,16 @@ struct format {
       std::apply([this](const auto &x, const auto &...xs) { fmt(x), ((fmt(" "), fmt(xs)), ...); },
                  t);
       fmt(")");
+    } else if constexpr (instance_of<T, std::unordered_map>) {
+      fmt("{");
+      for (const auto &el : t) {
+        auto &[key, val] = el;
+        if (&el != &*(t.begin())) { fmt(", "); }
+        fmt(key);
+        fmt(": ");
+        fmt(val);
+      }
+      fmt("}");
     } else if constexpr (std::same_as<std::decay_t<T>, char *>) {
       std::formatter<std::string_view, CharT>{}.format(std::string_view{t}, *ctx_);
     } else if constexpr (syntax_node<T>) {

@@ -31,6 +31,16 @@ TEST_CASE("format firstorder::syntax<...>::node", "[format]") {
     auto [node, str] = GENERATE(from_range(syntax_node_vectors{}.value));
     CHECK(fformat(node) == str);
   }
+  SECTION("std::unordered_map<int, node>") {
+    struct maps : syntax<std::string_view> {
+      std::vector<std::pair<std::unordered_map<int, node>, std::string>> value = {
+          {{{2, top{"c", "d"}}, {0, text{"a", "b"}}}, "{0: inj-text(a b), 2: inj-top(c d)}"},
+          {{}, "{}"}};
+    };
+    auto [map, str] = GENERATE(from_range(maps{}.value));
+    std::cout << map;
+    CHECK(fformat(map) == str);
+  };
 }
 
 }  // namespace stanly::firstorder
