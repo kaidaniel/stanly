@@ -52,6 +52,8 @@ auto map_members(auto &&f) {
 }
 
 namespace stanly {
+namespace vw = std::views;
+namespace rg = std::ranges;
 template <class T, class x>
 constexpr bool contains = false;
 template <class x, class... xs>

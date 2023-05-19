@@ -39,17 +39,14 @@ static_assert(::stanly::abstract_domain<abstract_domain>);
 */
 template <class Repr>
 struct syntax {
-  using record_repr =
-      std::conditional_t<std::same_as<Repr, std::string_view>, std::vector<Repr>, Repr>;
   // clang-format off
-  struct store  { Repr target; Repr field; Repr src; };
+  struct update { Repr tgt; Repr field; Repr src; };
   struct load   { Repr var; Repr src; Repr field; };
   struct text   { Repr var; Repr literal; };
-  struct record { Repr var; record_repr record{}; };
+  struct alloc  { Repr var; Repr type; };
   struct ref    { Repr var; Repr src; };
-  struct top    { Repr var; Repr literal; };
   // clang-format on
-  using node = std::variant<store, load, text, record, ref, top>;
+  using node = std::variant<update, load, text, alloc, ref>;
 };
 }  // namespace stanly::firstorder
 
@@ -62,25 +59,11 @@ struct is_syntax_node<T> {
 };
 
 namespace firstorder {
-auto operator==(auto&& x, auto&& y) -> decltype(stanly::operator==(x, y)) {
+auto operator==(auto &&x, auto &&y) -> decltype(stanly::operator==(x, y)) {
   return stanly::operator==(x, y);
 };
-namespace detail {
-struct static_assertions_string_view : syntax<std::string_view> {
-  static_assert(all<is_syntax_node, std::variant<load, const text&, text&&, top&>>);
-  static_assert(all<is_syntax, std::variant<node, node&&, const node, const node&, const node&&>>);
-  static_assert(requires(node node) { std::cout << node; });
-  static_assert(requires(store store) { std::cout << store; });
-};
-struct static_assertions_idx : syntax<idx> {
-  static_assert(all<is_syntax_node, std::variant<load, const text&, text&&, top&>>);
-  static_assert(all<is_syntax, std::variant<node, node&&, const node, const node&, const node&&>>);
-  static_assert(requires(node node) { std::cout << node; });
-  static_assert(requires(store store) { std::cout << store; });
-};
-static_assert(packed_syntax<syntax<idx>::node>);
-static_assert(packed_syntax<const syntax<idx>::node&>);
-}  // namespace detail
+
+auto &operator<<(auto &s, const formatted_type auto &x) { return s << std::format("{}", x); }
 
 }  // namespace firstorder
 

@@ -47,12 +47,6 @@ const int kN_BYTES_PACKED = 8;
 template <class T>
 concept packed_syntax = syntax<T> && sizeof(std::declval<T>()) <= kN_BYTES_PACKED;
 
-template <class T>
-  requires syntax<T> || syntax_node<T> || instance_of<T, std::unordered_map>
-std::ostream& operator<<(std::ostream& os, T const& x) {
-  os << std::format("{}", std::forward<T const&>(x));
-  return os;
-}
 template <syntax_node X, syntax_node Y>
 bool operator==(X&& x, Y&& y) {
   if constexpr (std::same_as<X, Y>) {

@@ -7,30 +7,34 @@
 #include "parse.h"
 
 namespace stanly::firstorder {
+
 TEST_CASE("parse firstorder", "[parser]") {
   struct statements : syntax<std::string_view> {
-    std::vector<std::pair<std::string, std::vector<node>>> value = {
-        {"x=y", {ref{"x", "y"}}},
-        {"x=1", {text{"x", "1"}}},
-        {"y=[]", {top{"y", "[]"}}},
-        {"z = {}", {record{"z", {}}}},
-        {"z = {1: 'x', 3: {}}", {record{"z", {"1", "3"}}}},
-        {"abc = {1: 'x'}", {record{"abc", {"1"}}}},
-        {"abc_def = {1,2,3}", {top{"abc_def", "{1,2,3}"}}},
-        {"a[b] = x", {store{"a", "b", "x"}}},
-        {"x = a[b]", {load{"x", "a", "b"}}},
-        {"x = y", {ref{"x", "y"}}},
-        {"x = 1", {text{"x", "1"}}},
-        {"z={}; x=a[b]", {record{"z"}, load{"x", "a", "b"}}},
-        {"x=y; y=[]", {ref{"x", "y"}, top{"y", "[]"}}},
-        {"x=y\ny=[]\nz=1", {ref{"x", "y"}, top{"y", "[]"}, text{"z", "1"}}},
-        {"e=1;f=2;r={};r[e]=f",
-         {text{"e", "1"}, text{"f", "2"}, record{"r"}, store{"r", "e", "f"}}},
-    };
-    static std::vector<node> pparse(std::string_view program) { return parse<node>(program); }
+    std::vector<std::pair<std::string_view, std::vector<node>>> operator()() {
+      return {
+          {"x=y", {ref{"x", "y"}}},
+          {"x=1", {text{"x", "1"}}},
+          {"y=[]", {alloc{"y", "top"}}},
+          {"z = {}", {alloc{"z", "dict"}}},
+          {"z = {1: 'x', 3: {}}", {alloc{"z", "dict"}}},
+          {"abc = {1: 'x'}", {alloc{"abc", "dict"}}},
+          {"abc_def = {1,2,3}", {alloc{"abc_def", "top"}}},
+          {"a[b] = x", {update{"a", "b", "x"}}},
+          {"x = a[b]", {load{"x", "a", "b"}}},
+          {"x = y", {ref{"x", "y"}}},
+          {"x = 1", {text{"x", "1"}}},
+          {"z={}; x=a[b]", {alloc{"z", "dict"}, load{"x", "a", "b"}}},
+          {"x=y; y=[]", {ref{"x", "y"}, alloc{"y", "top"}}},
+          {"x=y\ny=[]\nz=1", {ref{"x", "y"}, alloc{"y", "top"}, text{"z", "1"}}},
+          {"e=1;f=2;r={};r[e]=f",
+           {text{"e", "1"}, text{"f", "2"}, alloc{"r", "dict"}, update{"r", "e", "f"}}},
+      };
+    }
   };
 
-  auto [program, nodes] = GENERATE(from_range(statements{}.value));
-  CHECK_THAT(statements::pparse(program), Catch::Matchers::RangeEquals(nodes));
+  auto [program, nodes] = GENERATE(from_range(statements{}()));
+  CHECK(parse<syntax<std::string_view>::node>(program) == nodes);
+  // CHECK_THAT(parse<syntax<std::string_view>::node>(program),
+  // Catch::Matchers::RangeEquals(nodes));
 }
 }  // namespace stanly::firstorder

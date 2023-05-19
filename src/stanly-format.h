@@ -1,7 +1,6 @@
 #pragma once
 
 #include <format>
-#include <iostream>
 #include <string_view>
 #include <tuple>
 #include <unordered_map>
@@ -65,12 +64,10 @@ struct format {
 };
 template <class Ctx>
 format(Ctx *ctx) -> format<typename Ctx::char_type, Ctx>;
+
 }  // namespace stanly
 
 template <stanly::formatted_type T, class CharT>
 struct std::formatter<T, CharT> : std::formatter<std::string_view, CharT> {
-  template <class Ctx>
-  auto format(const T &t, Ctx &ctx) const {
-    return stanly::format{&ctx}(t);
-  }
+  auto format(const T &t, auto &ctx) const { return stanly::format{&ctx}(t); }
 };
