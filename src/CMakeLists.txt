@@ -14,7 +14,7 @@ target_compile_options(project_props INTERFACE
 
 target_include_directories(project_props INTERFACE ${Boost_INCLUDE_DIRS})
 
-foreach(test test-format test-parse test-stanly-utils test-graph#[=[test-analyse]=])
+foreach(test test-format test-parse test-stanly-utils test-graph test-analyse)
     add_executable(${test} ${test}.cpp)
     target_link_libraries(${test} PRIVATE project_props Catch2::Catch2WithMain)
     catch_discover_tests(${test} EXTRA_ARGS --colour-mode ansi)
@@ -27,6 +27,7 @@ target_link_libraries(parser PUBLIC tree-sitter tree-sitter-python project_props
 target_link_libraries(test-parse PRIVATE parser)
 target_link_libraries(test-treesitter-query PUBLIC tree-sitter tree-sitter-python project_props)
 #target_link_libraries(test-analyse PUBLIC Boost sparta)
+target_link_libraries(test-analyse PUBLIC sparta)
 
 
 
