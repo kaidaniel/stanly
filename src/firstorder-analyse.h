@@ -41,14 +41,21 @@ struct abstract_domain_types {
   using constant = sparta::ConstantAbstractDomain<Constant>;
   using bindings = sparta::DisjointUnionAbstractDomain<Field, addresses>;
   using fields = sparta::HashedSetAbstractDomain<Field>;
-  struct record : sparta::DirectProductAbstractDomain<record, bindings, fields> {};
+  struct record : sparta::DirectProductAbstractDomain<record, bindings, fields> {
+    using sparta::DirectProductAbstractDomain<record, bindings,
+                                              fields>::DirectProductAbstractDomain;
+  };
   using value = sparta::DisjointUnionAbstractDomain<record, constant>;
   using type = sparta::ConstantAbstractDomain<Type>;
-  struct object : sparta::DirectProductAbstractDomain<object, type, value> {};
+  struct object : sparta::DirectProductAbstractDomain<object, type, value> {
+    using sparta::DirectProductAbstractDomain<object, type, value>::DirectProductAbstractDomain;
+  };
 
   using scope = sparta::HashedAbstractEnvironment<Var, addresses>;
   using memory = sparta::HashedAbstractPartition<Address, object>;
-  struct state : sparta::DirectProductAbstractDomain<state, scope, memory> {};
+  struct state : sparta::DirectProductAbstractDomain<state, scope, memory> {
+    using sparta::DirectProductAbstractDomain<state, scope, memory>::DirectProductAbstractDomain;
+  };
   static_assert(abstract_domain<state>);
   static_assert(abstract_domain<scope>);
   static_assert(abstract_domain<memory>);
