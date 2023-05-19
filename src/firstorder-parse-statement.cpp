@@ -12,20 +12,20 @@ using std::vector;
 using syn = firstorder::syntax<string_view>;
 struct firstorder_cursor : public cursor {
   using cursor::cursor;
-  auto parse_dictionary_keys() -> vector<string_view> {
+  auto parse_dictionary(std::string_view tgt) -> vector<syn::node> {
     // dictionary("{" commaSep1(pair | dictionary_splat)? ","? "}")
     stanly_assert(symbol() == symbols.dictionary);  // <dictionary(...)>
-    vector<string_view> dictionary_keys{};
+    std::vector<syn::node> dictionary{syn::alloc{tgt, "dict"}};
     goto_child();                              // dictionary(<'{'> pair(...) ...)
     while (goto_sibling() && text() != "}") {  // dictionary(... <pair(...)> ...)
       // pair(key:expression ":" value:expression)
       stanly_assert(symbol() == symbols.pair);
-      dictionary_keys.emplace_back(text(fields.key));
+      dictionary.emplace_back(syn::update{tgt, text(fields.key), text(fields.value)});
       goto_sibling();  // dictionary(... <','> ...)
     }
     goto_parent();  // <dictionary(...)>
     stanly_assert(symbol() == symbols.dictionary);
-    return dictionary_keys;
+    return dictionary;
   }
   auto parse_variable_and_field_from_subscript() -> std::tuple<std::string_view, std::string_view> {
     goto_child();
@@ -38,18 +38,8 @@ struct firstorder_cursor : public cursor {
     stanly_assert(symbol() == symbols.identifier);
     return {variable, text()};
   };
-  [[nodiscard]] syn::node yield() {
-    syn::node node = queue.back();
-    queue.pop_back();
-    return node;
-  }
-  [[nodiscard]] syn::node yield(rg::input_range auto... nodes) {
-    (rg::copy(nodes, std::back_inserter(queue)), ...);
-    return yield();
-  }
 
-  auto parse_statement() -> syn::node {
-    if (!queue.empty()) { return yield(); };
+  auto parse_statement() -> std::vector<syn::node> {
     stanly_assert(symbol() == symbols.expression_statement);
     goto_child();
     stanly_assert(symbol() == symbols.assignment);
@@ -65,19 +55,15 @@ struct firstorder_cursor : public cursor {
 
       symbol_ = symbol();
       auto const right = text();
-      if (symbol_ == symbols.identifier) { return syn::ref{left, right}; }
+      if (symbol_ == symbols.identifier) { return {syn::ref{left, right}}; }
       if (symbol_ == symbols.string || symbol_ == symbols.integer) {
-        return syn::text{left, right};
+        return {syn::text{left, right}};
       }
-      if (symbol_ == symbols.dictionary) {
-        auto mk_update = [=](auto key) { return syn::update(left, key, ""); };
-        return yield(std::vector{syn::alloc{left, "dict"}},
-                     parse_dictionary_keys() | vw::reverse | vw::transform(mk_update));
-      }
-      if (symbol_ == symbols.set || symbol_ == symbols.list) { return syn::alloc{left, "top"}; }
+      if (symbol_ == symbols.dictionary) { return parse_dictionary(left); }
+      if (symbol_ == symbols.set || symbol_ == symbols.list) { return {syn::alloc{left, "top"}}; }
       if (symbol_ == symbols.subscript) {
         auto [variable, field_] = parse_variable_and_field_from_subscript();
-        return syn::load{left, variable, field_};
+        return {syn::load{left, variable, field_}};
       }
       unreachable();
     }
@@ -88,18 +74,15 @@ struct firstorder_cursor : public cursor {
       goto_sibling();  // skip "="
       goto_sibling();
       stanly_assert(symbol() == symbols.identifier);
-      return syn::update{variable, field_, text()};
+      return {syn::update{variable, field_, text()}};
     };
 
     unreachable();
   }
-
- private:
-  std::vector<syn::node> queue{};
 };
 template <>
-firstorder::syntax<string_view>::node parse_statement<firstorder::syntax<string_view>::node>(
-    TSTreeCursor* cursor, string_view program) {
+std::vector<firstorder::syntax<string_view>::node>
+parse_statement<firstorder::syntax<string_view>::node>(TSTreeCursor* cursor, string_view program) {
   return firstorder_cursor{cursor, program}.parse_statement();
 };
 }  // namespace stanly

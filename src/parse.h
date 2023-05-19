@@ -71,14 +71,14 @@ class cursor {
 }  // namespace stanly
 namespace stanly {
 template <class Result>
-Result parse_statement(TSTreeCursor*, std::string_view);
+std::vector<Result> parse_statement(TSTreeCursor*, std::string_view);
 template <class Node>
 std::vector<Node> parse(std::string_view program) {
   parser prsr{program};
   std::vector<Node> nodes{};
   while (true) {
     auto sibling = ts_node_next_named_sibling(ts_tree_cursor_current_node(prsr.cursor()));
-    nodes.push_back(parse_statement<Node>(prsr.cursor(), program));
+    rg::move(parse_statement<Node>(prsr.cursor(), program), std::back_inserter(nodes));
     if (ts_node_is_null(sibling)) { break; }
     ts_tree_cursor_reset(prsr.cursor(), sibling);
   }

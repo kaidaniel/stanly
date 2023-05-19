@@ -4,34 +4,11 @@
 #include <vector>
 
 #include "catch2/matchers/catch_matchers_range_equals.hpp"
+#include "firstorder-analyse.h"
 #include "firstorder-syntax.h"
 #include "syntax.h"
 
 namespace stanly::firstorder {
-// TODO: replace with actual abstract domain in src/firstorder-syntax.h
-// clang-format off
-template<class Repr>
-struct domain {
-  struct str { Repr val; };
-  struct record { Repr field1; Repr field2; };
-  struct recordv { Repr field1; Repr field2; };
-  struct top{};
-  struct bottom{};
-  using object = std::variant<str, record, recordv, top, bottom>;
-  using env = std::unordered_map<Repr, object>;
- };
- auto& operator<<(auto& s, std::vector<domain<std::size_t>::env> vec) { 
-  return (s << std::format("{}", vec));
-  }
-}
-namespace stanly{
-  template<class T>
-  requires contains<firstorder::domain<std::size_t>::object, std::decay_t<T>>
-  struct is_syntax_node<T> { constexpr static bool value = true; };
-
-namespace firstorder{
-// clang-format on
-auto const analyse = [](auto&&) -> domain<std::size_t>::env { return {}; };
 struct programs : syntax<idx> {
   std::vector<std::vector<node>> operator()() {
     return {{text{idx{0}, idx{1}}, alloc{idx{2}, idx{100}}, update{idx{2}, idx{3}, idx{0}},
@@ -50,9 +27,6 @@ struct bindings : domain<std::size_t> {
 };
 
 TEST_CASE("analyse firstorder programs", "[firstorder][.analyse]") {
-  std::vector<domain<std::size_t>::env> vec{};
-  rg::copy(programs{}() | vw::transform(analyse), std::back_inserter(vec));
   CHECK_THAT(bindings{}(), Catch::Matchers::RangeEquals(vw::transform(programs{}(), analyse)));
 }
-}  // namespace firstorder
-}  // namespace stanly
+}  // namespace stanly::firstorder
