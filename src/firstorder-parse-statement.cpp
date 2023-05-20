@@ -9,7 +9,7 @@
 namespace stanly {
 using std::string_view;
 using std::vector;
-using syn = firstorder::syntax<string_view>;
+using syn = lang<string_view>;
 struct firstorder_cursor : public cursor {
   using cursor::cursor;
   auto parse_dictionary(std::string_view tgt) -> vector<syn::node> {
@@ -81,8 +81,8 @@ struct firstorder_cursor : public cursor {
   }
 };
 template <>
-std::vector<firstorder::syntax<string_view>::node>
-parse_statement<firstorder::syntax<string_view>::node>(TSTreeCursor* cursor, string_view program) {
+std::vector<lang<string_view>::node> parse_statement<lang<string_view>::node>(TSTreeCursor* cursor,
+                                                                              string_view program) {
   return firstorder_cursor{cursor, program}.parse_statement();
 };
 }  // namespace stanly

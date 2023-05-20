@@ -18,9 +18,9 @@ def process(line: str) -> str:
     return line_ + "\n"
 
 replacements = [
-    ("std::variant<stanly::firstorder::syntax<std::string_view>::set_field, stanly::firstorder::syntax<std::string_view>::load_field, stanly::firstorder::syntax<std::string_view>::load_text, stanly::firstorder::syntax<std::string_view>::load_record, stanly::firstorder::syntax<std::string_view>::load_var, stanly::firstorder::syntax<std::string_view>::load_top>", "node"),
-    ("stanly::firstorder::syntax<std::string_view>::", ""),
-    ("stanly::firstorder::syntax<std::string_view>", "syntax"),
+    ("std::variant<stanly::syntax_t<std::string_view>::set_field, stanly::syntax_t<std::string_view>::load_field, stanly::syntax_t<std::string_view>::load_text, stanly::syntax_t<std::string_view>::load_record, stanly::syntax_t<std::string_view>::load_var, stanly::syntax_t<std::string_view>::load_top>", "node"),
+    ("stanly::syntax_t<std::string_view>::", ""),
+    ("stanly::syntax_t<std::string_view>", "syntax"),
     ("vector", "vec"),
     ("string_view", "sv"),
     ("string", "str"),

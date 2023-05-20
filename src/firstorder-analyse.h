@@ -10,19 +10,17 @@
 #include "HashedAbstractEnvironment.h"
 #include "HashedSetAbstractDomain.h"
 
-namespace stanly::firstorder {
+namespace stanly {
 
-// reduced prod: intersection of denot. single bottom implies prod bottom. reduction is called e.g.
-// in if-statements. maybe also fn args? direct prod: prod. bottom implies all bottom. Domain:
-// memory x scope memory: address -> object  partition (implicit bottom; single top does _not_ imply
-// partition top) scope: var -> [address]    env (implicit top; single bottom implies scope bottom)
-// var, address, field: int          const
-// [x]: set[x]                powerset of integers
-// object: type x value       direct-prod (or: reduced prod for type-value mismatch)
-// value: record + constant   disjoint-sum
-// record: def bindings x use [fields]   direct-prod
+// state: memory x scope
+// memory: address -> object  partition (implicit bottom)
+// scope: var -> [address]    env (implicit top; single bottom implies scope bottom)
+// object: type x value
+// value: record + constant
+// record: bindings x [fields]
 // bindings: field -> [address]    partition
 // type: dict, dataframe, closure, int, top, ...
+// var, address, field: int
 
 template <class T>
 concept abstract_domain = std::derived_from<T, sparta::AbstractDomain<T>>;
@@ -62,4 +60,4 @@ struct abstract_domain_types {
 };
 
 // using abstract_domain = abstract_domain_types<>::state;
-}  // namespace stanly::firstorder
+}  // namespace stanly

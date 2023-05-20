@@ -6,10 +6,10 @@
 #include "firstorder-syntax.h"
 #include "parse.h"
 
-namespace stanly::firstorder {
+namespace stanly {
 
 TEST_CASE("parse firstorder", "[parser]") {
-  struct statements : syntax<std::string_view> {
+  struct statements : lang<std::string_view> {
     std::vector<std::pair<std::string_view, std::vector<node>>> operator()() {
       return {
           {"x=y", {ref{"x", "y"}}},
@@ -34,8 +34,8 @@ TEST_CASE("parse firstorder", "[parser]") {
   };
 
   auto [program, nodes] = GENERATE(from_range(statements{}()));
-  CHECK(parse<syntax<std::string_view>::node>(program) == nodes);
-  // CHECK_THAT(parse<syntax<std::string_view>::node>(program),
+  CHECK(parse<lang<std::string_view>::node>(program) == nodes);
+  // CHECK_THAT(parse<lang<std::string_view>::node>(program),
   // Catch::Matchers::RangeEquals(nodes));
 }
-}  // namespace stanly::firstorder
+}  // namespace stanly

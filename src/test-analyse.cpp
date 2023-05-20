@@ -8,8 +8,8 @@
 // #include "firstorder-syntax.h"
 // #include "syntax.h"
 
-// namespace stanly::firstorder {
-// struct programs : syntax<idx> {
+// namespace stanly {
+// struct programs : lang<idx> {
 //   std::vector<std::vector<node>> operator()() {
 //     return {{text{idx{0}, idx{1}}, alloc{idx{2}, idx{100}}, update{idx{2}, idx{3}, idx{0}},
 //              update{idx{2}, idx{4}, idx{0}}},
@@ -31,4 +31,4 @@ TEST_CASE("analyse firstorder programs", "[firstorder][analyse]") {
   CHECK(1 + 5 == 1 + 5);
   // CHECK_THAT(bindings{}(), Catch::Matchers::RangeEquals(vw::transform(programs{}(), analyse)));
 }
-// }  // namespace stanly::firstorder
+// }  // namespace stanly
