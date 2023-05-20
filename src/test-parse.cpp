@@ -10,7 +10,7 @@ namespace stanly {
 
 TEST_CASE("parse firstorder", "[parser]") {
   struct statements : lang<std::string_view> {
-    std::vector<std::pair<std::string_view, std::vector<node>>> operator()() {
+    std::vector<std::pair<std::string_view, std::vector<first>>> operator()() {
       return {
           {"x=y", {ref{"x", "y"}}},
           {"x=1", {lit{"x", "1"}}},
@@ -34,8 +34,8 @@ TEST_CASE("parse firstorder", "[parser]") {
   };
 
   auto [program, nodes] = GENERATE(from_range(statements{}()));
-  CHECK(parse<lang<std::string_view>::node>(program) == nodes);
-  // CHECK_THAT(parse<lang<std::string_view>::node>(program),
+  CHECK(parse<lang<std::string_view>::first>(program) == nodes);
+  // CHECK_THAT(parse<lang<std::string_view>::first>(program),
   // Catch::Matchers::RangeEquals(nodes));
 }
 }  // namespace stanly

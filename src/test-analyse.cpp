@@ -10,7 +10,7 @@
 
 // namespace stanly {
 // struct programs : lang<idx> {
-//   std::vector<std::vector<node>> operator()() {
+//   std::vector<std::vector<first>> operator()() {
 //     return {{lit{idx{0}, idx{1}}, alloc{idx{2}, idx{100}}, update{idx{2}, idx{3}, idx{0}},
 //              update{idx{2}, idx{4}, idx{0}}},
 //             {alloc{idx{0}, idx{101}}, load{idx{3}, idx{0}, idx{1}}, load{idx{4}, idx{0}, idx{5}},

@@ -19,7 +19,7 @@ struct lang {
   struct alloc  { Repr var; Repr type; };
   struct ref    { Repr var; Repr src; };
   // clang-format on
-  using node = std::variant<update, load, lit, alloc, ref>;
+  using first = std::variant<update, load, lit, alloc, ref>;
 };
 
 class idx {
@@ -73,8 +73,8 @@ bool operator==(S &&s1, S &&s2) {
 }
 
 template <class T>
-  requires contains<lang<idx>::node, std::decay_t<T>> ||
-           contains<lang<std::string_view>::node, std::decay_t<T>>
+  requires contains<lang<idx>::first, std::decay_t<T>> ||
+           contains<lang<std::string_view>::first, std::decay_t<T>>
 struct is_syntax_node<T> {
   constexpr static bool value = true;
 };
