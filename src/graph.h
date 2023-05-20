@@ -18,10 +18,10 @@
 namespace stanly {
 
 class StringIndex {
-  // all_text_references_: set because long strings slow to hash (?redex)
-  // program_source_texts_: adding to a forward list won't invalidate references.
-  // insert_text_reference: bounds checked, <= std::numeric_limits<Idx>::max()
-  // idx_to_text_reference: Not bounds checked
+  // all_lit_references_: set because long strings slow to hash (?redex)
+  // program_source_lits_: adding to a forward list won't invalidate references.
+  // insert_lit_reference: bounds checked, <= std::numeric_limits<Idx>::max()
+  // idx_to_lit_reference: Not bounds checked
   std::map<std::string_view, idx> string_view_to_idx_{};
   std::vector<std::string_view> idx_to_string_view_{};
   std::forward_list<std::string> strings_{};
@@ -42,8 +42,8 @@ class StringIndex {
 
 template <class VariantT, class UnpackedVariantT>
 class graph {
-  // TODO: make parser return the context of each node so that it can be recorded here.
-  std::unordered_map<size_t, std::string_view> syntax_node_idx_to_source_text_{};
+  // TODO: make parser return the conlit of each node so that it can be recorded here.
+  std::unordered_map<size_t, std::string_view> syntax_node_idx_to_source_lit_{};
   std::vector<VariantT> syntax_nodes_{};
   StringIndex string_index_{};
 

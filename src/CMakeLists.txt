@@ -21,7 +21,7 @@ foreach(test test-format test-parse test-stanly-utils test-graph test-analyse)
 endforeach()
 
 add_executable(test-treesitter-query test-treesitter-query.cpp)
-add_library(parser firstorder-parse-statement.cpp parser.cpp)
+add_library(parser parser.cpp)
 
 target_link_libraries(parser PUBLIC tree-sitter tree-sitter-python project_props)
 target_link_libraries(test-parse PRIVATE parser)

@@ -5,13 +5,13 @@
 
 // #include "catch2/matchers/catch_matchers_range_equals.hpp"
 #include "firstorder-analyse.h"
-// #include "firstorder-syntax.h"
+// #include "syntax.h"
 // #include "syntax.h"
 
 // namespace stanly {
 // struct programs : lang<idx> {
 //   std::vector<std::vector<node>> operator()() {
-//     return {{text{idx{0}, idx{1}}, alloc{idx{2}, idx{100}}, update{idx{2}, idx{3}, idx{0}},
+//     return {{lit{idx{0}, idx{1}}, alloc{idx{2}, idx{100}}, update{idx{2}, idx{3}, idx{0}},
 //              update{idx{2}, idx{4}, idx{0}}},
 //             {alloc{idx{0}, idx{101}}, load{idx{3}, idx{0}, idx{1}}, load{idx{4}, idx{0}, idx{5}},
 //              ref{idx{6}, idx{0}}},
