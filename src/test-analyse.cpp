@@ -5,59 +5,57 @@
 
 // #include "catch2/matchers/catch_matchers_range_equals.hpp"
 #include "HashedAbstractPartition.h"
+#include "catch2/matchers/catch_matchers_range_equals.hpp"
 #include "domains.h"
 #include "syntax.h"
 
 namespace stanly {
 
 TEST_CASE("analyse firstorder programs", "[firstorder][analyse]") {
-  struct programs : nodes {
-    std::vector<firstorder> operator()() {
-      return {alloc{"al", "dict"}, lit{"lt", "123"},       update{"al", "f", "lt"},
-              ref{"rf", "al"},     load{"ld0", "al", "f"}, load{"ld1", "al", "g"},
-              alloc{"al", "top"},  ref{"rf", "al"}};
-    }
-  };
-
   struct collected_states : public domains, public nodes {
-    std::vector<std::pair<std::vector<nodes::firstorder>, domain>> operator()() {
-      std::vector<std::pair<std::vector<firstorder>, domain>> result{};
+    struct result {
       std::vector<firstorder> nodes{};
-      auto add_node = [&result, &nodes](firstorder&& n, scope&& s, memory&& m) {
-        nodes.push_back(n);
-        s.join_with(result.back().second.get<0>());
-        m.join_with(result.back().second.get<1>());
-        result.push_back({nodes, state{{s, m}}});
-      };
-      // clang-format off
-      add_node({}, 
-        bottom, 
-        bottom);
+      domain state{};
+    };
+    std::vector<state> states{};
+    std::vector<std::vector<firstorder>> programs{};
+    void add_node(firstorder&& n) {
+      programs.push_back(programs.back());
+      programs.back().push_back(std::move(n));
+      states.push_back(states.back());
+    }
 
-      add_node(alloc{"al", "top"},
-        scope{{{"al", addresses{"al"}}}},
-        memory{{"al.0", object{{type{"dict"}, value::bottom()}}}});
+    state& res() { return states.back(); }
+    std::pair<std::vector<std::vector<firstorder>>, std::vector<state>> operator()() && {
+      add_node({});
 
-      add_node(lit{"lt", "123"},
-        scope{{"lt", addresses{"lt"}}},
-        memory{{"lt", object{{type{"integer"}, constant{"123"}}}}});
+      add_node(alloc{"al", "top"});
+      res().set_var("al", addresses{"al"});
+      res().set_mem("0.al", object::top());
 
-      add_node(update("al", "f", "lt"),
-        bottom,
-        memory{{"d", object{{type{"dict"}, record{{defined{{{"f", addresses{"lt"}}}}, bottom}}}}}});
+      add_node(lit{"lt", "123"});
+      res().set_var("lt", addresses{"lt"});
+      res().set_mem("lt", object{constant{"123"}, type{"integer"}});
 
-      add_node(ref("rf", "al"),
-        scope{{"rf", addresses{"al"}}},
-        bottom);
+      add_node(update{"al", "f", "lt"});
+      res().set_mem("al", defined{{{"f", addresses{"lt"}}}});
 
-      add_node(load{"ld", "al", "f"},
-        scope{{"ld", addresses{"lt"}}},
-        memory{{"al", object{{bottom, record{{bottom, used{"f"}}}}}}});
+      add_node(ref{"rf", "al"});
+      res().set_var("rf", addresses{"al"});
 
-      add_node(load{"ld", "al", "g"},
-        scope{{"ld", top}},
-        memory{{"al", object{{bottom, record{{bottom, used{"g"}}}}}}});
-      // clang-format on
+      add_node(load{"ld", "al", "f"});
+      res().set_var("ld", addresses{"lt"});
+      res().join_mem(memory{{"al", object{used{"f"}}}});
+
+      add_node(load{"ld", "al", "g"});
+      res().set_var("ld", top);
+      res().join_mem(memory{{"al", object{used{"g"}}}});
+
+      add_node(alloc{"al", "dict"});
+      res().set_var("al", addresses{"al"});
+
+      add_node(ref{"rf", "al"});
+      res().set_var("rf", addresses{"al"});
 
       // analyse([..., ref(rf al)])
 
@@ -73,34 +71,11 @@ TEST_CASE("analyse firstorder programs", "[firstorder][analyse]") {
       //         fs->add(f);
       //       });
       // });});});
-      return result;
+      return {programs, states};
     }
   };
-
-  // struct x : domains {
-  //   std::vector<domain> operator()() {
-  //     bindings b = bindings{{"x", addresses{"x"}}};
-  //     fields f1 = fields{"a"};
-  //     fields f2 = fields{};
-  //     fields f3 = {};
-  //     record r1 = record{{b, f1}};
-  //     record r2 = record{{bindings{{"x", addresses{"x"}}}, fields{"a"}}};
-  //     object o1 = object{{type{"dict"}, r2}};
-  //     object o2 = object{{type{"dict"}, record{{bindings{{"x", addresses{"x"}}}, fields{}}}}};
-  //     memory m1 = memory{{"x", o2}};
-  //     memory m2 = memory{
-  //         {"x", object{{type{"dict"}, record{{bindings{{"x", addresses{"x"}}}, fields{}}}}}}};
-  //     scope s1 = scope{{"x", addresses{"x"}}};
-  //     domain d1 = domain{{s1, m2}};
-  //     domain d2 = domain{
-  //         {scope{{"x", addresses{"x"}}},
-  //          memory{{"x",
-  //                  object{{type{"dict"}, record{{bindings{{"x", addresses{"x"}}},
-  //                  fields{}}}}}}}}};
-  //     return {};
-  //   }
-  // };
-  CHECK(1 + 5 == 1 + 5);
-  // CHECK_THAT(bindings{}(), Catch::Matchers::RangeEquals(vw::transform(programs{}(), analyse)));
+  auto analyse = [](std::vector<nodes::firstorder> n) -> domains::state { return {}; };
+  auto [programs, states] = collected_states{}();
+  //CHECK_THAT(states, Catch::Matchers::RangeEquals(vw::transform(programs, analyse)));
 }
 }  // namespace stanly

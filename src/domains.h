@@ -6,6 +6,7 @@
 #include <concepts>
 
 #include "DirectProductAbstractDomain.h"
+#include "FiniteAbstractDomain.h"
 #include "HashedAbstractEnvironment.h"
 #include "HashedSetAbstractDomain.h"
 #include "handle.h"
@@ -23,9 +24,13 @@ namespace stanly {
 // var, address, field: int
 
 namespace detail {
+using namespace sparta;
 template <class T>
-concept abstract_domain = std::derived_from<T, sparta::AbstractDomain<T>>;
-
+concept abstract_domain = std::derived_from<T, AbstractDomain<T>>;
+enum class RowVarEls { Bot, Closed, Open };
+using enum RowVarEls;
+using row_var_l = BitVectorLattice<RowVarEls, 3>;
+row_var_l l_({Bot, Closed, Open}, {{Bot, Closed}, {Closed, Open}});
 template <class DefaultRepr = handle, class Field = DefaultRepr, class Address = DefaultRepr,
           class Var = DefaultRepr, class Constant = DefaultRepr, class Type = DefaultRepr>
 struct abstract_domain_types {
@@ -36,26 +41,42 @@ struct abstract_domain_types {
     using constant = Constant;
     using type = Type;
   };
-  using addresses = sparta::HashedSetAbstractDomain<Address>;
-  using constant = sparta::ConstantAbstractDomain<Constant>;
-  using defined = sparta::HashedAbstractPartition<Field, addresses>;
-  using used = sparta::HashedSetAbstractDomain<Field>;
-  struct record : sparta::DirectProductAbstractDomain<record, defined, used> {
-    using sparta::DirectProductAbstractDomain<record, defined, used>::DirectProductAbstractDomain;
+  using row_var = FiniteAbstractDomain<RowVarEls, row_var_l, row_var_l::Encoding, &l_>;
+  using addresses = HashedSetAbstractDomain<Address>;
+  using constant = ConstantAbstractDomain<Constant>;
+  using defined = HashedAbstractPartition<Field, addresses>;
+  using used = HashedSetAbstractDomain<Field>;
+  struct record : DirectProductAbstractDomain<record, row_var, defined, used> {
+    using DirectProductAbstractDomain<record, row_var, defined, used>::DirectProductAbstractDomain;
+    record(defined&& d, RowVarEls rv = Bot) : record({row_var{rv}, std::move(d), used::bottom()}) {}
+    record(used&& u, RowVarEls rv = Bot) : record({row_var{rv}, defined::bottom(), std::move(u)}) {}
   };
-  using value = sparta::DisjointUnionAbstractDomain<record, constant>;
-  using type = sparta::ConstantAbstractDomain<Type>;
-  struct object : sparta::DirectProductAbstractDomain<object, type, value> {
-    using sparta::DirectProductAbstractDomain<object, type, value>::DirectProductAbstractDomain;
+  using data = DisjointUnionAbstractDomain<record, constant>;
+  using type = ConstantAbstractDomain<Type>;
+  struct object : DirectProductAbstractDomain<object, type, data> {
+    using DirectProductAbstractDomain<object, type, data>::DirectProductAbstractDomain;
+    object(defined&& d, type&& t = type::bottom()) : object({std::move(t), data{std::move(d)}}) {}
+    object(used&& d, type&& t = type::bottom()) : object({std::move(t), data{std::move(d)}}) {}
+    object(constant&& c, type&& t = type::bottom()) : object({std::move(t), data{std::move(c)}}) {}
   };
 
-  using scope = sparta::HashedAbstractEnvironment<Var, addresses>;
-  using memory = sparta::HashedAbstractPartition<Address, object>;
-  struct state : sparta::DirectProductAbstractDomain<state, scope, memory> {
-    using sparta::DirectProductAbstractDomain<state, scope, memory>::DirectProductAbstractDomain;
+  using scope = HashedAbstractEnvironment<Var, addresses>;
+  using memory = HashedAbstractPartition<Address, object>;
+  struct state : DirectProductAbstractDomain<state, scope, memory> {
+    using DirectProductAbstractDomain<state, scope, memory>::DirectProductAbstractDomain;
+    using dp = DirectProductAbstractDomain<state, scope, memory>;
+    void set_mem(Address&& a, object&& o) {
+      dp::template apply<1>([&](memory* m) { m->set(a, std::move(o)); });
+    }
+    void set_var(Var&& v, addresses&& a) {
+      dp::template apply<0>([=](scope* s) { s->set(v, std::move(a)); });
+    }
+    void join_mem(memory&& mem) {
+      dp::template apply<1>([&](memory* m) { m->join_with(std::move(mem)); });
+    }
   };
   using domain = state;
-  using kind = sparta::AbstractValueKind;
+  using kind = AbstractValueKind;
   struct bottom_type {
     template <class T>
       requires requires { T::bottom(); }
