@@ -139,3 +139,52 @@ constexpr auto map_to_same_name(F &&member_a_to_member_b) {
 }
 
 }  // namespace stanly
+
+template <class... Args, class CharT>
+struct std::formatter<std::variant<Args...>, CharT> : std::formatter<std::string_view, CharT> {
+  constexpr auto format(const std::variant<Args...> &v, auto &ctx) const {
+    std::format_to(ctx.out(), "{}", "inj-");
+    return std::visit([&](auto &&x) { return std::format_to(ctx.out(), "{}", x); }, v);
+  }
+};
+
+template <class Key, class Val, class... Args, class CharT>
+struct std::formatter<std::unordered_map<Key, Val, Args...>, CharT> : std::formatter<Val, CharT> {
+  auto format(const std::unordered_map<Key, Val, Args...> &map, auto &ctx) const {
+    std::format_to(ctx.out(), "{}", "{");
+    for (const auto &el : map) {
+      auto &[key, val] = el;
+      if (&el != &*(map.begin())) { std::format_to(ctx.out(), "{}", ", "); }
+      std::format_to(ctx.out(), "{}", key);
+      std::format_to(ctx.out(), "{}", ": ");
+      std::format_to(ctx.out(), "{}", val);
+    }
+    return std::format_to(ctx.out(), "{}", "}");
+  }
+};
+
+template <class El, class CharT>
+struct std::formatter<std::vector<El>, CharT> : std::formatter<El, CharT> {
+  constexpr auto format(const std::vector<El> vec, auto &ctx) const {
+    std::format_to(ctx.out(), "{}", '[');
+    for (const auto &el : vec) {
+      if (&el != &*(vec.begin())) { std::format_to(ctx.out(), "{}", ", "); }
+      std::formatter<El, CharT>::format(el, ctx);
+    }
+    return std::format_to(ctx.out(), "{}", ']');
+  }
+};
+template <class... Args, class CharT>
+struct std::formatter<std::tuple<Args...>, CharT> : std::formatter<std::string_view, CharT> {
+  auto format(const std::tuple<Args...> &tpl, auto &ctx) const {
+    std::format_to(ctx.out(), "{}", "(");
+    if constexpr (!std::same_as<std::tuple<Args...>, std::tuple<>>) {
+      std::apply(
+          [&ctx](const auto &x, const auto &...xs) {
+            std::format_to(ctx.out(), "{}", x), ((std::format_to(ctx.out(), " {}", xs)), ...);
+          },
+          tpl);
+    }
+    return std::format_to(ctx.out(), "{}", ")");
+  }
+};
