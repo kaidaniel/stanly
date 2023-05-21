@@ -1,7 +1,5 @@
 #pragma once
 
-#include <__concepts/convertible_to.h>
-
 #include <concepts>
 #include <string_view>
 #include <unordered_map>
@@ -99,8 +97,7 @@ struct std::formatter<std::vector<El>, CharT> : std::formatter<El, CharT> {
       if (&el != &*(vec.begin())) { std::format_to(ctx.out(), "{}", ", "); }
       std::formatter<El, CharT>::format(el, ctx);
     }
-    std::format_to(ctx.out(), "{}", ']');
-    return ctx.out();
+    return std::format_to(ctx.out(), "{}", ']');
   }
 };
 template <class... Args, class CharT>
@@ -114,8 +111,7 @@ struct std::formatter<std::tuple<Args...>, CharT> : std::formatter<std::string_v
           },
           tpl);
     }
-    std::format_to(ctx.out(), "{}", ")");
-    return ctx.out();
+    return std::format_to(ctx.out(), "{}", ")");
   }
 };
 template <stanly::syntax_node T, class CharT>
@@ -124,7 +120,6 @@ struct std::formatter<T, CharT> : std::formatter<std::string_view, CharT> {
     std::formatter<std::string_view, CharT>::format(stanly::type_name<T>, ctx);
     using tpl_type = std::decay_t<decltype(to_tpl(x))>;
     return static_cast<std::formatter<tpl_type>>(*this).format(to_tpl(x), ctx);
-    // return ctx.out();
   }
 };
 
@@ -132,8 +127,7 @@ template <class... Args, class CharT>
 struct std::formatter<std::variant<Args...>, CharT> : std::formatter<std::string_view, CharT> {
   constexpr auto format(const std::variant<Args...> &v, auto &ctx) const {
     std::format_to(ctx.out(), "{}", "inj-");
-    std::visit([&](auto &&x) { std::format_to(ctx.out(), "{}", x); }, v);
-    return ctx.out();
+    return std::visit([&](auto &&x) { return std::format_to(ctx.out(), "{}", x); }, v);
   }
 };
 
@@ -148,7 +142,6 @@ struct std::formatter<std::unordered_map<Key, Val, Args...>, CharT> : std::forma
       std::format_to(ctx.out(), "{}", ": ");
       std::format_to(ctx.out(), "{}", val);
     }
-    std::format_to(ctx.out(), "{}", "}");
-    return ctx.out();
+    return std::format_to(ctx.out(), "{}", "}");
   }
 };
