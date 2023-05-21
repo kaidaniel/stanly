@@ -84,13 +84,13 @@ auto lookup_field(std::string_view name) -> TSFieldId {
 
 using std::string_view;
 using std::vector;
-struct firstorder_cursor : public cursor, public lang<std::string_view> {
+struct firstorder_cursor : public cursor, public nodes {
   using cursor::cursor;
-  using lang<std::string_view>::first;
-  auto parse_dictionary(std::string_view tgt) -> vector<first> {
+  using nodes::firstorder;
+  auto parse_dictionary(std::string_view tgt) -> vector<firstorder> {
     // dictionary("{" commaSep1(pair | dictionary_splat)? ","? "}")
     stanly_assert(symbol() == symbols.dictionary);  // <dictionary(...)>
-    std::vector<first> dictionary{alloc{tgt, "dict"}};
+    std::vector<firstorder> dictionary{alloc{tgt, "dict"}};
     goto_child();                              // dictionary(<'{'> pair(...) ...)
     while (goto_sibling() && text() != "}") {  // dictionary(... <pair(...)> ...)
       // pair(key:expression ":" value:expression)
@@ -114,7 +114,7 @@ struct firstorder_cursor : public cursor, public lang<std::string_view> {
     return {variable, text()};
   };
 
-  auto parse_statement() -> std::vector<first> {
+  auto parse_statement() -> std::vector<firstorder> {
     stanly_assert(symbol() == symbols.expression_statement);
     goto_child();
     stanly_assert(symbol() == symbols.assignment);
@@ -154,11 +154,10 @@ struct firstorder_cursor : public cursor, public lang<std::string_view> {
   }
 };
 template <>
-std::vector<lang<string_view>::first> parse_statement<lang<string_view>::first>(
-    TSTreeCursor* cursor, string_view program) {
+std::vector<nodes::firstorder> parse_statement<nodes::firstorder>(TSTreeCursor* cursor,
+                                                                  string_view program) {
   return firstorder_cursor{cursor, program}.parse_statement();
 };
-template std::vector<lang<std::string_view>::first> parse<lang<std::string_view>::first>(
-    std::string_view);
+template std::vector<nodes::firstorder> parse<nodes::firstorder>(std::string_view);
 
 }  // namespace stanly

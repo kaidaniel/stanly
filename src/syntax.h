@@ -1,5 +1,7 @@
 #pragma once
 
+#include <__concepts/convertible_to.h>
+
 #include <concepts>
 #include <string_view>
 #include <unordered_map>
@@ -19,8 +21,9 @@ struct lang {
   struct alloc  { Repr var; Repr type; };
   struct ref    { Repr var; Repr src; };
   // clang-format on
-  using first = std::variant<update, load, lit, alloc, ref>;
+  using firstorder = std::variant<update, load, lit, alloc, ref>;
 };
+using nodes = lang<std::string_view>;
 
 class idx {
  public:
@@ -37,24 +40,16 @@ class idx {
  private:
   repr value;
 };
+using packed_nodes = lang<idx>;
 constexpr idx operator""_i(unsigned long long i) { return idx(i); }
 
 template <class T>
-struct is_syntax_node {
-  constexpr static bool value = false;
-};
+concept syntax_node = contains<nodes::firstorder, std::decay_t<T>> ||
+                      contains<packed_nodes::firstorder, std::decay_t<T>>;
 
 template <class T>
-concept syntax_node = is_syntax_node<T>::value;
-
-template <class T>
-concept syntax = all<is_syntax_node, std::decay_t<T>> &&
-                 requires(T t) { std::visit([](auto &&) { return 1; }, t); };
-
-template <class T>
-struct is_syntax {
-  constexpr static bool value = syntax<T>;
-};
+concept syntax = std::same_as<nodes::firstorder, std::decay_t<T>> ||
+                 std::same_as<packed_nodes::firstorder, std::decay_t<T>>;
 
 const int kN_BYTES_PACKED = 8;
 template <class T>
@@ -71,67 +66,11 @@ template <syntax S>
 bool operator==(S &&s1, S &&s2) {
   return std::visit(std::equal_to{}, std::forward<S>(s1), std::forward<S>(s2));
 }
-
 template <class T>
-  requires contains<lang<idx>::first, std::decay_t<T>> ||
-           contains<lang<std::string_view>::first, std::decay_t<T>>
-struct is_syntax_node<T> {
-  constexpr static bool value = true;
-};
-
-template <class T>
-concept formatted_type =
-    instance_of<T, std::vector> || instance_of<T, std::tuple> || instance_of<T, std::variant> ||
-    instance_of<T, std::unordered_map> || syntax_node<T>;
-template <class CharT, class Ctx>
-struct format {
-  Ctx *ctx_;
-  template <class T>
-  void fmt(const T &t) {
-    if constexpr (instance_of<T, std::vector>) {
-      fmt("[");
-      for (const auto &el : t) {
-        if (&el != &*(t.begin())) { fmt(", "); }
-        fmt(el);
-      }
-      fmt("]");
-    } else if constexpr (instance_of<T, std::variant>) {
-      fmt("inj-");
-      std::visit(*this, t);
-    } else if constexpr (instance_of<T, std::tuple>) {
-      fmt("(");
-      if constexpr (!std::same_as<T, std::tuple<>>) {
-        std::apply([this](const auto &x, const auto &...xs) { fmt(x), ((fmt(" "), fmt(xs)), ...); },
-                   t);
-      }
-      fmt(")");
-    } else if constexpr (instance_of<T, std::unordered_map>) {
-      fmt("{");
-      for (const auto &el : t) {
-        auto &[key, val] = el;
-        if (&el != &*(t.begin())) { fmt(", "); }
-        fmt(key);
-        fmt(": ");
-        fmt(val);
-      }
-      fmt("}");
-    } else if constexpr (std::same_as<std::decay_t<T>, char *>) {
-      std::formatter<std::string_view, CharT>{}.format(std::string_view{t}, *ctx_);
-    } else if constexpr (syntax_node<T>) {
-      fmt(type_name<T>);
-      fmt(to_tpl(t));
-    } else {
-      std::formatter<T, CharT>{}.format(t, *ctx_);
-    }
-  }
-  decltype(auto) operator()(const auto &t) {
-    fmt(t);
-    return ctx_->out();
-  }
-};
-template <class Ctx>
-format(Ctx *ctx) -> format<typename Ctx::char_type, Ctx>;
-
+  requires syntax_node<T> || syntax<T>
+auto &operator<<(auto &s, const T &x) {
+  return s << std::format("{}", x);
+}
 }  // namespace stanly
 
 template <>
@@ -147,13 +86,69 @@ struct std::hash<stanly::idx> {
 
 template <class CharT>
 struct std::formatter<stanly::idx, CharT> : std::formatter<std::string_view, CharT> {
-  template <class Ctx>
-  auto format(const stanly::idx &idx, Ctx &ctx) const {
+  auto format(const stanly::idx &idx, auto &ctx) const {
     return std::formatter<std::size_t, CharT>{}.format(static_cast<std::size_t>(idx), ctx);
   }
 };
 
-template <stanly::formatted_type T, class CharT>
+template <class El, class CharT>
+struct std::formatter<std::vector<El>, CharT> : std::formatter<El, CharT> {
+  constexpr auto format(const std::vector<El> vec, auto &ctx) const {
+    std::format_to(ctx.out(), "{}", '[');
+    for (const auto &el : vec) {
+      if (&el != &*(vec.begin())) { std::format_to(ctx.out(), "{}", ", "); }
+      std::formatter<El, CharT>::format(el, ctx);
+    }
+    std::format_to(ctx.out(), "{}", ']');
+    return ctx.out();
+  }
+};
+template <class... Args, class CharT>
+struct std::formatter<std::tuple<Args...>, CharT> : std::formatter<std::string_view, CharT> {
+  auto format(const std::tuple<Args...> &tpl, auto &ctx) const {
+    std::format_to(ctx.out(), "{}", "(");
+    if constexpr (!std::same_as<std::tuple<Args...>, std::tuple<>>) {
+      std::apply(
+          [&ctx](const auto &x, const auto &...xs) {
+            std::format_to(ctx.out(), "{}", x), ((std::format_to(ctx.out(), " {}", xs)), ...);
+          },
+          tpl);
+    }
+    std::format_to(ctx.out(), "{}", ")");
+    return ctx.out();
+  }
+};
+template <stanly::syntax_node T, class CharT>
 struct std::formatter<T, CharT> : std::formatter<std::string_view, CharT> {
-  auto format(const T &t, auto &ctx) const { return stanly::format{&ctx}(t); }
+  auto format(const T x, auto &ctx) const {
+    std::formatter<std::string_view, CharT>::format(stanly::type_name<T>, ctx);
+    using tpl_type = std::decay_t<decltype(to_tpl(x))>;
+    return static_cast<std::formatter<tpl_type>>(*this).format(to_tpl(x), ctx);
+    // return ctx.out();
+  }
+};
+
+template <class... Args, class CharT>
+struct std::formatter<std::variant<Args...>, CharT> : std::formatter<std::string_view, CharT> {
+  constexpr auto format(const std::variant<Args...> &v, auto &ctx) const {
+    std::format_to(ctx.out(), "{}", "inj-");
+    std::visit([&](auto &&x) { std::format_to(ctx.out(), "{}", x); }, v);
+    return ctx.out();
+  }
+};
+
+template <class Key, class Val, class... Args, class CharT>
+struct std::formatter<std::unordered_map<Key, Val, Args...>, CharT> : std::formatter<Val, CharT> {
+  auto format(const std::unordered_map<Key, Val, Args...> &map, auto &ctx) const {
+    std::format_to(ctx.out(), "{}", "{");
+    for (const auto &el : map) {
+      auto &[key, val] = el;
+      if (&el != &*(map.begin())) { std::format_to(ctx.out(), "{}", ", "); }
+      std::format_to(ctx.out(), "{}", key);
+      std::format_to(ctx.out(), "{}", ": ");
+      std::format_to(ctx.out(), "{}", val);
+    }
+    std::format_to(ctx.out(), "{}", "}");
+    return ctx.out();
+  }
 };

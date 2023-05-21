@@ -7,25 +7,12 @@
 #include "syntax.h"
 
 namespace stanly {
-struct test_node {};
-template <>
-struct is_syntax_node<test_node> {
-  constexpr static bool value = true;
-};
-using test_variant = std::variant<test_node>;
-}  // namespace stanly
+TEST_CASE("format lang<...>::firstorder", "[format]") {
+  auto fformat = [](auto t) { return std::format("{}", t); };
 
-namespace stanly {
-TEST_CASE("format lang<...>::first", "[format]") {
-  auto fformat = [](auto &&t) { return std::format("{}", t); };
-
-  SECTION("empty node") {
-    CHECK(fformat(test_node{}) == "test_node()");
-    CHECK(fformat(test_variant{test_node{}}) == "inj-test_node()");
-  }
   SECTION("node") {
-    struct syntax_nodes : lang<std::string_view> {
-      std::vector<std::pair<first, std::string>> operator()() {
+    struct syntax_nodes : nodes {
+      std::vector<std::pair<firstorder, std::string>> operator()() {
         return {{load{"a", "b", "c"}, std::format("{}(a b c)", type_name<load>)},
                 {update{"a", "b", "c"}, std::format("{}(a b c)", type_name<update>)},
                 {lit{"a", "b"}, std::format("{}(a b)", type_name<lit>)},
@@ -34,26 +21,26 @@ TEST_CASE("format lang<...>::first", "[format]") {
       }
     };
     auto [node, str] = GENERATE(from_range(syntax_nodes{}()));
-    CHECK(std::visit(fformat, node) == str);  // formatted as choice of a variant
-    CHECK(fformat(node) == "inj-" + str);     // formatted as variant
+    CHECK(visit(fformat, node) == str);    // formatted as choice of a variant
+    CHECK(fformat(node) == "inj-" + str);  // formatted as variant
   }
   SECTION("idx node") {
-    struct syntax_nodes_idx : lang<idx> {
-      std::vector<std::pair<first, std::string>> operator()() {
-        return {{load{idx{0}, idx{1}, idx{2}}, std::format("{}(0 1 2)", type_name<load>)},
-                {update{idx{3}, idx{4}, idx{5}}, std::format("{}(3 4 5)", type_name<update>)},
-                {lit{idx{6}, idx{7}}, std::format("{}(6 7)", type_name<lit>)},
-                {alloc{idx{8}, idx{9}}, std::format("{}(8 9)", type_name<alloc>)},
-                {ref{idx{10}, idx{11}}, std::format("{}(10 11)", type_name<ref>)}};
+    struct syntax_nodes_idx : packed_nodes {
+      std::vector<std::pair<firstorder, std::string>> operator()() {
+        return {{load{0_i, 1_i, 2_i}, std::format("{}(0 1 2)", type_name<load>)},
+                {update{3_i, 4_i, 5_i}, std::format("{}(3 4 5)", type_name<update>)},
+                {lit{6_i, 7_i}, std::format("{}(6 7)", type_name<lit>)},
+                {alloc{8_i, 9_i}, std::format("{}(8 9)", type_name<alloc>)},
+                {ref{10_i, 11_i}, std::format("{}(10 11)", type_name<ref>)}};
       }
     };
     auto [node, str] = GENERATE(from_range(syntax_nodes_idx{}()));
     CHECK(std::visit(fformat, node) == str);
     CHECK(fformat(node) == "inj-" + str);
   }
-  SECTION("std::vector<first>") {
-    struct syntax_node_vectors : lang<std::string_view> {
-      std::vector<std::pair<std::vector<first>, std::string>> operator()() {
+  SECTION("std::vector<firstorder>") {
+    struct syntax_node_vectors : nodes {
+      std::vector<std::pair<std::vector<firstorder>, std::string>> operator()() {
         return {{{load{"a", "b", "c"}, lit{"a", "b"}},
                  std::format("[inj-{}(a b c), inj-{}(a b)]", type_name<load>, type_name<lit>)},
                 {{ref{"a", "b"}, alloc{"a", "top"}},
@@ -65,12 +52,12 @@ TEST_CASE("format lang<...>::first", "[format]") {
     CHECK(fformat(node) == str);
   }
   SECTION("std::unordered_map<std::string_view, node>") {
-    struct maps : lang<std::string_view> {
-      std::vector<std::pair<std::unordered_map<std::string_view, first>, std::string>>
+    struct maps : nodes {
+      std::vector<std::pair<std::unordered_map<std::string_view, firstorder>, std::string>>
       operator()() {
         return {{{{"2", alloc{"c", "top"}}, {"0", lit{"a", "b"}}, {"3", update{"a", "b", "c"}}},
-                 std::format("{}0: inj-{}(a b), 3: inj-{}(a b c), 2: inj-{}(c top){}", "{",
-                             type_name<lit>, type_name<update>, type_name<alloc>, "}")},
+                 std::format("{}2: inj-{}(c top), 3: inj-{}(a b c), 0: inj-{}(a b){}", "{",
+                             type_name<alloc>, type_name<update>, type_name<lit>, "}")},
                 {{}, "{}"}};
       }
     };
@@ -78,13 +65,13 @@ TEST_CASE("format lang<...>::first", "[format]") {
     CHECK(fformat(map) == str);
   };
   SECTION("idx std::vector, std::unordered_map") {
-    struct items : lang<idx> {
-      std::pair<std::unordered_map<idx, first>, std::string> map = {
-          {{idx{0}, alloc{idx{1}, idx{2}}}, {idx{3}, lit{idx{3}, idx{4}}}},
-          {std::format("{}0: inj-{}(1 2), 3: inj-{}(3 4){}", "{", type_name<alloc>, type_name<lit>,
+    struct items : packed_nodes {
+      std::pair<std::unordered_map<idx, firstorder>, std::string> map = {
+          {{0_i, alloc{1_i, 2_i}}, {3_i, lit{3_i, 4_i}}},
+          {std::format("{}3: inj-{}(3 4), 0: inj-{}(1 2){}", "{", type_name<lit>, type_name<alloc>,
                        "}")}};
-      std::pair<std::vector<first>, std::string> vec = {
-          {update{idx{5}, idx{6}, idx{7}}, lit{idx{8}, idx{9}}},
+      std::pair<std::vector<firstorder>, std::string> vec = {
+          {update{5_i, 6_i, 7_i}, lit{8_i, 9_i}},
           std::format("[inj-{}(5 6 7), inj-{}(8 9)]", type_name<update>, type_name<lit>)};
     };
     auto [map, str] = items{}.map;
@@ -93,24 +80,24 @@ TEST_CASE("format lang<...>::first", "[format]") {
     CHECK(fformat(vec) == str_);
   }
 }
-auto &operator<<(auto &s, const formatted_type auto &x) { return s << std::format("{}", x); }
+
 namespace detail {
-struct static_assertions_string_view : lang<std::string_view> {
-  static_assert(all<is_syntax_node, std::variant<load, const lit &, lit &&>>);
-  static_assert(
-      all<is_syntax, std::variant<first, first &&, const first, const first &, const first &&>>);
-  static_assert(requires(first node) { std::cout << node; });
+struct static_assertions_string_view : nodes {
+  static_assert(syntax_node<load> && syntax_node<const lit &> && syntax_node<lit &&>);
+  static_assert(syntax<firstorder> && syntax<firstorder &&> && syntax<const firstorder &> &&
+                syntax<const firstorder &&>);
+  static_assert(requires(firstorder node) { std::cout << node; });
   static_assert(requires(update update) { std::cout << update; });
 };
-struct static_assertions_idx : lang<idx> {
-  static_assert(all<is_syntax_node, std::variant<load, const lit &, lit &&>>);
-  static_assert(
-      all<is_syntax, std::variant<first, first &&, const first, const first &, const first &&>>);
-  static_assert(requires(first node) { std::cout << node; });
+struct static_assertions_idx : packed_nodes {
+  static_assert(syntax_node<load> && syntax_node<const lit &> && syntax_node<lit &&>);
+  static_assert(syntax<firstorder> && syntax<firstorder &&> && syntax<const firstorder &> &&
+                syntax<const firstorder &&>);
+  static_assert(requires(firstorder node) { std::cout << node; });
   static_assert(requires(update update) { std::cout << update; });
 };
-static_assert(packed_syntax<lang<idx>::first>);
-static_assert(packed_syntax<const lang<idx>::first &>);
+static_assert(packed_syntax<packed_nodes::firstorder>);
+static_assert(packed_syntax<const packed_nodes::firstorder &>);
 }  // namespace detail
 
 }  // namespace stanly
