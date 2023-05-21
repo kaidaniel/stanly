@@ -21,7 +21,7 @@ struct variants {
   using variant = std::variant<a, b>;
 };
 using unpacked_t = variants<std::string_view>;
-using t = variants<idx>;
+using t = variants<handle>;
 TEST_CASE("graph", "[graph]") {
   auto a1 = unpacked_t::a{"a1i", "a1j"};
   auto a2 = unpacked_t::a{"a2i", "a2j"};

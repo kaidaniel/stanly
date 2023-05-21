@@ -24,8 +24,8 @@ TEST_CASE("format lang<...>::firstorder", "[format]") {
     CHECK(visit(fformat, node) == str);    // formatted as choice of a variant
     CHECK(fformat(node) == "inj-" + str);  // formatted as variant
   }
-  SECTION("idx node") {
-    struct syntax_nodes_idx : packed_nodes {
+  SECTION("handle node") {
+    struct syntax_nodes_handle : packed_nodes {
       std::vector<std::pair<firstorder, std::string>> operator()() {
         return {{load{0_i, 1_i, 2_i}, std::format("{}(0 1 2)", type_name<load>)},
                 {update{3_i, 4_i, 5_i}, std::format("{}(3 4 5)", type_name<update>)},
@@ -34,7 +34,7 @@ TEST_CASE("format lang<...>::firstorder", "[format]") {
                 {ref{10_i, 11_i}, std::format("{}(10 11)", type_name<ref>)}};
       }
     };
-    auto [node, str] = GENERATE(from_range(syntax_nodes_idx{}()));
+    auto [node, str] = GENERATE(from_range(syntax_nodes_handle{}()));
     CHECK(std::visit(fformat, node) == str);
     CHECK(fformat(node) == "inj-" + str);
   }
@@ -64,9 +64,9 @@ TEST_CASE("format lang<...>::firstorder", "[format]") {
     auto [map, str] = GENERATE(from_range(maps{}()));
     CHECK(fformat(map) == str);
   };
-  SECTION("idx std::vector, std::unordered_map") {
+  SECTION("handle std::vector, std::unordered_map") {
     struct items : packed_nodes {
-      std::pair<std::unordered_map<idx, firstorder>, std::string> map = {
+      std::pair<std::unordered_map<handle, firstorder>, std::string> map = {
           {{0_i, alloc{1_i, 2_i}}, {3_i, lit{3_i, 4_i}}},
           {std::format("{}3: inj-{}(3 4), 0: inj-{}(1 2){}", "{", type_name<lit>, type_name<alloc>,
                        "}")}};
@@ -89,7 +89,7 @@ struct static_assertions_string_view : nodes {
   static_assert(requires(firstorder node) { std::cout << node; });
   static_assert(requires(update update) { std::cout << update; });
 };
-struct static_assertions_idx : packed_nodes {
+struct static_assertions_handle : packed_nodes {
   static_assert(syntax_node<load> && syntax_node<const lit &> && syntax_node<lit &&>);
   static_assert(syntax<firstorder> && syntax<firstorder &&> && syntax<const firstorder &> &&
                 syntax<const firstorder &&>);

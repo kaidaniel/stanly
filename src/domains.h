@@ -5,10 +5,10 @@
 
 #include <concepts>
 
-#include "ConstantAbstractDomain.h"
 #include "DirectProductAbstractDomain.h"
 #include "HashedAbstractEnvironment.h"
 #include "HashedSetAbstractDomain.h"
+#include "handle.h"
 
 namespace stanly {
 
@@ -22,11 +22,12 @@ namespace stanly {
 // type: dict, dataframe, closure, int, top, ...
 // var, address, field: int
 
+namespace detail {
 template <class T>
 concept abstract_domain = std::derived_from<T, sparta::AbstractDomain<T>>;
 
-template <class Field = short, class Address = short, class Var = short, class Constant = short,
-          class Type = short>
+template <class DefaultRepr = handle, class Field = DefaultRepr, class Address = DefaultRepr,
+          class Var = DefaultRepr, class Constant = DefaultRepr, class Type = DefaultRepr>
 struct abstract_domain_types {
   struct concrete {
     using field = Field;
@@ -37,11 +38,10 @@ struct abstract_domain_types {
   };
   using addresses = sparta::HashedSetAbstractDomain<Address>;
   using constant = sparta::ConstantAbstractDomain<Constant>;
-  using bindings = sparta::DisjointUnionAbstractDomain<Field, addresses>;
-  using fields = sparta::HashedSetAbstractDomain<Field>;
-  struct record : sparta::DirectProductAbstractDomain<record, bindings, fields> {
-    using sparta::DirectProductAbstractDomain<record, bindings,
-                                              fields>::DirectProductAbstractDomain;
+  using defined = sparta::HashedAbstractPartition<Field, addresses>;
+  using used = sparta::HashedSetAbstractDomain<Field>;
+  struct record : sparta::DirectProductAbstractDomain<record, defined, used> {
+    using sparta::DirectProductAbstractDomain<record, defined, used>::DirectProductAbstractDomain;
   };
   using value = sparta::DisjointUnionAbstractDomain<record, constant>;
   using type = sparta::ConstantAbstractDomain<Type>;
@@ -54,10 +54,28 @@ struct abstract_domain_types {
   struct state : sparta::DirectProductAbstractDomain<state, scope, memory> {
     using sparta::DirectProductAbstractDomain<state, scope, memory>::DirectProductAbstractDomain;
   };
+  using domain = state;
+  using kind = sparta::AbstractValueKind;
+  struct bottom_type {
+    template <class T>
+      requires requires { T::bottom(); }
+    operator T() const {
+      return T::bottom();
+    }
+  } bottom{};
+  struct top_type {
+    template <class T>
+      requires requires { T::top(); }
+    operator T() const {
+      return T::top();
+    }
+  } top{};
   static_assert(abstract_domain<state>);
   static_assert(abstract_domain<scope>);
   static_assert(abstract_domain<memory>);
 };
+}  // namespace detail
 
-// using abstract_domain = abstract_domain_types<>::state;
+using domains = detail::abstract_domain_types<std::string_view>;
+using packed_domains = detail::abstract_domain_types<handle>;
 }  // namespace stanly

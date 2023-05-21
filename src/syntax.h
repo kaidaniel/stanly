@@ -7,6 +7,7 @@
 #include <variant>
 #include <vector>
 
+#include "handle.h"
 #include "stanly-utils.h"
 
 namespace stanly {
@@ -24,23 +25,8 @@ struct lang {
 };
 using nodes = lang<std::string_view>;
 
-class idx {
- public:
-  explicit operator size_t() const { return value; };
-  using repr = uint16_t;
-  explicit constexpr idx(size_t i) : value{static_cast<repr>(i)} {
-    stanly_assert(i < (std::numeric_limits<idx::repr>::max() - 1),
-                  std::format("{}-byte index can't support more than {} elements.",
-                              sizeof(idx::repr), (std::numeric_limits<idx::repr>::max() - 2)));
-  };
-  constexpr idx() : value{0} {};
-  constexpr bool operator<=>(const idx &other) const = default;
-
- private:
-  repr value;
-};
-using packed_nodes = lang<idx>;
-constexpr idx operator""_i(unsigned long long i) { return idx(i); }
+using packed_nodes = lang<handle>;
+constexpr handle operator""_i(unsigned long long i) { return handle(i); }
 
 template <class T>
 concept syntax_node = contains<nodes::firstorder, std::decay_t<T>> ||
@@ -71,24 +57,6 @@ auto &operator<<(auto &s, const T &x) {
   return s << std::format("{}", x);
 }
 }  // namespace stanly
-
-template <>
-struct std::hash<stanly::idx> {
-  auto operator()(const stanly::idx &idx) const {
-    using cast_to = size_t;
-    static_assert(std::unsigned_integral<cast_to>);
-    static_assert(std::unsigned_integral<stanly::idx::repr>);
-    static_assert(sizeof(cast_to) >= sizeof(stanly::idx::repr));
-    return std::hash<cast_to>{}(static_cast<cast_to>(idx));
-  }
-};
-
-template <class CharT>
-struct std::formatter<stanly::idx, CharT> : std::formatter<std::string_view, CharT> {
-  auto format(const stanly::idx &idx, auto &ctx) const {
-    return std::formatter<std::size_t, CharT>{}.format(static_cast<std::size_t>(idx), ctx);
-  }
-};
 
 template <stanly::syntax_node T, class CharT>
 struct std::formatter<T, CharT> : std::formatter<std::string_view, CharT> {
