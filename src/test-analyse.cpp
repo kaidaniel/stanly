@@ -17,8 +17,8 @@ TEST_CASE("analyse firstorder programs", "[firstorder][analyse]") {
       std::vector<firstorder> nodes{};
       domain state{};
     };
-    std::vector<state> states{};
-    std::vector<std::vector<firstorder>> programs{};
+    std::vector<state> states{{}};
+    std::vector<std::vector<firstorder>> programs{{}};
     void add_node(firstorder&& n) {
       programs.push_back(programs.back());
       programs.back().push_back(std::move(n));
@@ -27,8 +27,6 @@ TEST_CASE("analyse firstorder programs", "[firstorder][analyse]") {
 
     state& res() { return states.back(); }
     std::pair<std::vector<std::vector<firstorder>>, std::vector<state>> operator()() && {
-      add_node({});
-
       add_node(alloc{"al", "top"});
       res().set_var("al", addresses{"al"});
       res().set_mem("0.al", object::top());
@@ -76,6 +74,6 @@ TEST_CASE("analyse firstorder programs", "[firstorder][analyse]") {
   };
   auto analyse = [](std::vector<nodes::firstorder> n) -> domains::state { return {}; };
   auto [programs, states] = collected_states{}();
-  //CHECK_THAT(states, Catch::Matchers::RangeEquals(vw::transform(programs, analyse)));
+  // CHECK_THAT(states, Catch::Matchers::RangeEquals(vw::transform(programs, analyse)));
 }
 }  // namespace stanly
