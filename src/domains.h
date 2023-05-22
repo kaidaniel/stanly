@@ -1,15 +1,16 @@
-#include <AbstractDomain.h>
-#include <ConstantAbstractDomain.h>
-#include <DisjointUnionAbstractDomain.h>
-#include <HashedAbstractPartition.h>
-
 #include <concepts>
 
-#include "DirectProductAbstractDomain.h"
+// clang-format off
 #include "FiniteAbstractDomain.h"
+#include "AbstractDomain.h"
+#include "ConstantAbstractDomain.h"
+#include "DisjointUnionAbstractDomain.h"
+#include "HashedAbstractPartition.h"
 #include "HashedAbstractEnvironment.h"
+#include "DirectProductAbstractDomain.h"
 #include "HashedSetAbstractDomain.h"
 #include "handle.h"
+// clang-format on
 
 namespace stanly {
 
@@ -28,6 +29,14 @@ using namespace sparta;
 template <class T>
 concept abstract_domain = std::derived_from<T, AbstractDomain<T>>;
 enum class RowVarEls { Bot, Closed, Open };
+std::ostream& operator<<(std::ostream& os, RowVarEls rve) {
+  switch (rve) {
+    case RowVarEls::Bot: os << "Bot"; break;
+    case RowVarEls::Closed: os << "Closed"; break;
+    case RowVarEls::Open: os << "Open"; break;
+  };
+  return os;
+}
 using enum RowVarEls;
 using row_var_l = BitVectorLattice<RowVarEls, 3>;
 row_var_l l_({Bot, Closed, Open}, {{Bot, Closed}, {Closed, Open}});

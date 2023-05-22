@@ -1,18 +1,15 @@
+
 #include <catch2/catch_test_macros.hpp>
 #include <ranges>
 #include <string_view>
 #include <vector>
 
-// #include "catch2/matchers/catch_matchers_range_equals.hpp"
-#include "HashedAbstractPartition.h"
 #include "catch2/matchers/catch_matchers_range_equals.hpp"
 #include "domains.h"
 #include "syntax.h"
 
-namespace stanly {
-
 TEST_CASE("analyse firstorder programs", "[firstorder][analyse]") {
-  struct collected_states : public domains, public nodes {
+  struct collected_states : public stanly::domains, public stanly::nodes {
     struct result {
       std::vector<firstorder> nodes{};
       domain state{};
@@ -72,8 +69,11 @@ TEST_CASE("analyse firstorder programs", "[firstorder][analyse]") {
       return {programs, states};
     }
   };
-  auto analyse = [](std::vector<nodes::firstorder> n) -> domains::state { return {}; };
+  auto analyse = [](std::vector<stanly::nodes::firstorder> n) -> stanly::domains::state {
+    return {};
+  };
   auto [programs, states] = collected_states{}();
-  // CHECK_THAT(states, Catch::Matchers::RangeEquals(vw::transform(programs, analyse)));
+
+  CHECK(states[0] == analyse(programs[0]));
+  CHECK_THAT(states, Catch::Matchers::RangeEquals(std::views::transform(programs, analyse)));
 }
-}  // namespace stanly
