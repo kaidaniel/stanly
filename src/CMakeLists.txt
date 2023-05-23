@@ -20,14 +20,14 @@ foreach(test test-format test-parse test-stanly-utils test-graph test-analyse)
     catch_discover_tests(${test} EXTRA_ARGS --colour-mode ansi)
 endforeach()
 
-add_executable(test-treesitter-query test-treesitter-query.cpp)
 add_library(parser parser.cpp)
+add_library(analyse analyse.cpp)
 
 target_link_libraries(parser PUBLIC tree-sitter tree-sitter-python project_props)
+target_link_libraries(analyse PUBLIC sparta project_props)
 target_link_libraries(test-parse PRIVATE parser)
-target_link_libraries(test-treesitter-query PUBLIC tree-sitter tree-sitter-python project_props)
 #target_link_libraries(test-analyse PUBLIC Boost sparta)
-target_link_libraries(test-analyse PUBLIC sparta)
+target_link_libraries(test-analyse PRIVATE analyse)
 
-
-
+add_executable(test-treesitter-query test-treesitter-query.cpp)
+target_link_libraries(test-treesitter-query PUBLIC tree-sitter tree-sitter-python project_props)

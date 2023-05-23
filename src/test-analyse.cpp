@@ -1,50 +1,54 @@
 
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators_range.hpp>
 #include <ranges>
-#include <string_view>
 #include <vector>
 
-#include "catch2/matchers/catch_matchers_range_equals.hpp"
-#include "domains.h"
+#include "analyse.h"
+#include "domain.h"
 #include "syntax.h"
 
+namespace stanly {
 TEST_CASE("analyse firstorder programs", "[firstorder][analyse]") {
-  struct collected_states : public stanly::domains, public stanly::nodes {
+  class collected_states : public domains, public nodes {
     struct result {
       std::vector<firstorder> nodes{};
-      domain state{};
+      state state{};
     };
-    std::vector<state> states{{}};
-    std::vector<std::vector<firstorder>> programs{{}};
+    std::vector<result> results{result{{}, {}}};
     void add_node(firstorder&& n) {
-      programs.push_back(programs.back());
-      programs.back().push_back(std::move(n));
-      states.push_back(states.back());
+      results.push_back(results.back());
+      results.back().nodes.push_back(n);
     }
 
-    state& res() { return states.back(); }
-    std::pair<std::vector<std::vector<firstorder>>, std::vector<state>> operator()() && {
+   public:
+    state& res() { return results.back().state; }
+    std::vector<result> operator()() && {
       add_node(alloc{"al", "top"});
       res().set_var("al", addresses{"al"});
-      res().set_mem("0.al", object::top());
+      res().set_mem("al", object{{top, data::top()}});
 
       add_node(lit{"lt", "123"});
       res().set_var("lt", addresses{"lt"});
-      res().set_mem("lt", object{constant{"123"}, type{"integer"}});
+      res().set_mem("lt", object{{type{"integer"}, data{constant{"123"}}}});
 
       add_node(update{"al", "f", "lt"});
-      res().set_mem("al", defined{{{"f", addresses{"lt"}}}});
+      res().set_mem("al",
+                    object{{top, data{record{{top, defined{{{"f", addresses{"lt"}}}}, bot}}}}});
 
       add_node(ref{"rf", "al"});
       res().set_var("rf", addresses{"al"});
 
       add_node(load{"ld", "al", "f"});
       res().set_var("ld", addresses{"lt"});
-      res().join_mem(memory{{"al", object{used{"f"}}}});
+      res().set_mem(
+          "al", object{{top, data{record{{top, defined{{{"f", addresses{"lt"}}}}, used{"f"}}}}}});
 
       add_node(load{"ld", "al", "g"});
       res().set_var("ld", top);
-      res().join_mem(memory{{"al", object{used{"g"}}}});
+      res().set_mem(
+          "al",
+          object{{top, data{record{{top, defined{{{"f", addresses{"lt"}}}}, used{"f", "g"}}}}}});
 
       add_node(alloc{"al", "dict"});
       res().set_var("al", addresses{"al"});
@@ -66,14 +70,10 @@ TEST_CASE("analyse firstorder programs", "[firstorder][analyse]") {
       //         fs->add(f);
       //       });
       // });});});
-      return {programs, states};
+      return results;
     }
   };
-  auto analyse = [](std::vector<stanly::nodes::firstorder> n) -> stanly::domains::state {
-    return {};
-  };
-  auto [programs, states] = collected_states{}();
-
-  CHECK(states[0] == analyse(programs[0]));
-  CHECK_THAT(states, Catch::Matchers::RangeEquals(std::views::transform(programs, analyse)));
+  auto [program, state] = GENERATE(from_range(collected_states{}()));
+  CHECK(analyse(program) == state);
 }
+}  // namespace stanly
