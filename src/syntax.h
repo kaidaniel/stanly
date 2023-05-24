@@ -15,11 +15,11 @@ namespace stanly {
 template <class Repr>
 struct lang {
   // clang-format off
+  struct alloc  { Repr var; Repr type; };
+  struct lit    { Repr var; Repr type; Repr value; };
+  struct ref    { Repr var; Repr src; };
   struct update { Repr tgt; Repr field; Repr src; };
   struct load   { Repr var; Repr src; Repr field; };
-  struct lit    { Repr var; Repr type; Repr value; };
-  struct alloc  { Repr var; Repr type; };
-  struct ref    { Repr var; Repr src; };
   // clang-format on
   using firstorder = std::variant<update, load, lit, alloc, ref>;
 };

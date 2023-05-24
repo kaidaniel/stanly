@@ -72,10 +72,24 @@ struct abstract_domain_types {
         const std::conditional_t<std::same_as<Target, memory>, object, addresses>& value) {
       dp::template apply<idx<Target>>([&](Target* t) { t->set(index, value); });
     }
-    template <class Target>
-    void join(const Target& t) {
-      dp::template apply<idx<Target>>([&](Target* old) { old->join_with(std::move(t)); });
-    };
+    template <class F>
+      requires requires(F f, used* u) { f(u); } || requires(F f, defined* d) { f(d); }
+    void apply_to_record(var_repr var, F&& f) {
+      dp::template apply<idx<memory>>([&](memory* m) {
+        m->update(var, [&](object* o) {
+          o->template apply<1>([&](data* d) {
+            d->template apply<record>(
+                [&](record* r) { r->template apply<requires(used* u) { f(u); } ? 2 : 1>(f); });
+          });
+        });
+      });
+    }
+    void add_used_field(var_repr var, field_repr field) {
+      apply_to_record(var, [field](used* u) { u->add(field); });
+    }
+    void define_field(var_repr src, field_repr field, address_repr tgt) {
+      apply_to_record(src, [field, tgt](defined* d) { d->set(field, addresses{tgt}); });
+    }
   };
   using kind = AbstractValueKind;
   struct bot_type {
