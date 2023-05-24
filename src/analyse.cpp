@@ -1,5 +1,6 @@
 #include "analyse.h"
 
+#include <variant>
 #include <vector>
 
 #include "domain.h"
@@ -17,12 +18,9 @@ std::ostream& operator<<(std::ostream& os, RowVarEls rve) {
 }
 
 }  // namespace detail
-
-domain<std::string_view> analyse(const std::vector<nodes::firstorder>& graph) { return {}; }
-
 template <class T>
 struct analysis {
-  using domain = domains<T>::domain;
+  using domain = domain<T>;
   using addresses = domains<T>::addresses;
   using scope = domains<T>::scope;
   using memory = domains<T>::memory;
@@ -35,6 +33,7 @@ struct analysis {
   using ref = lang<T>::ref;
   using load = lang<T>::load;
   using update = lang<T>::update;
+  using firstorder = lang<T>::firstorder;
 
   static void analyse(const lang<T>::alloc& alloc, domain* d) {
     d->template set_key<scope>(alloc.var, addresses{alloc.var});
@@ -54,5 +53,16 @@ struct analysis {
   static void analyse(const update& update, domain* d) {
     d->define_field(update.src, update.field, update.tgt);
   }
+  domain analyse(const std::vector<firstorder>& graph) {
+    domain domain;
+    for (const auto& node : graph) {
+      std::visit([&](const auto& n) { analyse(n, &domain); }, node);
+    }
+    return domain;
+  }
 };
+domain<std::string_view> analyse(const std::vector<nodes::firstorder>& graph) {
+  return analysis<std::string_view>{}.analyse(graph);
+}
+
 }  // namespace stanly
