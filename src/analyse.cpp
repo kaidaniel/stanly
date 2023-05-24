@@ -15,7 +15,9 @@ std::ostream& operator<<(std::ostream& os, RowVarEls rve) {
   };
   return os;
 }
+
 }  // namespace detail
+
 domain analyse(const std::vector<nodes::firstorder>& graph) { return {}; }
 
 void analyse(const nodes::alloc& alloc, domain* domain) {}

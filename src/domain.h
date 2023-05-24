@@ -63,17 +63,19 @@ struct abstract_domain_types {
   struct state : DirectProductAbstractDomain<state, scope, memory> {
     using DirectProductAbstractDomain<state, scope, memory>::DirectProductAbstractDomain;
     using dp = DirectProductAbstractDomain<state, scope, memory>;
-    void set_mem(Address&& a, object&& o) {
-      dp::template apply<1>([&](memory* m) { m->set(a, std::move(o)); });
-    };
-    void set_var(Var&& v, addresses&& a) {
-      dp::template apply<0>([=](scope* s) { s->set(v, std::move(a)); });
-    };
-    void join_mem(memory&& mem) {
-      dp::template apply<1>([&](memory* m) { m->join_with(std::move(mem)); });
+    template <class T>
+      requires std::same_as<T, memory> || std::same_as<T, scope>
+    constexpr static int idx = std::same_as<T, memory> ? 1 : 0;
+    template <class Target>
+    void set_key(const std::conditional_t<std::same_as<Target, memory>, Address, Var>& index,
+                 const std::conditional_t<std::same_as<Target, memory>, object, addresses>& value) {
+      dp::template apply<idx<Target>>([&](Target* t) { t->set(index, value); });
+    }
+    template <class Target>
+    void join(const Target& t) {
+      dp::template apply<idx<Target>>([&](Target* old) { old->join_with(std::move(t)); });
     };
   };
-  using domain = state;
   using kind = AbstractValueKind;
   struct bot_type {
     template <class T>
@@ -95,6 +97,6 @@ struct abstract_domain_types {
 };
 }  // namespace detail
 using domains = detail::abstract_domain_types<std::string_view>;
-using domain = domains::domain;
 using packed_domains = detail::abstract_domain_types<handle>;
+using domain = domains::state;
 }  // namespace stanly
