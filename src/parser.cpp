@@ -131,7 +131,8 @@ struct firstorder_cursor : public cursor, public nodes {
       symbol_ = symbol();
       auto const right = text();
       if (symbol_ == symbols.identifier) { return {ref{left, right}}; }
-      if (symbol_ == symbols.string || symbol_ == symbols.integer) { return {lit{left, right}}; }
+      if (symbol_ == symbols.string) { return {lit{left, "str", right}}; }
+      if (symbol_ == symbols.integer) { return {lit{left, "int", right}}; }
       if (symbol_ == symbols.dictionary) { return parse_dictionary(left); }
       if (symbol_ == symbols.set || symbol_ == symbols.list) { return {alloc{left, "top"}}; }
       if (symbol_ == symbols.subscript) {

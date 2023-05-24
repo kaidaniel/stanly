@@ -17,7 +17,7 @@ struct lang {
   // clang-format off
   struct update { Repr tgt; Repr field; Repr src; };
   struct load   { Repr var; Repr src; Repr field; };
-  struct lit    { Repr var; Repr value; };
+  struct lit    { Repr var; Repr type; Repr value; };
   struct alloc  { Repr var; Repr type; };
   struct ref    { Repr var; Repr src; };
   // clang-format on

@@ -15,7 +15,7 @@ TEST_CASE("format lang<...>::firstorder", "[format]") {
       std::vector<std::pair<firstorder, std::string>> operator()() {
         return {{load{"a", "b", "c"}, std::format("{}(a b c)", type_name<load>)},
                 {update{"a", "b", "c"}, std::format("{}(a b c)", type_name<update>)},
-                {lit{"a", "b"}, std::format("{}(a b)", type_name<lit>)},
+                {lit{"a", "integer", "b"}, std::format("{}(a integer b)", type_name<lit>)},
                 {alloc{"a", "dict"}, std::format("{}(a dict)", type_name<alloc>)},
                 {ref{"a", "b"}, std::format("{}(a b)", type_name<ref>)}};
       }
@@ -29,7 +29,7 @@ TEST_CASE("format lang<...>::firstorder", "[format]") {
       std::vector<std::pair<firstorder, std::string>> operator()() {
         return {{load{0_i, 1_i, 2_i}, std::format("{}(0 1 2)", type_name<load>)},
                 {update{3_i, 4_i, 5_i}, std::format("{}(3 4 5)", type_name<update>)},
-                {lit{6_i, 7_i}, std::format("{}(6 7)", type_name<lit>)},
+                {lit{6_i, 1_i, 7_i}, std::format("{}(6 1 7)", type_name<lit>)},
                 {alloc{8_i, 9_i}, std::format("{}(8 9)", type_name<alloc>)},
                 {ref{10_i, 11_i}, std::format("{}(10 11)", type_name<ref>)}};
       }
@@ -41,8 +41,8 @@ TEST_CASE("format lang<...>::firstorder", "[format]") {
   SECTION("std::vector<firstorder>") {
     struct syntax_node_vectors : nodes {
       std::vector<std::pair<std::vector<firstorder>, std::string>> operator()() {
-        return {{{load{"a", "b", "c"}, lit{"a", "b"}},
-                 std::format("[inj-{}(a b c), inj-{}(a b)]", type_name<load>, type_name<lit>)},
+        return {{{load{"a", "b", "c"}, lit{"a", "s", "b"}},
+                 std::format("[inj-{}(a b c), inj-{}(a s b)]", type_name<load>, type_name<lit>)},
                 {{ref{"a", "b"}, alloc{"a", "top"}},
                  std::format("[inj-{}(a b), inj-{}(a top)]", type_name<ref>, type_name<alloc>)},
                 {{}, "[]"}};
@@ -55,10 +55,11 @@ TEST_CASE("format lang<...>::firstorder", "[format]") {
     struct maps : nodes {
       std::vector<std::pair<std::unordered_map<std::string_view, firstorder>, std::string>>
       operator()() {
-        return {{{{"2", alloc{"c", "top"}}, {"0", lit{"a", "b"}}, {"3", update{"a", "b", "c"}}},
-                 std::format("{}2: inj-{}(c top), 3: inj-{}(a b c), 0: inj-{}(a b){}", "{",
-                             type_name<alloc>, type_name<update>, type_name<lit>, "}")},
-                {{}, "{}"}};
+        return {
+            {{{"2", alloc{"c", "top"}}, {"0", lit{"a", "s", "b"}}, {"3", update{"a", "b", "c"}}},
+             std::format("{}2: inj-{}(c top), 3: inj-{}(a b c), 0: inj-{}(a s b){}", "{",
+                         type_name<alloc>, type_name<update>, type_name<lit>, "}")},
+            {{}, "{}"}};
       }
     };
     auto [map, str] = GENERATE(from_range(maps{}()));
@@ -67,12 +68,12 @@ TEST_CASE("format lang<...>::firstorder", "[format]") {
   SECTION("handle std::vector, std::unordered_map") {
     struct items : packed_nodes {
       std::pair<std::unordered_map<handle, firstorder>, std::string> map = {
-          {{0_i, alloc{1_i, 2_i}}, {3_i, lit{3_i, 4_i}}},
-          {std::format("{}3: inj-{}(3 4), 0: inj-{}(1 2){}", "{", type_name<lit>, type_name<alloc>,
-                       "}")}};
+          {{0_i, alloc{1_i, 2_i}}, {3_i, lit{3_i, 1_i, 4_i}}},
+          {std::format("{}3: inj-{}(3 1 4), 0: inj-{}(1 2){}", "{", type_name<lit>,
+                       type_name<alloc>, "}")}};
       std::pair<std::vector<firstorder>, std::string> vec = {
-          {update{5_i, 6_i, 7_i}, lit{8_i, 9_i}},
-          std::format("[inj-{}(5 6 7), inj-{}(8 9)]", type_name<update>, type_name<lit>)};
+          {update{5_i, 6_i, 7_i}, lit{8_i, 1_i, 9_i}},
+          std::format("[inj-{}(5 6 7), inj-{}(8 1 9)]", type_name<update>, type_name<lit>)};
     };
     auto [map, str] = items{}.map;
     CHECK(fformat(map) == str);

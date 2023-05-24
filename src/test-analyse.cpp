@@ -9,7 +9,7 @@
 #include "syntax.h"
 
 namespace stanly {
-class collected_states : public domains, public nodes {
+class collected_states : public domains<std::string_view>, public nodes {
   struct result {
     std::vector<firstorder> nodes{};
     state state{};
@@ -19,21 +19,21 @@ class collected_states : public domains, public nodes {
     results.push_back(results.back());
     results.back().nodes.push_back(n);
   }
-  template <class Target, class... Args>
-  void set_key(Args&&... args) {
-    results.back().state.set_key<Target>(std::forward<Args>(args)...);
+  template <class Target>
+  void set_key(auto&&... args) {
+    results.back().state.set_key<Target>(args...);
   }
 
  public:
   state& res() { return results.back().state; }
   std::vector<result> operator()() && {
-    add_node(alloc{"al", "top"});
+    add_node(alloc{"al", "unknown"});
     set_key<scope>("al", addresses{"al"});
-    set_key<memory>("al", object{{top, data::top()}});
+    set_key<memory>("al", object{{type{"unknown"}, data::bottom()}});
 
-    add_node(lit{"lt", "123"});
+    add_node(lit{"lt", "integer", "123"});
     set_key<scope>("lt", addresses{"lt"});
-    set_key<memory>("lt", object{{type{"integer"}, data{constant{"123"}}}});
+    set_key<memory>("lt", object{{type{"int"}, data{constant{"123"}}}});
 
     add_node(update{"al", "f", "lt"});
     set_key<memory>("al",
@@ -59,20 +59,6 @@ class collected_states : public domains, public nodes {
     add_node(ref{"rf", "al"});
     set_key<scope>("rf", addresses{"al"});
 
-    // analyse([..., ref(rf al)])
-
-    // auto update = nodes::update{.tgt="d", .field="f", .src="l"};
-    // mem.update("l",
-    // [f=update.field](object* d){ d->apply<1>(
-    //   [f](value* vl){vl->apply<record>(
-    //     [f](record* rd){
-    //       rd->apply<0>([f](bindings* bs){
-    //         bs->update(f, [f](addresses* as){
-    //           as->add(f);});});
-    //       rd->apply<1>([f](fields* fs){
-    //         fs->add(f);
-    //       });
-    // });});});
     return results;
   }
 };
