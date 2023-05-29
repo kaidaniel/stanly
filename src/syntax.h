@@ -26,7 +26,6 @@ struct lang {
 using nodes = lang<std::string_view>;
 
 using packed_nodes = lang<handle>;
-constexpr handle operator""_i(unsigned long long i) { return handle(i); }
 
 template <class T>
 concept syntax_node = contains<nodes::firstorder, std::decay_t<T>> ||
