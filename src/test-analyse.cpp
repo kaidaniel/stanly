@@ -9,7 +9,8 @@
 #include "syntax.h"
 
 namespace stanly {
-class collected_states : public domains, public nodes {
+using namespace domains;
+class collected_states : public nodes {
   struct result {
     std::vector<firstorder> nodes{};
     state state{};
