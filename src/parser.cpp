@@ -57,7 +57,7 @@ class cursor {
 template <class Result>
 std::vector<Result> parse_statement(TSTreeCursor*, std::string_view);
 
-template <syntax S>
+template <ast S>
 std::vector<S> parse(std::string_view program) {
   auto* parser = ts_parser_new();
   ts_parser_set_language(parser, tree_sitter_python());

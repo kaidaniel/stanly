@@ -85,15 +85,15 @@ TEST_CASE("format lang<...>::firstorder", "[format]") {
 namespace detail {
 struct static_assertions_string_view : nodes {
   static_assert(syntax_node<load> && syntax_node<const lit &> && syntax_node<lit &&>);
-  static_assert(syntax<firstorder> && syntax<firstorder &&> && syntax<const firstorder &> &&
-                syntax<const firstorder &&>);
+  static_assert(ast<firstorder> && ast<firstorder &&> && ast<const firstorder &> &&
+                ast<const firstorder &&>);
   static_assert(requires(firstorder node) { std::cout << node; });
   static_assert(requires(update update) { std::cout << update; });
 };
 struct static_assertions_handle : packed_nodes {
   static_assert(syntax_node<load> && syntax_node<const lit &> && syntax_node<lit &&>);
-  static_assert(syntax<firstorder> && syntax<firstorder &&> && syntax<const firstorder &> &&
-                syntax<const firstorder &&>);
+  static_assert(ast<firstorder> && ast<firstorder &&> && ast<const firstorder &> &&
+                ast<const firstorder &&>);
   static_assert(requires(firstorder node) { std::cout << node; });
   static_assert(requires(update update) { std::cout << update; });
 };

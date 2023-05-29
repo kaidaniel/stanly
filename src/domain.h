@@ -14,7 +14,7 @@
 #include "DirectProductAbstractDomain.h"
 // clang-format on
 
-#include "repr.h"
+#include "handle.h"
 
 namespace stanly::domains {
 
@@ -35,11 +35,11 @@ std::ostream& operator<<(std::ostream& os, RowVarEls rve);
 using enum RowVarEls;
 using row_var_l = BitVectorLattice<RowVarEls, 3>;
 static row_var_l l_({Bot, Closed, Open}, {{Bot, Closed}, {Closed, Open}});
-using field_repr = repr;
-using address_repr = repr;
-using var_repr = repr;
-using constant_repr = repr;
-using type_repr = repr;
+using field_repr = handle;
+using address_repr = handle;
+using var_repr = handle;
+using constant_repr = handle;
+using type_repr = handle;
 using row_var = FiniteAbstractDomain<RowVarEls, row_var_l, row_var_l::Encoding, &l_>;
 using addresses = HashedSetAbstractDomain<address_repr>;
 using constant = ConstantAbstractDomain<constant_repr>;
@@ -109,3 +109,12 @@ static_assert(std::derived_from<memory, AbstractDomain<memory>>);
 namespace stanly {
 using domain = domains::state;
 }
+
+template <class CharT>
+struct std::formatter<stanly::domains::state, CharT> : std::formatter<std::string_view, CharT> {
+  auto format(const stanly::domains::state& state, auto& ctx) const {
+    std::stringstream stringstream{};
+    stringstream << state;
+    return std::format_to(ctx.out(), "{}", stringstream.str());
+  }
+};

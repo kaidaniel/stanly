@@ -4,7 +4,7 @@
 #include <vector>
 
 #include "domain.h"
-#include "repr.h"
+#include "handle.h"
 #include "syntax.h"
 
 namespace stanly {
@@ -20,12 +20,7 @@ std::ostream& operator<<(std::ostream& os, RowVarEls rve) {
 
 }  // namespace domains
 using namespace domains;
-using alloc = lang<repr>::alloc;
-using lit = lang<repr>::lit;
-using ref = lang<repr>::ref;
-using load = lang<repr>::load;
-using update = lang<repr>::update;
-using firstorder = lang<repr>::firstorder;
+using namespace syntax;
 void analyse(const alloc& alloc, domain* d) {
   d->template set_key<scope>(alloc.var, addresses{alloc.var});
   d->template set_key<memory>(alloc.var, object{{type{alloc.type}, data::bottom()}});

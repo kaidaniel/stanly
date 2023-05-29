@@ -4,6 +4,6 @@
 #include "syntax.h"
 
 namespace stanly {
-template <syntax S>
+template <ast S>
 std::vector<S> parse(std::string_view program);
 }

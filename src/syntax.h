@@ -25,6 +25,16 @@ struct lang {
 };
 using nodes = lang<std::string_view>;
 
+namespace syntax {
+#define USE_NODE(n) using n = lang<handle>::n
+USE_NODE(alloc);
+USE_NODE(lit);
+USE_NODE(ref);
+USE_NODE(update);
+USE_NODE(load);
+#undef USE_NODE
+using firstorder = lang<handle>::firstorder;
+}  // namespace syntax
 using packed_nodes = lang<handle>;
 
 template <class T>
@@ -32,12 +42,12 @@ concept syntax_node = contains<nodes::firstorder, std::decay_t<T>> ||
                       contains<packed_nodes::firstorder, std::decay_t<T>>;
 
 template <class T>
-concept syntax = std::same_as<nodes::firstorder, std::decay_t<T>> ||
-                 std::same_as<packed_nodes::firstorder, std::decay_t<T>>;
+concept ast = std::same_as<nodes::firstorder, std::decay_t<T>> ||
+              std::same_as<packed_nodes::firstorder, std::decay_t<T>>;
 
 const int kN_BYTES_PACKED = 8;
 template <class T>
-concept packed_syntax = syntax<T> && sizeof(std::declval<T>()) <= kN_BYTES_PACKED;
+concept packed_syntax = ast<T> && sizeof(std::declval<T>()) <= kN_BYTES_PACKED;
 
 template <syntax_node X, syntax_node Y>
 bool operator==(X &&x, Y &&y) {
@@ -46,12 +56,12 @@ bool operator==(X &&x, Y &&y) {
   }
   return false;
 };
-template <syntax S>
+template <ast S>
 bool operator==(S &&s1, S &&s2) {
   return std::visit(std::equal_to{}, std::forward<S>(s1), std::forward<S>(s2));
 }
 template <class T>
-  requires syntax_node<T> || syntax<T>
+  requires syntax_node<T> || ast<T>
 auto &operator<<(auto &s, const T &x) {
   return s << std::format("{}", x);
 }
