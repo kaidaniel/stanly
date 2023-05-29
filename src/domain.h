@@ -14,7 +14,7 @@
 #include "DirectProductAbstractDomain.h"
 // clang-format on
 
-#include "handle.h"
+#include "repr.h"
 
 namespace stanly {
 
@@ -37,13 +37,12 @@ std::ostream& operator<<(std::ostream& os, RowVarEls rve);
 using enum RowVarEls;
 using row_var_l = BitVectorLattice<RowVarEls, 3>;
 static row_var_l l_({Bot, Closed, Open}, {{Bot, Closed}, {Closed, Open}});
-template <class Repr>
 struct abstract_domain_types {
-  using field_repr = Repr;
-  using address_repr = Repr;
-  using var_repr = Repr;
-  using constant_repr = Repr;
-  using type_repr = Repr;
+  using field_repr = repr;
+  using address_repr = repr;
+  using var_repr = repr;
+  using constant_repr = repr;
+  using type_repr = repr;
   using row_var = FiniteAbstractDomain<RowVarEls, row_var_l, row_var_l::Encoding, &l_>;
   using addresses = HashedSetAbstractDomain<address_repr>;
   using constant = ConstantAbstractDomain<constant_repr>;
@@ -111,8 +110,7 @@ struct abstract_domain_types {
   static_assert(std::derived_from<memory, AbstractDomain<memory>>);
 };
 }  // namespace detail
+using domains = detail::abstract_domain_types;
 template <class T>
-using domains = detail::abstract_domain_types<T>;
-template <class T>
-using domain = domains<T>::state;
+using domain = domains::state;
 }  // namespace stanly

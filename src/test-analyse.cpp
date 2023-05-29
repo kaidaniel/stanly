@@ -9,7 +9,7 @@
 #include "syntax.h"
 
 namespace stanly {
-class collected_states : public domains<std::string_view>, public nodes {
+class collected_states : public domains, public nodes {
   struct result {
     std::vector<firstorder> nodes{};
     state state{};

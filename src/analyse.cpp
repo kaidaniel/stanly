@@ -21,13 +21,13 @@ std::ostream& operator<<(std::ostream& os, RowVarEls rve) {
 template <class T>
 struct analysis {
   using domain = domain<T>;
-  using addresses = domains<T>::addresses;
-  using scope = domains<T>::scope;
-  using memory = domains<T>::memory;
-  using object = domains<T>::object;
-  using type = domains<T>::type;
-  using data = domains<T>::data;
-  using constant = domains<T>::constant;
+  using addresses = domains::addresses;
+  using scope = domains::scope;
+  using memory = domains::memory;
+  using object = domains::object;
+  using type = domains::type;
+  using data = domains::data;
+  using constant = domains::constant;
   using alloc = lang<T>::alloc;
   using lit = lang<T>::lit;
   using ref = lang<T>::ref;
