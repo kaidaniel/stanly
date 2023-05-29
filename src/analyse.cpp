@@ -20,7 +20,6 @@ std::ostream& operator<<(std::ostream& os, RowVarEls rve) {
 }  // namespace detail
 template <class T>
 struct analysis {
-  using domain = domain<T>;
   using addresses = domains::addresses;
   using scope = domains::scope;
   using memory = domains::memory;
@@ -61,7 +60,7 @@ struct analysis {
     return domain;
   }
 };
-domain<std::string_view> analyse(const std::vector<nodes::firstorder>& graph) {
+domain analyse(const std::vector<nodes::firstorder>& graph) {
   return analysis<std::string_view>{}.analyse(graph);
 }
 

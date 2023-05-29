@@ -111,6 +111,5 @@ struct abstract_domain_types {
 };
 }  // namespace detail
 using domains = detail::abstract_domain_types;
-template <class T>
 using domain = domains::state;
 }  // namespace stanly
