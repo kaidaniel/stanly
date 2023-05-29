@@ -35,7 +35,7 @@ struct analysis {
   using update = lang<T>::update;
   using firstorder = lang<T>::firstorder;
 
-  static void analyse(const lang<T>::alloc& alloc, domain* d) {
+  static void analyse(const alloc& alloc, domain* d) {
     d->template set_key<scope>(alloc.var, addresses{alloc.var});
     d->template set_key<memory>(alloc.var, object{{type{alloc.type}, data::bottom()}});
   }

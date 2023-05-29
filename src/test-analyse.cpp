@@ -31,27 +31,28 @@ class collected_states : public domains<std::string_view>, public nodes {
     set_key<scope>("al", addresses{"al"});
     set_key<memory>("al", object{{type{"unknown"}, data::bottom()}});
 
-    add_node(lit{"lt", "integer", "123"});
+    add_node(lit{"lt", "int", "123"});
     set_key<scope>("lt", addresses{"lt"});
     set_key<memory>("lt", object{{type{"int"}, data{constant{"123"}}}});
 
     add_node(update{"al", "f", "lt"});
-    set_key<memory>("al",
-                    object{{top, data{record{{top, defined{{{"f", addresses{"lt"}}}}, bot}}}}});
+    set_key<memory>("al", object{{type{"unknown"},
+                                  data{record{{top, defined{{{"f", addresses{"lt"}}}}, bot}}}}});
 
     add_node(ref{"rf", "al"});
     set_key<scope>("rf", addresses{"al"});
 
     add_node(load{"ld", "al", "f"});
     set_key<scope>("ld", addresses{"lt"});
-    set_key<memory>(
-        "al", object{{top, data{record{{top, defined{{{"f", addresses{"lt"}}}}, used{"f"}}}}}});
+    set_key<memory>("al",
+                    object{{type{"unknown"},
+                            data{record{{top, defined{{{"f", addresses{"lt"}}}}, used{"f"}}}}}});
 
     add_node(load{"ld", "al", "g"});
     set_key<scope>("ld", top);
     set_key<memory>(
-        "al",
-        object{{top, data{record{{top, defined{{{"f", addresses{"lt"}}}}, used{"f", "g"}}}}}});
+        "al", object{{type{"unknown"},
+                      data{record{{top, defined{{{"f", addresses{"lt"}}}}, used{"f", "g"}}}}}});
 
     add_node(alloc{"al", "dict"});
     set_key<scope>("al", addresses{"al"});

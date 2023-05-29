@@ -14,7 +14,7 @@ TEST_CASE("parse firstorder", "[parser]") {
       return {
           {"x=y", {ref{"x", "y"}}},
           {"x=1", {lit{"x", "int", "1"}}},
-          {"x='s'", {lit{"x", "str", "s"}}},
+          {"x=f's'", {lit{"x", "str", "f's'"}}},
           {"y=[]", {alloc{"y", "top"}}},
           {"z = {}", {alloc{"z", "dict"}}},
           {"z = {1: 'x', 3: {}}",
@@ -27,9 +27,9 @@ TEST_CASE("parse firstorder", "[parser]") {
           {"x = 1", {lit{"x", "int", "1"}}},
           {"z={}; x=a[b]", {alloc{"z", "dict"}, load{"x", "a", "b"}}},
           {"x=y; y=[]", {ref{"x", "y"}, alloc{"y", "top"}}},
-          {"x=y\ny=[]\nz=1", {ref{"x", "y"}, alloc{"y", "top"}, lit{"z", "1"}}},
+          {"x=y\ny=[]\nz=1", {ref{"x", "y"}, alloc{"y", "top"}, lit{"z", "int", "1"}}},
           {"e=1;f=2;r={};r[e]=f",
-           {lit{"e", "1"}, lit{"f", "str", "2"}, alloc{"r", "dict"}, update{"r", "e", "f"}}},
+           {lit{"e", "int", "1"}, lit{"f", "int", "2"}, alloc{"r", "dict"}, update{"r", "e", "f"}}},
       };
     }
   };
