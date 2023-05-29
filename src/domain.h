@@ -16,7 +16,7 @@
 
 #include "repr.h"
 
-namespace stanly {
+namespace stanly::domains {
 
 // state: memory x scope
 // memory: address -> object  partition (implicit bottom)
@@ -27,8 +27,6 @@ namespace stanly {
 // bindings: field -> [address]    partition
 // type: dict, dataframe, closure, int, top, ...vw
 // var, address, field: int
-
-namespace detail {
 using namespace sparta;
 template <class T>
 concept abstract_domain = std::derived_from<T, AbstractDomain<T>>;
@@ -37,7 +35,6 @@ std::ostream& operator<<(std::ostream& os, RowVarEls rve);
 using enum RowVarEls;
 using row_var_l = BitVectorLattice<RowVarEls, 3>;
 static row_var_l l_({Bot, Closed, Open}, {{Bot, Closed}, {Closed, Open}});
-namespace domains {
 using field_repr = repr;
 using address_repr = repr;
 using var_repr = repr;
@@ -108,8 +105,7 @@ static const struct {
 static_assert(std::derived_from<state, AbstractDomain<state>>);
 static_assert(std::derived_from<scope, AbstractDomain<scope>>);
 static_assert(std::derived_from<memory, AbstractDomain<memory>>);
-}  // namespace domains
-}  // namespace detail
-using domain = detail::domains::state;
-namespace domains = detail::domains;
-}  // namespace stanly
+}  // namespace stanly::domains
+namespace stanly {
+using domain = domains::state;
+}
