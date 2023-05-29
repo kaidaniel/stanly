@@ -3,7 +3,6 @@
 #include <catch2/generators/catch_generators_range.hpp>
 #include <format>
 #include <map>
-#include <ranges>
 #include <vector>
 
 #include "analyse.h"
