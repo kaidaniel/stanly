@@ -185,14 +185,24 @@ struct std::formatter<stanly::domains::object, CharT> : std::formatter<std::stri
 template <class CharT>
 struct std::formatter<stanly::domains::memory, CharT> : std::formatter<std::string_view, CharT> {
   auto format(const stanly::domains::memory& memory, auto& ctx) const {
-    return std::format_to(ctx.out(), "memory{}", memory.bindings());
+    if (memory.is_top()) {
+      return std::format_to(ctx.out(), "memory{}", "{∀ addr. addr: object(top)}");
+    }
+    if (memory.is_bottom()) {
+      return std::format_to(ctx.out(), "memory{}", "{∀ addr. addr: unused}");
+    }
+    return std::format_to(ctx.out(), "memory({} else unused)", memory.bindings());
   }
 };
 
 template <class CharT>
 struct std::formatter<stanly::domains::scope, CharT> : std::formatter<std::string_view, CharT> {
   auto format(const stanly::domains::scope& scope, auto& ctx) const {
-    return std::format_to(ctx.out(), "scope{}", scope.bindings());
+    if (scope.is_top()) {
+      return std::format_to(ctx.out(), "scope{}", "{∀ var. var: addresses(top)}");
+    }
+    if (scope.is_bottom()) { return std::format_to(ctx.out(), "scope{}", "{invalid}"); }
+    return std::format_to(ctx.out(), "scope({} else addresses(top))", scope.bindings());
   }
 };
 

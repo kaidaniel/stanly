@@ -13,19 +13,33 @@ namespace stanly {
 
 using namespace domains;
 using namespace syntax;
-std::map<handle, std::string_view> handle_names{};
-std::map<std::string_view, handle> variable_handles{};
-handle operator""_h(const char* str, std::size_t size) {
-  auto sv = std::string_view{str, size};
-  if (!variable_handles.contains(sv)) {
-    auto h = handle{variable_handles.size()};
-    variable_handles[sv] = h;
-    handle_names[h] = sv;
+
+const static class handle_pool {
+  mutable std::map<handle, std::string_view> handle_to_str{};
+  mutable std::map<std::string_view, handle> str_to_handle{};
+  handle get_handle(std::string_view sv) const {
+    if (!str_to_handle.contains(sv)) {
+      auto h = handle{str_to_handle.size()};
+      str_to_handle[sv] = h;
+      handle_to_str[h] = sv;
+    };
+    return str_to_handle[sv];
   }
-  return variable_handles[sv];
+
+ public:
+  friend handle operator""_h(const char* str, std::size_t size);
+  [[nodiscard]] const std::map<handle, std::string_view>& handles() const { return handle_to_str; }
+  [[nodiscard]] const std::map<std::string_view, handle>& variables() const {
+    return str_to_handle;
+  }
+} handle_pool{};
+
+handle operator""_h(const char* str, std::size_t size) {
+  return handle_pool.get_handle(std::string_view{str, size});
 }
-std::string replace_handles_with_names(std::string msg) {
-  for (const auto& [handle, name] : handle_names) {
+
+std::string replace_handles(std::string msg) {
+  for (const auto& [handle, name] : handle_pool.handles()) {
     auto hndl = std::format("{}", handle);
     size_t pos = msg.find(hndl);
     while (pos != std::string::npos) {
@@ -86,18 +100,16 @@ TEST_CASE("analyse firstorder programs", "[firstorder][analyse]") {
   add_node(ref{"rf"_h, "al"_h});
   set_key<scope>("rf"_h, addresses{"al"_h});
 
-  auto [program, expected_state] = GENERATE(from_range(results));
-  auto observed_state = analyse(program);
+  const auto& [program, state] = GENERATE(from_range(results));
+  INFO(replace_handles(std::format("\nprogram:\n{:lines}", program)));
+  INFO(replace_handles(std::format("\nexpected:\n{}", state)));
 
-  auto msg = std::format(
-      "\n"
-      "program:\n{}\n\n"
-      "expected:\n{}\n\n"
-      "observed:\n{}\n\n",
-      program, expected_state, observed_state);
-  INFO(replace_handles_with_names(msg) << std::format("variable_handles:\n{}", variable_handles));
-  bool analysis_inferred_correct_state = expected_state == observed_state;
-  CHECK(analysis_inferred_correct_state);
+  auto observed = analyse(program);
+
+  INFO(replace_handles(std::format("\nobserved:\n{}\n\n", observed)));
+  INFO(std::format("variable_handles:\n{:lines}", handle_pool.variables()));
+  bool analysis_inferred_correct_state = state == observed;
+  REQUIRE(analysis_inferred_correct_state);
 }
 
 }  // namespace stanly
