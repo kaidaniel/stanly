@@ -145,9 +145,9 @@ struct std::formatter<stanly::domains::record, CharT> : std::formatter<std::stri
   auto format(const stanly::domains::record& record, auto& ctx) const {
     using namespace stanly::domains;
     return std::format_to(
-        ctx.out(), "{}{}defined{} used{}{}", "<",
+        ctx.out(), "({}defined{}, used{})",
         (record.get<record::idx<row_var>>().element() == RowVarEls::Closed) ? "* " : "",
-        record.get<record::idx<defined>>().bindings(), record.get<record::idx<used>>(), ">");
+        record.get<record::idx<defined>>().bindings(), record.get<record::idx<used>>());
   }
 };
 
@@ -183,7 +183,8 @@ struct std::formatter<stanly::domains::object, CharT> : std::formatter<std::stri
 };
 
 template <class CharT>
-struct std::formatter<stanly::domains::memory, CharT> : std::formatter<std::string_view, CharT> {
+struct std::formatter<stanly::domains::memory, CharT>
+    : stanly::detail::lines_arg_parser<std::formatter<std::string_view, CharT>> {
   auto format(const stanly::domains::memory& memory, auto& ctx) const {
     if (memory.is_top()) {
       return std::format_to(ctx.out(), "memory{}", "{∀ addr. addr: object(top)}");
@@ -191,28 +192,38 @@ struct std::formatter<stanly::domains::memory, CharT> : std::formatter<std::stri
     if (memory.is_bottom()) {
       return std::format_to(ctx.out(), "memory{}", "{∀ addr. addr: unused}");
     }
-    return std::format_to(ctx.out(), "memory({} else unused)", memory.bindings());
+    if (this->lines_arg) { return std::format_to(ctx.out(), "memory{:lines}", memory.bindings()); }
+    return std::format_to(ctx.out(), "memory{}", memory.bindings());
   }
 };
 
 template <class CharT>
-struct std::formatter<stanly::domains::scope, CharT> : std::formatter<std::string_view, CharT> {
+struct std::formatter<stanly::domains::scope, CharT>
+    : stanly::detail::lines_arg_parser<std::formatter<std::string_view, CharT>> {
   auto format(const stanly::domains::scope& scope, auto& ctx) const {
     if (scope.is_top()) {
       return std::format_to(ctx.out(), "scope{}", "{∀ var. var: addresses(top)}");
     }
     if (scope.is_bottom()) { return std::format_to(ctx.out(), "scope{}", "{invalid}"); }
-    return std::format_to(ctx.out(), "scope({} else addresses(top))", scope.bindings());
+    if (this->lines_arg) { return std::format_to(ctx.out(), "scope{:lines}", scope.bindings()); }
+    return std::format_to(ctx.out(), "scope{}", scope.bindings());
   }
 };
 
 template <class CharT>
-struct std::formatter<stanly::domains::state, CharT> : std::formatter<std::string_view, CharT> {
+struct std::formatter<stanly::domains::state, CharT>
+    : stanly::detail::lines_arg_parser<std::formatter<std::string_view, CharT>> {
   auto format(const stanly::domains::state& state, auto& ctx) const {
     using namespace stanly::domains;
-    std::ostringstream oss{};
-    ::operator<<(oss, state.get<state::idx<scope>>());
-    std::string scope_str = oss.str();
+    if (this->lines_arg) {
+      std::string scope_and_memory;
+      for (auto c : std::format("\n{:lines},\n{:lines}", state.get<state::idx<scope>>(),
+                                state.get<state::idx<memory>>())) {
+        scope_and_memory += c;
+        if (c == '\n') { scope_and_memory += "    "; }
+      }
+      return std::format_to(ctx.out(), "state({}\n)", scope_and_memory);
+    }
     return std::format_to(ctx.out(), "state({}, {})", state.get<state::idx<scope>>(),
                           state.get<state::idx<memory>>());
   }

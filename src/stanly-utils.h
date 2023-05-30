@@ -152,53 +152,58 @@ struct std::formatter<std::variant<Args...>, CharT> : std::formatter<std::string
   }
 };
 
+namespace stanly::detail {
+template <class Base = std::formatter<std::string_view>>
+struct lines_arg_parser : Base {
+  bool lines_arg = false;
+  constexpr auto parse(auto &ctx) {
+    if (ctx.end() - ctx.begin() >= 4) {
+      lines_arg = std::equal(ctx.begin(), ctx.begin() + 4, "lines");
+    } else {
+      lines_arg = false;
+    }
+    if (lines_arg) { return ctx.begin() + 5; }
+    return Base::parse(ctx);
+  }
+};
+}  // namespace stanly::detail
+
 template <template <class...> class Map, class Key, class Val, class... Args, class CharT>
   requires std::same_as<Map<Key, Val, Args...>, std::unordered_map<Key, Val, Args...>> ||
            std::same_as<Map<Key, Val, Args...>, std::map<Key, Val, Args...>>
-struct std::formatter<Map<Key, Val, Args...>, CharT> : std::formatter<Val, CharT> {
-  bool do_line_by_line = false;
-  constexpr auto parse(auto &ctx) {
-    do_line_by_line = std::equal(ctx.begin(), ctx.end(), "lines}");
-    if (do_line_by_line) { return ctx.end() - 1; }
-    return std::formatter<Val, CharT>{}.parse(ctx);
-  }
+struct std::formatter<Map<Key, Val, Args...>, CharT>
+    : public stanly::detail::lines_arg_parser<std::formatter<Val, CharT>> {
   auto format(const Map<Key, Val, Args...> &map, auto &ctx) const {
     // if (do_line_by_line) { return std::format_to(ctx.out(), "{}", line_by_line(map)); }
     std::format_to(ctx.out(), "{}", "{");
     for (const auto &el : map) {
       const auto &[key, val] = el;
-      if (do_line_by_line) {
+      if (this->lines_arg) {
         std::format_to(ctx.out(), "\n    {}: {},", key, val);
       } else {
         if (&el != &*(map.begin())) { std::format_to(ctx.out(), "{}", ", "); }
         std::format_to(ctx.out(), "{}: {}", key, val);
       }
     }
-    if (do_line_by_line) { std::format_to(ctx.out(), "{}", "\n"); }
+    if (this->lines_arg) { std::format_to(ctx.out(), "{}", "\n"); }
     return std::format_to(ctx.out(), "{}", "}");
   }
 };
 
 template <class El, class CharT>
-struct std::formatter<std::vector<El>, CharT> : std::formatter<El, CharT> {
-  bool do_line_by_line = false;
-  constexpr auto parse(auto &ctx) {
-    do_line_by_line = std::equal(ctx.begin(), ctx.end(), "lines}");
-    if (do_line_by_line) { return ctx.end() - 1; }
-    return std::formatter<El, CharT>{}.parse(ctx);
-  }
+struct std::formatter<std::vector<El>, CharT>
+    : stanly::detail::lines_arg_parser<std::formatter<El, CharT>> {
   constexpr auto format(const std::vector<El> vec, auto &ctx) const {
-    // if (do_line_by_line) { return std::format_to(ctx.out(), "{}", line_by_line(vec)); }
     std::format_to(ctx.out(), "{}", '[');
     for (const auto &el : vec) {
-      if (do_line_by_line) {
-        std::format_to(ctx.out(), "\n    {}", el);
+      if (this->lines_arg) {
+        std::format_to(ctx.out(), "\n    {},", el);
       } else {
         if (&el != &*(vec.begin())) { std::format_to(ctx.out(), "{}", ", "); }
         std::formatter<El, CharT>{}.format(el, ctx);
       }
     }
-    if (do_line_by_line) { std::format_to(ctx.out(), "{}", "\n"); }
+    if (this->lines_arg) { std::format_to(ctx.out(), "{}", "\n"); }
 
     return std::format_to(ctx.out(), "{}", ']');
   }
