@@ -14,8 +14,8 @@ namespace stanly {
 using namespace domains;
 using namespace syntax;
 std::map<handle, std::string_view> handle_names{};
+std::map<std::string_view, handle> variable_handles{};
 handle operator""_h(const char* str, std::size_t size) {
-  static std::map<std::string_view, handle> variable_handles{};
   auto sv = std::string_view{str, size};
   if (!variable_handles.contains(sv)) {
     auto h = handle{variable_handles.size()};
@@ -92,10 +92,10 @@ TEST_CASE("analyse firstorder programs", "[firstorder][analyse]") {
   auto msg = std::format(
       "\n"
       "program:\n{}\n\n"
-      "expected state with handle_names:\n{}\n\n"
-      "observed state with handle_names:\n{}\n\n",
+      "expected:\n{}\n\n"
+      "observed:\n{}\n\n",
       program, expected_state, observed_state);
-  INFO(replace_handles_with_names(msg));
+  INFO(replace_handles_with_names(msg) << std::format("variable_handles:\n{}", variable_handles));
   bool analysis_inferred_correct_state = expected_state == observed_state;
   CHECK(analysis_inferred_correct_state);
 }

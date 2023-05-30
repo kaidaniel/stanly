@@ -15,6 +15,7 @@
 // clang-format on
 
 #include "handle.h"
+#include "stanly-utils.h"
 
 namespace stanly::domains {
 
@@ -47,6 +48,11 @@ using defined = HashedAbstractPartition<field_repr, addresses>;
 using used = HashedSetAbstractDomain<field_repr>;
 struct record : DirectProductAbstractDomain<record, row_var, defined, used> {
   using DirectProductAbstractDomain<record, row_var, defined, used>::DirectProductAbstractDomain;
+  template <class T>
+    requires std::same_as<T, row_var> || std::same_as<T, defined> || std::same_as<T, used>
+  constexpr static int idx = std::same_as<T, row_var>   ? 0
+                             : std::same_as<T, defined> ? 1
+                                                        : 2;
 };
 using data = DisjointUnionAbstractDomain<record, constant>;
 using type = ConstantAbstractDomain<type_repr>;
@@ -54,7 +60,7 @@ struct object : DirectProductAbstractDomain<object, type, data> {
   using DirectProductAbstractDomain<object, type, data>::DirectProductAbstractDomain;
 };
 
-using scope = HashedAbstractEnvironment<var_repr, addresses>;
+using scope = sparta::HashedAbstractEnvironment<var_repr, addresses>;
 using memory = HashedAbstractPartition<address_repr, object>;
 struct state : DirectProductAbstractDomain<state, scope, memory> {
   using DirectProductAbstractDomain<state, scope, memory>::DirectProductAbstractDomain;
@@ -110,11 +116,94 @@ namespace stanly {
 using domain = domains::state;
 }
 
+template <class Repr, class CharT>
+struct std::formatter<sparta::HashedSetAbstractDomain<Repr>, CharT>
+    : std::formatter<std::string_view, CharT> {
+  auto format(const sparta::HashedSetAbstractDomain<Repr>& hsad, auto& ctx) const {
+    std::ostringstream oss{};
+    oss << hsad;
+    std::string str = oss.str();
+    size_t pos = str.find(']');
+    if (pos != std::string::npos) { str = str.substr(pos + 1); }
+    return std::format_to(ctx.out(), "{}", str);
+  }
+};
+
+template <class CharT>
+struct std::formatter<stanly::domains::row_var, CharT> : std::formatter<std::string_view, CharT> {
+  auto format(const stanly::domains::row_var& row_var, auto& ctx) const {
+    using namespace stanly::domains;
+    std::ostringstream oss{};
+    ::operator<<(oss, row_var);
+    std::string str = oss.str();
+    return std::format_to(ctx.out(), "{}", oss.str());
+  }
+};
+
+template <class CharT>
+struct std::formatter<stanly::domains::record, CharT> : std::formatter<std::string_view, CharT> {
+  auto format(const stanly::domains::record& record, auto& ctx) const {
+    using namespace stanly::domains;
+    return std::format_to(
+        ctx.out(), "{}{}defined{} used{}{}", "<",
+        (record.get<record::idx<row_var>>().element() == RowVarEls::Closed) ? "* " : "",
+        record.get<record::idx<defined>>().bindings(), record.get<record::idx<used>>(), ">");
+  }
+};
+
+template <class CharT>
+struct std::formatter<stanly::domains::constant, CharT> : std::formatter<std::string_view, CharT> {
+  auto format(const stanly::domains::constant& constant, auto& ctx) const {
+    using namespace stanly::domains;
+    std::ostringstream oss{};
+    oss << constant;
+    return std::format_to(ctx.out(), "{}", oss.str());
+  }
+};
+
+struct visitor {
+  using result_type = std::string;
+  result_type operator()(auto&& x) const { return std::format("{}", x); };
+};
+template <class CharT>
+struct std::formatter<stanly::domains::data, CharT> : std::formatter<std::string_view, CharT> {
+  auto format(const stanly::domains::data& data, auto& ctx) const {
+    using namespace stanly::domains;
+    std::ostringstream oss{};
+    ::operator<<(oss, data);
+    return std::format_to(ctx.out(), "{}", data::apply_visitor(visitor{}, data));
+  }
+};
+
+template <class CharT>
+struct std::formatter<stanly::domains::object, CharT> : std::formatter<std::string_view, CharT> {
+  auto format(const stanly::domains::object& object, auto& ctx) const {
+    return std::format_to(ctx.out(), "({} {})", object.get<0>(), object.get<1>());
+  }
+};
+
+template <class CharT>
+struct std::formatter<stanly::domains::memory, CharT> : std::formatter<std::string_view, CharT> {
+  auto format(const stanly::domains::memory& memory, auto& ctx) const {
+    return std::format_to(ctx.out(), "memory{}", memory.bindings());
+  }
+};
+
+template <class CharT>
+struct std::formatter<stanly::domains::scope, CharT> : std::formatter<std::string_view, CharT> {
+  auto format(const stanly::domains::scope& scope, auto& ctx) const {
+    return std::format_to(ctx.out(), "scope{}", scope.bindings());
+  }
+};
+
 template <class CharT>
 struct std::formatter<stanly::domains::state, CharT> : std::formatter<std::string_view, CharT> {
   auto format(const stanly::domains::state& state, auto& ctx) const {
-    std::stringstream stringstream{};
-    stringstream << state;
-    return std::format_to(ctx.out(), "{}", stringstream.str());
+    using namespace stanly::domains;
+    std::ostringstream oss{};
+    ::operator<<(oss, state.get<state::idx<scope>>());
+    std::string scope_str = oss.str();
+    return std::format_to(ctx.out(), "state({}, {})", state.get<state::idx<scope>>(),
+                          state.get<state::idx<memory>>());
   }
 };

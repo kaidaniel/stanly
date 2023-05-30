@@ -154,7 +154,7 @@ namespace stanly::detail {
 auto format_map(const auto &map, auto &ctx) {
   std::format_to(ctx.out(), "{}", "{");
   for (const auto &el : map) {
-    auto &[key, val] = el;
+    const auto &[key, val] = el;
     if (&el != &*(map.begin())) { std::format_to(ctx.out(), "{}", ", "); }
     std::format_to(ctx.out(), "{}", key);
     std::format_to(ctx.out(), "{}", ": ");
