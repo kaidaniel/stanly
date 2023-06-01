@@ -153,16 +153,20 @@ struct std::formatter<std::variant<Args...>, CharT> : std::formatter<std::string
 };
 
 namespace stanly::detail {
+constexpr auto strlen(const char *str) {
+  const char *end = str;
+  while (*end != '\0') { ++end; }
+  return end - str;
+}
 template <class Base = std::formatter<std::string_view>>
 struct lines_arg_parser : Base {
   bool lines_arg = false;
   constexpr auto parse(auto &ctx) {
-    if (ctx.end() - ctx.begin() >= 4) {
-      lines_arg = std::equal(ctx.begin(), ctx.begin() + 4, "lines");
-    } else {
-      lines_arg = false;
-    }
-    if (lines_arg) { return ctx.begin() + 5; }
+    constexpr const char *lines = "lines";
+    constexpr auto len = strlen(lines);
+    lines_arg =
+        ((ctx.end() - ctx.begin()) >= len) && std::equal(ctx.begin(), ctx.begin() + len, lines);
+    if (lines_arg) { return ctx.begin() + len; }
     return Base::parse(ctx);
   }
 };
@@ -174,7 +178,6 @@ template <template <class...> class Map, class Key, class Val, class... Args, cl
 struct std::formatter<Map<Key, Val, Args...>, CharT>
     : public stanly::detail::lines_arg_parser<std::formatter<Val, CharT>> {
   auto format(const Map<Key, Val, Args...> &map, auto &ctx) const {
-    // if (do_line_by_line) { return std::format_to(ctx.out(), "{}", line_by_line(map)); }
     std::format_to(ctx.out(), "{}", "{");
     for (const auto &el : map) {
       const auto &[key, val] = el;
@@ -208,17 +211,19 @@ struct std::formatter<std::vector<El>, CharT>
     return std::format_to(ctx.out(), "{}", ']');
   }
 };
-template <class... Args, class CharT>
-struct std::formatter<std::tuple<Args...>, CharT> : std::formatter<std::string_view, CharT> {
-  auto format(const std::tuple<Args...> &tpl, auto &ctx) const {
+template <class Arg, class... Args, class CharT>
+struct std::formatter<std::tuple<Arg, Args...>, CharT> : std::formatter<std::string_view, CharT> {
+  auto format(const std::tuple<Arg, Args...> &tpl, auto &ctx) const {
     std::format_to(ctx.out(), "{}", "(");
-    if constexpr (!std::same_as<std::tuple<Args...>, std::tuple<>>) {
-      std::apply(
-          [&ctx](const auto &x, const auto &...xs) {
-            std::format_to(ctx.out(), "{}", x), ((std::format_to(ctx.out(), " {}", xs)), ...);
-          },
-          tpl);
-    }
+    std::apply(
+        [&ctx](const auto &x, const auto &...xs) {
+          std::format_to(ctx.out(), "{}", x), ((std::format_to(ctx.out(), " {}", xs)), ...);
+        },
+        tpl);
     return std::format_to(ctx.out(), "{}", ")");
   }
+};
+template <class CharT>
+struct std::formatter<std::tuple<>, CharT> : std::formatter<std::string_view, CharT> {
+  auto format(const std::tuple<> &, auto &ctx) const { std::format_to(ctx.out(), "{}", "()"); }
 };
