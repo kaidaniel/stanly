@@ -38,18 +38,6 @@ handle operator""_h(const char* str, std::size_t size) {
   return handle_pool.get_handle(std::string_view{str, size});
 }
 
-std::string replace_handles(std::string msg) {
-  for (const auto& [handle, name] : handle_pool.handles()) {
-    auto hndl = std::format("{}", handle);
-    size_t pos = msg.find(hndl);
-    while (pos != std::string::npos) {
-      if (msg[pos - 1] != '#') { msg.replace(pos, hndl.length(), name); }
-      pos = msg.find(hndl, pos + name.length());
-    }
-  }
-  return msg;
-}
-
 struct result {
   std::vector<firstorder> nodes{};
   state state{};
@@ -65,48 +53,50 @@ void set_key(auto&&... args) {
 }
 
 TEST_CASE("analyse firstorder programs", "[firstorder][analyse]") {
-  add_node(alloc{"al"_h, "unknown"_h});
-  set_key<scope>("al"_h, addresses{"al"_h});
-  set_key<memory>("al"_h, object{{type{"unknown"_h}, data::bottom()}});
+  add_node(alloc{"alloc1"_h, "unknown"_h});
+  set_key<scope>("alloc1"_h, addresses{"alloc1"_h});
+  set_key<memory>("alloc1"_h, object{{type{"unknown"_h}, data::bottom()}});
 
-  add_node(lit{"lt"_h, "int"_h, "123"_h});
-  set_key<scope>("lt"_h, addresses{"lt"_h});
-  set_key<memory>("lt"_h, object{{type{"int"_h}, data{constant{"123"_h}}}});
+  add_node(lit{"lit1"_h, "int"_h, "123"_h});
+  set_key<scope>("lit1"_h, addresses{"lit1"_h});
+  set_key<memory>("lit1"_h, object{{type{"int"_h}, data{constant{"123"_h}}}});
 
-  add_node(update{"al"_h, "f"_h, "lt"_h});
+  add_node(update{"alloc1"_h, "field1"_h, "lit1"_h});
+  set_key<memory>("alloc1"_h,
+                  object{{type{"unknown"_h},
+                          data{record{{top, defined{{{"field1"_h, addresses{"lit1"_h}}}}, bot}}}}});
+
+  add_node(ref{"ref1"_h, "alloc1"_h});
+  set_key<scope>("ref1"_h, addresses{"alloc1"_h});
+
+  add_node(load{"load1"_h, "alloc1"_h, "field1"_h});
+  set_key<scope>("load1"_h, addresses{"lit1"_h});
   set_key<memory>(
-      "al"_h,
-      object{{type{"unknown"_h}, data{record{{top, defined{{{"f"_h, addresses{"lt"_h}}}}, bot}}}}});
+      "alloc1"_h,
+      object{{type{"unknown"_h}, data{record{{top, defined{{{"field1"_h, addresses{"lit1"_h}}}},
+                                              used{"field1"_h}}}}}});
 
-  add_node(ref{"rf"_h, "al"_h});
-  set_key<scope>("rf"_h, addresses{"al"_h});
-
-  add_node(load{"ld"_h, "al"_h, "f"_h});
-  set_key<scope>("ld"_h, addresses{"lt"_h});
+  add_node(load{"load1"_h, "alloc1"_h, "field2"_h});
+  set_key<scope>("load1"_h, top);
   set_key<memory>(
-      "al"_h, object{{type{"unknown"_h},
-                      data{record{{top, defined{{{"f"_h, addresses{"lt"_h}}}}, used{"f"_h}}}}}});
+      "alloc1"_h,
+      object{{type{"unknown"_h}, data{record{{top, defined{{{"field1"_h, addresses{"lit1"_h}}}},
+                                              used{"field1"_h, "field2"_h}}}}}});
 
-  add_node(load{"ld"_h, "al"_h, "g"_h});
-  set_key<scope>("ld"_h, top);
-  set_key<memory>(
-      "al"_h,
-      object{{type{"unknown"_h},
-              data{record{{top, defined{{{"f"_h, addresses{"lt"_h}}}}, used{"f"_h, "g"_h}}}}}});
+  add_node(alloc{"alloc1"_h, "dict"_h});
+  set_key<scope>("alloc1"_h, addresses{"alloc1"_h});
 
-  add_node(alloc{"al"_h, "dict"_h});
-  set_key<scope>("al"_h, addresses{"al"_h});
-
-  add_node(ref{"rf"_h, "al"_h});
-  set_key<scope>("rf"_h, addresses{"al"_h});
+  add_node(ref{"ref1"_h, "alloc1"_h});
+  set_key<scope>("ref1"_h, addresses{"alloc1"_h});
 
   const auto& [program, state] = GENERATE(from_range(results));
-  INFO(replace_handles(std::format("\nprogram:\n{:lines}", program)));
-  INFO(replace_handles(std::format("\nexpected:\n{:lines}", state)));
+  INFO(std::format("\nprogram:\n{:lines}", program));
+  INFO(std::format("\nexpected:\n{:lines}", state));
+  INFO(std::format("\nhandles:\n{:lines}", handle_pool.handles()));
 
   auto observed = analyse(program);
 
-  INFO(replace_handles(std::format("\nobserved:\n{:lines}\n\n", observed)));
+  INFO(std::format("\nobserved:\n{:lines}\n\n", observed));
   bool analysis_inferred_correct_state = state == observed;
   REQUIRE(analysis_inferred_correct_state);
 }
