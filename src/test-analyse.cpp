@@ -117,13 +117,11 @@ TEST_CASE("analyse firstorder programs", "[firstorder][analyse]") {
 
   const auto& [program, state] = GENERATE(from_range(results));
   INFO(std::format("\nprogram:\n{:lines}", resolve_handles(program, handle_pool.handles())));
-  // INFO(std::format("\nexpected:\n{:lines}", state));
-  INFO(std::format("\nexpected:\n{:lines}",
-                   with_handles<stanly::domains::state>{state, handle_pool.handles()}));
+  INFO(std::format("\nexpected:\n{:lines}", with_handles{state, handle_pool.handles()}));
 
   auto observed = analyse(program);
 
-  INFO(std::format("\nobserved:\n{:lines}\n\n", observed));
+  INFO(std::format("\nobserved:\n{:lines}\n\n", with_handles{observed, handle_pool.handles()}));
   bool analysis_inferred_correct_state = state == observed;
   REQUIRE(analysis_inferred_correct_state);
 }

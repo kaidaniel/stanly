@@ -116,6 +116,24 @@ namespace stanly {
 using domain = domains::state;
 }
 
+template <class T>
+struct with_handles {
+  const T& t;
+  const std::map<stanly::handle, std::string_view>& handles_to_str;
+};
+
+template <class T>
+const T& ref_to_t(const with_handles<T>& x) {
+  return x.t;
+}
+template <class T>
+const T& ref_to_t(const T& x) {
+  return x;
+}
+
+template <class T, class Any>
+with_handles(const T&, const Any&) -> with_handles<T>;
+
 template <class Repr, class CharT>
 struct std::formatter<sparta::HashedSetAbstractDomain<Repr>, CharT>
     : std::formatter<std::string_view, CharT> {
@@ -129,6 +147,27 @@ struct std::formatter<sparta::HashedSetAbstractDomain<Repr>, CharT>
   }
 };
 
+template <class Repr, class CharT>
+struct std::formatter<with_handles<sparta::HashedSetAbstractDomain<Repr>>, CharT>
+    : std::formatter<std::string_view, CharT> {
+  auto format(const with_handles<sparta::HashedSetAbstractDomain<Repr>>& hsad, auto& ctx) const {
+    switch (hsad.t.kind()) {
+      case sparta::AbstractValueKind::Top: [[fallthrough]];
+      case sparta::AbstractValueKind::Bottom: {
+        return std::format_to(ctx.out(), "{}", hsad.t);
+        break;
+      }
+      case sparta::AbstractValueKind::Value: {
+        std::string str = "{";
+        for (const auto& x : hsad.t.elements()) {
+          str += std::format("{}, ", hsad.handles_to_str.at(x));
+        }
+        return std::format_to(ctx.out(), "{}", str.substr(0, str.size() - 2) + "}");
+      }
+    }
+  }
+};
+
 template <class CharT>
 struct std::formatter<stanly::domains::row_var, CharT> : std::formatter<std::string_view, CharT> {
   auto format(const stanly::domains::row_var& row_var, auto& ctx) const {
@@ -139,81 +178,6 @@ struct std::formatter<stanly::domains::row_var, CharT> : std::formatter<std::str
   }
 };
 
-template <class Record, class CharT>
-  requires std::same_as<stanly::domains::record, Record>
-struct std::formatter<Record, CharT> : std::formatter<std::string_view, CharT> {
-  auto format(const Record& record, auto& ctx) const {
-    using namespace stanly::domains;
-    return std::format_to(
-        ctx.out(), "({}defined{}, used{})",
-        (record.template get<record::idx<row_var>>().element() == RowVarEls::Closed) ? "* " : "",
-        record.template get<record::idx<defined>>().bindings(),
-        record.template get<record::idx<used>>());
-  }
-};
-
-template <class Constant, class CharT>
-  requires std::same_as<stanly::domains::constant, Constant>
-struct std::formatter<Constant, CharT> : std::formatter<std::string_view, CharT> {
-  auto format(const Constant& constant, auto& ctx) const {
-    using namespace stanly::domains;
-    std::ostringstream oss{};
-    oss << constant;
-    return std::format_to(ctx.out(), "{}", oss.str());
-  }
-};
-
-struct data_visitor {
-  using result_type = std::string;
-  result_type operator()(auto&& x) const { return std::format("{}", x); };
-};
-template <class Data, class CharT>
-  requires std::same_as<stanly::domains::data, Data>
-struct std::formatter<Data, CharT> : std::formatter<std::string_view, CharT> {
-  auto format(const Data& data, auto& ctx) const {
-    using namespace stanly::domains;
-    std::ostringstream oss{};
-    ::operator<<(oss, data);
-    return std::format_to(ctx.out(), "{}", data::apply_visitor(data_visitor{}, data));
-  }
-};
-
-template <class Object, class CharT>
-  requires std::same_as<stanly::domains::object, Object>
-struct std::formatter<Object, CharT> : std::formatter<std::string_view, CharT> {
-  auto format(const Object& object, auto& ctx) const {
-    return std::format_to(ctx.out(), "({} {})", object.template get<0>(), object.template get<1>());
-  }
-};
-
-template <class T>
-struct with_handles {
-  const T& t;
-  const std::map<stanly::handle, std::string_view>& handles_to_str;
-};
-
-template <class T, class Any>
-with_handles(const T&, const Any&) -> with_handles<T>;
-
-template <class Repr, class CharT>
-struct std::formatter<with_handles<sparta::HashedSetAbstractDomain<Repr>>, CharT>
-    : std::formatter<std::string_view, CharT> {
-  auto format(const with_handles<sparta::HashedSetAbstractDomain<Repr>>& hsad, auto& ctx) const {
-    std::string str = "{";
-    for (const auto& x : hsad.t.elements()) {
-      str += std::format("{}, ", hsad.handles_to_str.at(x));
-    }
-    return std::format_to(ctx.out(), "{}", str.substr(0, str.size() - 2) + "}");
-  }
-};
-
-template <class CharT>
-struct std::formatter<with_handles<stanly::domains::object>, CharT>
-    : stanly::detail::lines_arg_parser<std::formatter<std::string_view, CharT>> {
-  auto format(auto&& s, auto& ctx) const {
-    return std::format_to(ctx.out(), "{}", "with_handles<object>");
-  }
-};
 template <class T>
 std::unordered_map<std::string, std::string> format_bindings(const T& x) {
   std::unordered_map<std::string, std::string> out;
@@ -230,46 +194,144 @@ std::unordered_map<std::string, std::string> format_bindings(const T& x) {
   return out;
 }
 
+template <class Record, class CharT>
+  requires std::same_as<stanly::domains::record, Record>
+struct std::formatter<Record, CharT> : std::formatter<std::string_view, CharT> {
+  auto format(const Record& record, auto& ctx) const {
+    using namespace stanly::domains;
+    return std::format_to(
+        ctx.out(), "({}defined{}, used{})",
+        (record.template get<record::idx<row_var>>().element() == RowVarEls::Closed) ? "* " : "",
+        record.template get<record::idx<defined>>().bindings(),
+        record.template get<record::idx<used>>());
+  }
+};
+
+template <class CharT>
+struct std::formatter<with_handles<stanly::domains::record>, CharT>
+    : std::formatter<std::string_view, CharT> {
+  auto format(const with_handles<stanly::domains::record>& record, auto& ctx) const {
+    using namespace stanly::domains;
+    std::string s_used = std::format(
+        "{}",
+        with_handles<used>{record.t.template get<record::idx<used>>(), record.handles_to_str});
+    return std::format_to(
+        ctx.out(), "({}defined{}, used{})",
+        (record.t.template get<record::idx<row_var>>().element() == RowVarEls::Closed) ? "* " : "",
+        format_bindings(
+            with_handles{record.t.template get<record::idx<defined>>(), record.handles_to_str}),
+        // with_handles<used>{record.t.template get<record::idx<used>>(), record.handles_to_str});
+        s_used);
+  }
+};
+
+template <class Constant, class CharT>
+  requires std::same_as<stanly::domains::constant, Constant> ||
+           std::same_as<with_handles<stanly::domains::constant>, Constant>
+struct std::formatter<Constant, CharT> : std::formatter<std::string_view, CharT> {
+  auto format(const Constant& cnst, auto& ctx) const {
+    using namespace stanly::domains;
+    std::ostringstream oss{};
+    if constexpr (std::same_as<constant, Constant>) { oss << cnst; }
+    if constexpr (std::same_as<with_handles<constant>, Constant>) {
+      switch (cnst.t.kind()) {
+        case sparta::AbstractValueKind::Top: {
+          [[fallthrough]];
+        }
+        case sparta::AbstractValueKind::Bottom: {
+          oss << cnst.t;
+          break;
+        }
+        case sparta::AbstractValueKind::Value: {
+          oss << cnst.handles_to_str.at(*(cnst.t.get_constant()));
+          break;
+        }
+      }
+    }
+    return std::format_to(ctx.out(), "{}", oss.str());
+  }
+};
+
+template <class Data, class CharT>
+  requires std::same_as<stanly::domains::data, Data> ||
+           std::same_as<with_handles<stanly::domains::data>, Data>
+struct std::formatter<Data, CharT> : std::formatter<std::string_view, CharT> {
+  struct data_visitor {
+    using result_type = std::string;
+    const std::map<stanly::handle, std::string_view>& handles_to_str;
+    result_type operator()(auto&& x) const {
+      if constexpr (std::same_as<stanly::domains::data, Data>) { return std::format("{}", x); }
+      if constexpr (std::same_as<with_handles<stanly::domains::data>, Data>) {
+        return std::format("{}", with_handles{x, handles_to_str});
+        // return std::format("{}", x);
+      }
+    };
+  };
+  auto format(const Data& data, auto& ctx) const {
+    using namespace stanly::domains;
+    std::ostringstream oss{};
+    ::operator<<(oss, ref_to_t(data));
+    if constexpr (std::same_as<stanly::domains::data, Data>) {
+      return std::format_to(ctx.out(), "{}", data::apply_visitor(data_visitor{{}}, data));
+    }
+    if constexpr (std::same_as<with_handles<stanly::domains::data>, Data>) {
+      return std::format_to(ctx.out(), "{}",
+                            data::apply_visitor(data_visitor{data.handles_to_str}, data.t));
+    }
+  }
+};
+
+template <class Object, class CharT>
+  requires std::same_as<stanly::domains::object, Object> ||
+           std::same_as<with_handles<stanly::domains::object>, Object>
+struct std::formatter<Object, CharT> : std::formatter<std::string_view, CharT> {
+  auto format(const Object& obj, auto& ctx) const {
+    if constexpr (std::same_as<stanly::domains::object, Object>) {
+      return std::format_to(ctx.out(), "({} {})", obj.template get<0>(), obj.template get<1>());
+    }
+    if constexpr (std::same_as<with_handles<stanly::domains::object>, Object>) {
+      return std::format_to(ctx.out(), "({} {})",
+                            with_handles{obj.t.template get<0>(), obj.handles_to_str},
+                            with_handles{obj.t.template get<1>(), obj.handles_to_str});
+    }
+  }
+};
+
+template <class Derived, class CharT>
+struct scope_or_memory_formatter
+    : stanly::detail::lines_arg_parser<std::formatter<std::string_view, CharT>> {
+  auto format(const auto& x, auto& ctx) const {
+    if (ref_to_t(x).is_top()) { return std::format_to(ctx.out(), Derived::s_fmt, Derived::s_top); }
+    if (ref_to_t(x).is_bottom()) {
+      return std::format_to(ctx.out(), Derived::s_fmt, Derived::s_bot);
+    }
+    if (this->lines_arg) {
+      return std::format_to(ctx.out(), Derived::s_lines_fmt, format_bindings(x));
+    }
+    return std::format_to(ctx.out(), Derived::s_fmt, format_bindings(x));
+  }
+};
+
 template <class Memory, class CharT>
   requires std::same_as<stanly::domains::memory, Memory> ||
            std::same_as<with_handles<stanly::domains::memory>, Memory>
 struct std::formatter<Memory, CharT>
-    : stanly::detail::lines_arg_parser<std::formatter<std::string_view, CharT>> {
-  auto format(const Memory& memory, auto& ctx) const {
-    const stanly::domains::memory* mem = nullptr;
-    if constexpr (std::same_as<stanly::domains::memory, Memory>) { mem = &memory; }
-    if constexpr (std::same_as<with_handles<stanly::domains::memory>, Memory>) { mem = &memory.t; }
-    if (mem->is_top()) {
-      return std::format_to(ctx.out(), "memory{}", "{∀ addr. addr: object(top)}");
-    }
-    if (mem->is_bottom()) {
-      return std::format_to(ctx.out(), "memory{}", "{∀ addr. addr: unused}");
-    }
-    if (this->lines_arg) {
-      return std::format_to(ctx.out(), "memory{:lines}", format_bindings(memory));
-    }
-    return std::format_to(ctx.out(), "memory{}", format_bindings(memory));
-  }
+    : scope_or_memory_formatter<std::formatter<Memory, CharT>, CharT> {
+  constexpr const static char* s_top = "{∀ addr. addr: object(top)}";
+  constexpr const static char* s_bot = "{∀ addr. addr: unused}";
+  constexpr static const char* s_fmt = "memory{}";
+  constexpr static const char* s_lines_fmt = "memory{:lines}";
 };
 
 template <class Scope, class CharT>
   requires std::same_as<stanly::domains::scope, Scope> ||
            std::same_as<with_handles<stanly::domains::scope>, Scope>
 struct std::formatter<Scope, CharT>
-    : stanly::detail::lines_arg_parser<std::formatter<std::string_view, CharT>> {
-  auto format(const Scope& scope, auto& ctx) const {
-    const stanly::domains::scope* scp = nullptr;
-    if constexpr (std::same_as<stanly::domains::scope, Scope>) { scp = &scope; }
-    if constexpr (std::same_as<with_handles<stanly::domains::scope>, Scope>) { scp = &scope.t; }
-    if (scp->is_top()) {
-      return std::format_to(ctx.out(), "scope{}", "{∀ var. var: addresses(top)}");
-    }
-    if (scp->is_bottom()) { return std::format_to(ctx.out(), "scope{}", "{invalid}"); }
-    if (this->lines_arg) {
-      return std::format_to(ctx.out(), "scope{:lines}", format_bindings(scope));
-    }
-    return std::format_to(ctx.out(), "scope{}", format_bindings(scope));
-  }
+    : scope_or_memory_formatter<std::formatter<Scope, CharT>, CharT> {
+  constexpr const static char* s_top = "{∀ var. var: addresses(top)}";
+  constexpr const static char* s_bot = "{invalid}";
+  constexpr static const char* s_fmt = "scope{}";
+  constexpr static const char* s_lines_fmt = "scope{:lines}";
 };
 
 inline std::tuple<const stanly::domains::scope&, const stanly::domains::memory&>
