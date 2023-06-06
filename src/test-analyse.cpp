@@ -90,7 +90,7 @@ TEST_CASE("analyse firstorder programs", "[firstorder][analyse]") {
   add_node(update{"alloc1"_h, "field1"_h, "lit1"_h});
   set_key<memory>("alloc1"_h,
                   object{{type{"unknown"_h},
-                          data{record{{top, defined{{{"field1"_h, addresses{"lit1"_h}}}}, bot}}}}});
+                          data{record{{bot, defined{{{"field1"_h, addresses{"lit1"_h}}}}, bot}}}}});
 
   add_node(ref{"ref1"_h, "alloc1"_h});
   set_key<scope>("ref1"_h, addresses{"alloc1"_h});
@@ -99,14 +99,14 @@ TEST_CASE("analyse firstorder programs", "[firstorder][analyse]") {
   set_key<scope>("load1"_h, addresses{"lit1"_h});
   set_key<memory>(
       "alloc1"_h,
-      object{{type{"unknown"_h}, data{record{{top, defined{{{"field1"_h, addresses{"lit1"_h}}}},
+      object{{type{"unknown"_h}, data{record{{bot, defined{{{"field1"_h, addresses{"lit1"_h}}}},
                                               used{"field1"_h}}}}}});
 
   add_node(load{"load1"_h, "alloc1"_h, "field2"_h});
   set_key<scope>("load1"_h, top);
   set_key<memory>(
       "alloc1"_h,
-      object{{type{"unknown"_h}, data{record{{top, defined{{{"field1"_h, addresses{"lit1"_h}}}},
+      object{{type{"unknown"_h}, data{record{{bot, defined{{{"field1"_h, addresses{"lit1"_h}}}},
                                               used{"field1"_h, "field2"_h}}}}}});
 
   add_node(alloc{"alloc1"_h, "dict"_h});
@@ -122,6 +122,7 @@ TEST_CASE("analyse firstorder programs", "[firstorder][analyse]") {
   auto observed = analyse(program);
 
   INFO(std::format("\nobserved:\n{:lines}\n\n", with_handles{observed, handle_pool.handles()}));
+  INFO(std::format("\nhandles:\n{}", handle_pool.handles()));
   bool analysis_inferred_correct_state = state == observed;
   REQUIRE(analysis_inferred_correct_state);
 }

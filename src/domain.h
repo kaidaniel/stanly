@@ -31,11 +31,11 @@ namespace stanly::domains {
 using namespace sparta;
 template <class T>
 concept abstract_domain = std::derived_from<T, AbstractDomain<T>>;
-enum class RowVarEls { Bot, Closed, Open };
+enum class RowVarEls { Closed, Open };
 std::ostream& operator<<(std::ostream& os, RowVarEls rve);
 using enum RowVarEls;
-using row_var_l = BitVectorLattice<RowVarEls, 3>;
-static row_var_l l_({Bot, Closed, Open}, {{Bot, Closed}, {Closed, Open}});
+using row_var_l = BitVectorLattice<RowVarEls, 2>;
+static row_var_l l_({Closed, Open}, {{Closed, Open}});
 using field_repr = handle;
 using address_repr = handle;
 using var_repr = handle;
@@ -89,8 +89,8 @@ struct state : DirectProductAbstractDomain<state, scope, memory> {
   void add_used_field(var_repr var, field_repr field) {
     apply_to_record(var, [field](used* u) { u->add(field); });
   }
-  void define_field(var_repr src, field_repr field, address_repr tgt) {
-    apply_to_record(src, [field, tgt](defined* d) { d->set(field, addresses{tgt}); });
+  void define_field(var_repr tgt, field_repr field, address_repr src) {
+    apply_to_record(tgt, [field, src](defined* d) { d->set(field, addresses{src}); });
   }
 };
 using kind = AbstractValueKind;
@@ -201,7 +201,7 @@ struct std::formatter<Record, CharT> : std::formatter<std::string_view, CharT> {
     using namespace stanly::domains;
     return std::format_to(
         ctx.out(), "({}defined{}, used{})",
-        (record.template get<record::idx<row_var>>().element() == RowVarEls::Closed) ? "* " : "",
+        (record.template get<record::idx<row_var>>().element() == RowVarEls::Open) ? "* " : "",
         record.template get<record::idx<defined>>().bindings(),
         record.template get<record::idx<used>>());
   }
@@ -217,7 +217,7 @@ struct std::formatter<with_handles<stanly::domains::record>, CharT>
         with_handles<used>{record.t.template get<record::idx<used>>(), record.handles_to_str});
     return std::format_to(
         ctx.out(), "({}defined{}, used{})",
-        (record.t.template get<record::idx<row_var>>().element() == RowVarEls::Closed) ? "* " : "",
+        (record.t.template get<record::idx<row_var>>().element() == RowVarEls::Open) ? "* " : "",
         format_bindings(
             with_handles{record.t.template get<record::idx<defined>>(), record.handles_to_str}),
         // with_handles<used>{record.t.template get<record::idx<used>>(), record.handles_to_str});

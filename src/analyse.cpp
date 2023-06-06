@@ -11,7 +11,6 @@ namespace stanly {
 namespace domains {
 std::ostream& operator<<(std::ostream& os, RowVarEls rve) {
   switch (rve) {
-    case RowVarEls::Bot: os << "Bot"; break;
     case RowVarEls::Closed: os << "Closed"; break;
     case RowVarEls::Open: os << "Open"; break;
   };
@@ -35,7 +34,10 @@ void analyse(const load& load, domain* d) {
   d->add_used_field(load.var, load.field);
 }
 void analyse(const update& update, domain* d) {
-  d->define_field(update.src, update.field, update.tgt);
+  auto obj =
+      object{{bot, data{record{{bot, defined{{{update.field, addresses{update.src}}}}, bot}}}}};
+  obj.join_with(d->get<domain::idx<memory>>().get(update.tgt));
+  d->template set_key<memory>(update.tgt, obj);
 }
 domain analyse(const std::vector<firstorder>& graph) {
   domain domain;
