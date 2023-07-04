@@ -58,6 +58,9 @@ using data = DisjointUnionAbstractDomain<record, constant>;
 using type = ConstantAbstractDomain<type_repr>;
 struct object : DirectProductAbstractDomain<object, type, data> {
   using DirectProductAbstractDomain<object, type, data>::DirectProductAbstractDomain;
+  template <class T>
+    requires std::same_as<T, type> || std::same_as<T, data>
+  constexpr static int idx = std::same_as<T, type> ? 0 : 1;
 };
 
 using scope = sparta::HashedAbstractEnvironment<var_repr, addresses>;
