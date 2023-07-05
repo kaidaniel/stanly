@@ -81,7 +81,9 @@ void set_key(auto&&... args) {
 TEST_CASE("analyse firstorder programs", "[firstorder][analyse]") {
   add_node(alloc{"alloc1"_h, "unknown"_h});
   set_key<scope>("alloc1"_h, addresses{"alloc1"_h});
-  set_key<memory>("alloc1"_h, object{{type{"unknown"_h}, data{record{}}}});
+  set_key<memory>(
+      "alloc1"_h,
+      object{{type{"unknown"_h}, data{record{{row_var{RowVarEls::Closed}, defined{}, used{}}}}}});
 
   add_node(lit{"lit1"_h, "int"_h, "123"_h});
   set_key<scope>("lit1"_h, addresses{"123"_h});
@@ -95,16 +97,17 @@ TEST_CASE("analyse firstorder programs", "[firstorder][analyse]") {
   set_key<memory>(
       "alloc1"_h,
       object{{type{"unknown"_h},
-              data{record{{bot, defined{{{"field1_val"_h, addresses{"123"_h}}}}, used{}}}}}});
+              data{record{{row_var{RowVarEls::Closed},
+                           defined{{{"field1_val"_h, addresses{"123"_h}}}}, used{}}}}}});
 
   add_node(ref{"ref1"_h, "alloc1"_h});
   set_key<scope>("ref1"_h, addresses{"alloc1"_h});
 
   add_node(load{"load1"_h, "alloc1"_h, "field1"_h});
-  set_key<scope>("load1"_h, addresses{"lit1"_h});
+  set_key<scope>("load1"_h, addresses{"123"_h});
   set_key<memory>(
       "alloc1"_h,
-      object{{type{"unknown"_h}, data{record{{bot, defined{{{"field1_val"_h, addresses{"lit1"_h}}}},
+      object{{type{"unknown"_h}, data{record{{bot, defined{{{"field1_val"_h, addresses{"123"_h}}}},
                                               used{"field1_val"_h}}}}}});
 
   add_node(lit{"field2"_h, "str"_h, "field2_val"_h});
@@ -112,14 +115,17 @@ TEST_CASE("analyse firstorder programs", "[firstorder][analyse]") {
   set_key<memory>("field2_val"_h, object{{type{"str"_h}, data{constant{"field2_val"_h}}}});
 
   add_node(load{"load1"_h, "alloc1"_h, "field2"_h});
-  set_key<scope>("load1"_h, top);
+  // row var is closed: no valid execution where load1 has a value (bottom).
+  // if row_var was open, load1 could be anything (top).
+  set_key<scope>("load1"_h, addresses::bottom());
   set_key<memory>(
       "alloc1"_h,
-      object{{type{"unknown"_h}, data{record{{bot, defined{{{"field1_val"_h, addresses{"lit1"_h}}}},
+      object{{type{"unknown"_h}, data{record{{bot, defined{{{"field1_val"_h, addresses{"123"_h}}}},
                                               used{"field1_val"_h, "field2_val"_h}}}}}});
 
   add_node(alloc{"alloc1"_h, "dict"_h});
   set_key<scope>("alloc1"_h, addresses{"alloc1"_h});
+  set_key<memory>("alloc1"_h, object{{type{"dict"_h}, data{record{{bot, defined{}, used{}}}}}});
 
   add_node(ref{"ref1"_h, "alloc1"_h});
   set_key<scope>("ref1"_h, addresses{"alloc1"_h});
