@@ -52,19 +52,27 @@ void analyse(const lit& lit, domain* d) {
 void analyse(const ref& ref, domain* d) { d->template set_key<scope>(ref.var, addresses{ref.src}); }
 void analyse(const load& load, domain* d) {
   using enum sparta::AbstractValueKind;
+  using enum RowVarEls;
   const scope& scp = d->get<domain::idx<scope>>();
   const addresses& sources = scp.get(load.src);
   const addresses& fields = scp.get(load.field);
   const auto& elements = fields.is_value() ? fields.elements() : std::unordered_set<handle>{};
+  bool invalid_state = false;
+
+  auto set_invalid_state = [&]() {
+    d->apply<domain::idx<memory>>([&](memory* m) { m->set_to_top(); });
+    d->apply<domain::idx<scope>>([&](scope* s) { s->set_to_bottom(); });
+  };
 
   auto set_load_var = [&](addresses&& x) {
     d->apply<domain::idx<scope>>([&](scope* s) { s->set(load.var, x); });
   };
   switch (sources.kind()) {
     case Top: set_load_var(top); return;
-    case Bottom: set_load_var(bot); return;
+    case Bottom: set_invalid_state(); return;
     case Value: set_load_var(addresses{}); break;
   }
+
   for (const address_repr source : sources.elements()) {
     d->apply<domain::idx<memory>>([&](memory* m) {
       m->update(source, [&](object* o) {
@@ -75,9 +83,17 @@ void analyse(const load& load, domain* d) {
               d->apply<domain::idx<scope>>([&](scope* scope) {
                 scope->update(load.var, [&](addresses* addrs) {
                   if (fields.is_top()) { addrs->set_to_top(); }
-                  for (const address_repr field : elements) { 
-                    addrs->join_with(def->get(field)); 
-                  }
+                  for (const address_repr field : elements) {
+                    def->update(field, [&](addresses* field_addrs) {
+                      if (field_addrs->is_bottom()) {  // no binding recorded
+                        switch (r->get<record::idx<row_var>>().element()) {
+                          case Closed: invalid_state = true; return;  // no binding exists
+                          case Open: addrs->set_to_top(); return;     // any binding could exist
+                        }
+                      }
+                      addrs->join_with(*field_addrs);
+                    });
+                  };
                 });
               });
             });
@@ -85,6 +101,10 @@ void analyse(const load& load, domain* d) {
         });
       });
     });
+    if (invalid_state) {
+      set_invalid_state();
+      break;
+    }
   }
 }
 

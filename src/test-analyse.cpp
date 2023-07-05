@@ -114,21 +114,21 @@ TEST_CASE("analyse firstorder programs", "[firstorder][analyse]") {
   set_key<scope>("field2"_h, addresses{"field2_val"_h});
   set_key<memory>("field2_val"_h, object{{type{"str"_h}, data{constant{"field2_val"_h}}}});
 
-  add_node(load{"load1"_h, "alloc1"_h, "field2"_h});
-  // row var is closed: no valid execution where load1 has a value (bottom).
-  // if row_var was open, load1 could be anything (top).
-  set_key<scope>("load1"_h, addresses::bottom());
-  set_key<memory>(
-      "alloc1"_h,
-      object{{type{"unknown"_h}, data{record{{bot, defined{{{"field1_val"_h, addresses{"123"_h}}}},
-                                              used{"field1_val"_h, "field2_val"_h}}}}}});
-
   add_node(alloc{"alloc1"_h, "dict"_h});
   set_key<scope>("alloc1"_h, addresses{"alloc1"_h});
   set_key<memory>("alloc1"_h, object{{type{"dict"_h}, data{record{{bot, defined{}, used{}}}}}});
 
   add_node(ref{"ref1"_h, "alloc1"_h});
   set_key<scope>("ref1"_h, addresses{"alloc1"_h});
+
+  add_node(load{"load1"_h, "alloc1"_h, "field2"_h});
+  // row var is closed: no valid execution where load1 has a value (bottom).
+  // if row_var was open, load1 could be anything (top).
+  set_key<scope>("load1"_h, addresses::bottom());
+  results.back().state.apply<state::idx<memory>>([&](memory* m) { m->set_to_top(); });
+
+  add_node(alloc{"alloc2"_h, "unknown"_h});  // has no effect because state is invalid already.
+  add_node(ref{"ref2"_h, "alloc1"_h});       // has no effect because state is invalid already.
 
   const auto& [program, state] = GENERATE(from_range(results));
   INFO(std::format("\nprogram:\n{:lines}", resolve_handles(program, handle_pool.handles())));
