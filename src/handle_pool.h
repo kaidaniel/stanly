@@ -36,7 +36,7 @@ auto map_tpl(auto&& f, std::tuple<Ts...> tpl) {
   return std::apply([&f](Ts... t) { return std::tuple{f(std::forward<Ts>(t))...}; }, tpl);
 }
 
-std::string resolve_handles(const syntax::firstorder& node,
+std::string resolve_handles(const syntax::ast_node& node,
                             const std::map<handle, std::string_view>& handle_to_str) {
   return std::visit(
       [&]<class T>(const T& n) {
@@ -47,7 +47,7 @@ std::string resolve_handles(const syntax::firstorder& node,
       node);
 }
 
-std::vector<std::string> resolve_handles(const std::vector<syntax::firstorder>& nodes,
+std::vector<std::string> resolve_handles(const std::vector<syntax::ast_node>& nodes,
                                          const std::map<handle, std::string_view>& handle_to_str) {
   std::vector<std::string> out;
   out.reserve(nodes.size());
@@ -56,7 +56,7 @@ std::vector<std::string> resolve_handles(const std::vector<syntax::firstorder>& 
 }
 
 std::map<std::string, std::string> resolve_handles(
-    const std::unordered_map<std::string_view, syntax::firstorder>& map,
+    const std::unordered_map<std::string_view, syntax::ast_node>& map,
     const std::map<handle, std::string_view>& handle_to_str) {
   std::map<std::string, std::string> out;
   // out.reserve(map.size());

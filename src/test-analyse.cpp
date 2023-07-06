@@ -17,11 +17,11 @@ using namespace syntax;
 using enum RowVarEls;
 
 struct result {
-  std::vector<firstorder> nodes{};
+  std::vector<ast_node> nodes{};
   state state{};
 };
 std::vector<result> results{result{{}, {}}};
-void add_node(firstorder&& n) {
+void add_node(ast_node&& n) {
   results.push_back(results.back());
   results.back().nodes.push_back(n);
 }
@@ -30,7 +30,7 @@ void set_key(auto&&... args) {
   results.back().state.set_key<Target>(args...);
 }
 
-TEST_CASE("analyse firstorder programs", "[firstorder][analyse]") {
+TEST_CASE("analyse ast_node programs", "[ast_node][analyse]") {
   add_node(alloc{"alloc1"_h, "unknown"_h});
   set_key<scope>("alloc1"_h, addresses{"alloc1"_h});
   set_key<memory>("alloc1"_h,

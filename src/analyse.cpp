@@ -112,7 +112,7 @@ void analyse(const update& update, domain* d) {
     }
   });
 }
-domain analyse(const std::vector<firstorder>& graph) {
+domain analyse(const std::vector<ast_node>& graph) {
   domain domain{};
   for (const auto& node : graph) {
     std::visit([&](const auto& n) { analyse(n, &domain); }, node);

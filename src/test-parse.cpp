@@ -10,9 +10,9 @@
 namespace stanly {
 using namespace syntax;
 
-TEST_CASE("parse firstorder", "[parser]") {
+TEST_CASE("parse ast_node", "[parser]") {
   auto [program, nodes] =
-      GENERATE(from_range(std::vector<std::pair<std::string_view, std::vector<firstorder>>>{
+      GENERATE(from_range(std::vector<std::pair<std::string_view, std::vector<ast_node>>>{
           {"x=y", {ref{"x"_h, "y"_h}}},
           {"x=1", {lit{"x"_h, "int"_h, "1"_h}}},
           {"x=f's'", {lit{"x"_h, "str"_h, "f's'"_h}}},

@@ -65,12 +65,12 @@ auto lookup_field(std::string_view name) -> TSFieldId {
 
 using std::string_view;
 using std::vector;
-struct firstorder_cursor : public cursor {
+struct ast_node_cursor : public cursor {
   using cursor::cursor;
-  auto parse_dictionary(std::string_view tgt, StringIndex& idx) -> vector<firstorder> {
+  auto parse_dictionary(std::string_view tgt, StringIndex& idx) -> vector<ast_node> {
     // dictionary("{" commaSep1(pair | dictionary_splat)? ","? "}")
     stanly_assert(symbol() == symbols.dictionary);  // <dictionary(...)>
-    std::vector<firstorder> dictionary{alloc{idx.insert(tgt), idx.insert("dict")}};
+    std::vector<ast_node> dictionary{alloc{idx.insert(tgt), idx.insert("dict")}};
     goto_child();                              // dictionary(<'{'> pair(...) ...)
     while (goto_sibling() && text() != "}") {  // dictionary(... <pair(...)> ...)
       // pair(key:expression ":" value:expression)
@@ -95,7 +95,7 @@ struct firstorder_cursor : public cursor {
     return {variable, text()};
   };
 
-  auto parse_statement(StringIndex& idx) -> std::vector<firstorder> {
+  auto parse_statement(StringIndex& idx) -> std::vector<ast_node> {
     stanly_assert(symbol() == symbols.expression_statement);
     goto_child();
     stanly_assert(symbol() == symbols.assignment);
@@ -137,15 +137,15 @@ struct firstorder_cursor : public cursor {
     unreachable();
   }
 };
-std::vector<firstorder> parse(std::string_view program, StringIndex idx = {}) {
+std::vector<ast_node> parse(std::string_view program, StringIndex idx = {}) {
   auto* parser = ts_parser_new();
   ts_parser_set_language(parser, tree_sitter_python());
   auto* tree = ts_parser_parse_string(parser, nullptr, program.begin(), program.size());
   auto cursor = ts_tree_cursor_new(ts_node_named_child(ts_tree_root_node(tree), 0));
-  std::vector<firstorder> nodes{};
+  std::vector<ast_node> nodes{};
   while (true) {
     auto sibling = ts_node_next_named_sibling(ts_tree_cursor_current_node(&cursor));
-    std::ranges::move(firstorder_cursor{&cursor, program}.parse_statement(idx),
+    std::ranges::move(ast_node_cursor{&cursor, program}.parse_statement(idx),
                       std::back_inserter(nodes));
     if (ts_node_is_null(sibling)) { break; }
     ts_tree_cursor_reset(&cursor, sibling);
