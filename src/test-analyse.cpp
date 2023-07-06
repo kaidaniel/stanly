@@ -7,7 +7,7 @@
 
 #include "analyse.h"
 #include "domain.h"
-#include "handle_pool.h"
+#include "string-index.h"
 #include "syntax.h"
 
 namespace stanly {
@@ -84,13 +84,13 @@ TEST_CASE("analyse ast_node programs", "[ast_node][analyse]") {
   add_node(ref{"ref2"_h, "alloc1"_h});       // has no effect because state is invalid already.
 
   const auto& [program, state] = GENERATE(from_range(results));
-  INFO(std::format("\nprogram:\n{:lines}", resolve_handles(program, handle_pool.handles())));
-  INFO(std::format("\nexpected:\n{:lines}", with_handles{state, handle_pool.handles()}));
+  INFO(std::format("\nprogram:\n{:lines}", resolve_handles(program)));
+  INFO(std::format("\nexpected:\n{:lines}", with_handles{state}));
 
   auto observed = analyse(program);
 
-  INFO(std::format("\nobserved:\n{:lines}\n\n", with_handles{observed, handle_pool.handles()}));
-  INFO(std::format("\nhandles:\n{}", handle_pool.handles()));
+  INFO(std::format("\nobserved:\n{:lines}\n\n", with_handles{observed}));
+  INFO(std::format("\nhandles:\n{}", global_string_index.handles()));
   bool analysis_inferred_correct_state = state == observed;
   REQUIRE(analysis_inferred_correct_state);
 }

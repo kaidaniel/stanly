@@ -1,11 +1,11 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators_range.hpp>
-#include <ranges>
+#include <string_view>
+#include <vector>
 
-#include "catch2/matchers/catch_matchers_range_equals.hpp"
 #include "parse.h"
+#include "string-index.h"
 #include "syntax.h"
-#include "string_index.h"
 
 namespace stanly {
 using namespace syntax;
@@ -33,7 +33,6 @@ TEST_CASE("parse ast_node", "[parser]") {
           {"e=1;f=2;r={};r[e]=f",
            {lit{"e"_h, "int"_h, "1"_h}, lit{"f"_h, "int"_h, "2"_h}, alloc{"r"_h, "dict"_h},
             update{"r"_h, "e"_h, "f"_h}}}}));
-  CHECK(parse(program) == nodes);
-  CHECK_THAT(parse(program), Catch::Matchers::RangeEquals(nodes));
+  CHECK(parse(std::string{program}) == nodes);
 }
 }  // namespace stanly

@@ -1,10 +1,9 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators_range.hpp>
-#include <initializer_list>
-#include <string_view>
+#include <string>
 #include <vector>
 
-#include "handle_pool.h"
+#include "string-index.h"
 #include "syntax.h"
 
 namespace stanly {
@@ -17,7 +16,7 @@ TEST_CASE("ast_node", "[format]") {
         {lit{"a"_h, "integer"_h, "b"_h}, std::format("{}(a integer b)", type_name<lit>)},
         {alloc{"a"_h, "dict"_h}, std::format("{}(a dict)", type_name<alloc>)},
         {ref{"a"_h, "b"_h}, std::format("{}(a b)", type_name<ref>)}}));
-    CHECK(resolve_handles(node, handle_pool.handles()) == str);
+    CHECK(resolve_handles(node) == str);
   }
   SECTION("handle node") {
     auto [node, str] = GENERATE(from_range(std::vector<std::pair<ast_node, std::string>>{
@@ -36,7 +35,7 @@ TEST_CASE("ast_node", "[format]") {
             {{ref{"a"_h, "b"_h}, alloc{"a"_h, "top"_h}},
              std::format("[{}(a b), {}(a top)]", type_name<ref>, type_name<alloc>)},
             {{}, "[]"}}));
-    CHECK(std::format("{}", resolve_handles(node, handle_pool.handles())) == str);
+    CHECK(std::format("{}", resolve_handles(node)) == str);
   }
   SECTION("std::unordered_map<std::string_view, node>") {
     auto [map, str] = GENERATE(from_range(
@@ -47,7 +46,7 @@ TEST_CASE("ast_node", "[format]") {
              std::format("{}0: {}(a s b), 2: {}(c top), 3: {}(a b c){}", "{", type_name<lit>,
                          type_name<alloc>, type_name<update>, "}")},
             {{}, "{}"}}));
-    CHECK(std::format("{}", resolve_handles(map, handle_pool.handles())) == str);
+    CHECK(std::format("{}", resolve_handles(map)) == str);
   }
   SECTION("std::vector, std::unordered_map") {
     std::unordered_map<handle, ast_node> map{{0_i, alloc{1_i, 2_i}}, {3_i, lit{3_i, 1_i, 4_i}}};

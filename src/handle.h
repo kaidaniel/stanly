@@ -1,12 +1,11 @@
 #pragma once
 
-
-
 #include <compare>
 #include <cstddef>
 #include <cstdint>
-#include <ostream>
 #include <format>
+#include <ostream>
+
 #include "stanly-assert.h"
 
 namespace stanly {

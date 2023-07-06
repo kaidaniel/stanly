@@ -6,26 +6,22 @@ set_target_properties(sparta tree-sitter tree-sitter-python Catch2
 add_library(project_props INTERFACE)
 target_compile_features(project_props INTERFACE cxx_std_20)
 target_compile_options(project_props INTERFACE 
-    -Wall 
-    -Wextra 
-    -Wpedantic 
-    -fdiagnostics-show-option
-    -fdiagnostics-color=always)
+    -Wall -Wextra -Wpedantic -fdiagnostics-show-option -fdiagnostics-color=always)
 
 target_include_directories(project_props INTERFACE ${Boost_INCLUDE_DIRS})
 
-foreach(test test-parse test-format test-analyse test-stanly-utils)
+foreach(test test-parse test-format test-analyse)
     add_executable(${test} ${test}.cpp)
-    target_link_libraries(${test} PRIVATE project_props Catch2::Catch2WithMain)
+    target_link_libraries(${test} PRIVATE project_props Catch2::Catch2WithMain "string-index" parser analyse)
     catch_discover_tests(${test} EXTRA_ARGS --colour-mode ansi)
 endforeach()
 
-add_library(parser parser.cpp)
-add_library(string_index string_index.cpp)
-add_library(analyse analyse.cpp)
+foreach(lib parser "string-index" analyse)
+    add_library(${lib} ${lib}.cpp)
+    target_link_libraries(${lib} PUBLIC project_props)
+endforeach()
 
-target_link_libraries(parser PUBLIC tree-sitter tree-sitter-python project_props)
-target_link_libraries(analyse PUBLIC sparta project_props)
-target_link_libraries(string_index PUBLIC project_props)
-target_link_libraries(test-parse PRIVATE parser string_index)
-target_link_libraries(test-analyse PRIVATE analyse)
+target_link_libraries(parser PUBLIC tree-sitter tree-sitter-python)
+target_link_libraries(analyse PUBLIC sparta)
+
+add_executable(stanly stanly.cpp)

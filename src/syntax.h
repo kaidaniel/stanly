@@ -6,6 +6,7 @@
 
 #include "handle.h"
 #include "stanly-utils.h"
+#include "to_tpl.h"
 
 namespace stanly {
 namespace syntax {

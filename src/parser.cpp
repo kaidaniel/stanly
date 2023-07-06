@@ -2,7 +2,7 @@
 #include <string_view>
 #include <vector>
 
-#include "string_index.h"
+#include "string-index.h"
 #include "syntax.h"
 #include "tree_sitter/api.h"
 
@@ -136,13 +136,14 @@ struct ast_node_cursor : public cursor {
     unreachable();
   }
 };
-std::vector<ast_node> parse(std::string_view program, string_index& idx) {
+std::vector<ast_node> parse(std::string&& program, string_index& idx) {
+  std::string_view program_view = idx.add_string_to_index(std::move(program));
   auto* parser = ts_parser_new();
   ts_parser_set_language(parser, tree_sitter_python());
-  auto* tree = ts_parser_parse_string(parser, nullptr, program.begin(), program.size());
+  auto* tree = ts_parser_parse_string(parser, nullptr, program_view.begin(), program_view.size());
   auto cursor = ts_tree_cursor_new(ts_node_named_child(ts_tree_root_node(tree), 0));
   std::vector<ast_node_args> node_args{};
-  ast_node_cursor c = {&cursor, program};
+  ast_node_cursor c = {&cursor, program_view};
   while (true) {
     auto sibling = ts_node_next_named_sibling(ts_tree_cursor_current_node(&cursor));
     std::ranges::move(c.parse_statement(), std::back_inserter(node_args));
@@ -171,8 +172,8 @@ std::vector<ast_node> parse(std::string_view program, string_index& idx) {
   }
   return nodes;
 }
-std::vector<ast_node> parse(std::string_view program) {
-  return parse(program, global_string_index);
+std::vector<ast_node> parse(std::string&& program) {
+  return parse(std::move(program), global_string_index);
 }
 
 }  // namespace stanly

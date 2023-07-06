@@ -16,6 +16,7 @@
 
 #include "handle.h"
 #include "stanly-utils.h"
+#include "string-index.h"
 
 namespace stanly::domains {
 
@@ -122,7 +123,8 @@ using domain = domains::state;
 template <class T>
 struct with_handles {
   const T& t;
-  const std::map<stanly::handle, std::string_view>& handles_to_str;
+  const std::map<stanly::handle, std::string_view>& handles_to_str =
+      stanly::global_string_index.handles();
 };
 
 template <class T>
@@ -136,6 +138,9 @@ const T& ref_to_t(const T& x) {
 
 template <class T, class Any>
 with_handles(const T&, const Any&) -> with_handles<T>;
+
+template <class T>
+with_handles(const T&) -> with_handles<T>;
 
 template <class Repr, class CharT>
 struct std::formatter<sparta::HashedSetAbstractDomain<Repr>, CharT>
