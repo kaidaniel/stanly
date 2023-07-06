@@ -8,7 +8,6 @@
 #include "stanly-utils.h"
 
 namespace stanly {
-
 namespace syntax {
 // clang-format off
 struct alloc  { handle var; handle type; };

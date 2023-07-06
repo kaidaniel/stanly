@@ -3,9 +3,9 @@
 #include <ranges>
 
 #include "catch2/matchers/catch_matchers_range_equals.hpp"
-#include "handle_pool.h"
 #include "parse.h"
 #include "syntax.h"
+#include "string_index.h"
 
 namespace stanly {
 using namespace syntax;
@@ -33,7 +33,7 @@ TEST_CASE("parse ast_node", "[parser]") {
           {"e=1;f=2;r={};r[e]=f",
            {lit{"e"_h, "int"_h, "1"_h}, lit{"f"_h, "int"_h, "2"_h}, alloc{"r"_h, "dict"_h},
             update{"r"_h, "e"_h, "f"_h}}}}));
-  CHECK(parse(program, handle_pool.variables()) == nodes);
-  CHECK_THAT(parse(program, handle_pool.variables()), Catch::Matchers::RangeEquals(nodes));
+  CHECK(parse(program) == nodes);
+  CHECK_THAT(parse(program), Catch::Matchers::RangeEquals(nodes));
 }
 }  // namespace stanly

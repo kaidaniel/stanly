@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "handle.h"
+#include "stanly-assert.h"
 
 namespace stanly {
 class string_index {
@@ -43,5 +44,6 @@ class string_index {
     return {*strings_.begin()};
   };
 };
-// handle operator""_h(const char* str, std::size_t size);
+handle operator""_h(const char* str, std::size_t size);
+extern string_index global_string_index;
 }  // namespace stanly

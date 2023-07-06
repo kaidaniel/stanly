@@ -11,29 +11,7 @@
 #include <unordered_map>
 
 #include "stanly-assert.h"
-
-auto to_tpl(auto &&object) noexcept {
-  using type = std::decay_t<decltype(object)>;
-  if constexpr (requires(type t) { type{{}, {}, {}, {}, {}}; }) {
-    auto &&[p1, p2, p3, p4, p5] = object;
-    return std::make_tuple(p1, p2, p3, p4, p5);
-  } else if constexpr (requires(type t) { type{{}, {}, {}, {}}; }) {
-    auto &&[p1, p2, p3, p4] = object;
-    return std::make_tuple(p1, p2, p3, p4);
-  } else if constexpr (requires(type t) { type{{}, {}, {}}; }) {
-    auto &&[p1, p2, p3] = object;
-    return std::make_tuple(p1, p2, p3);
-  } else if constexpr (requires(type t) { type{{}, {}}; }) {
-    auto &&[p1, p2] = object;
-    return std::make_tuple(p1, p2);
-  } else if constexpr (requires(type t) { type{{}}; }) {
-    auto &&[p1] = object;
-    return std::make_tuple(p1);
-  } else {
-    static_assert(std::default_initializable<type>);
-    return std::make_tuple();
-  }
-}
+#include "to_tpl.h"
 
 template <template <class...> class T, class... xs>
 auto map_members(auto &&f) {
