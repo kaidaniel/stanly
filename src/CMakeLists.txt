@@ -21,6 +21,7 @@ foreach(test test-format test-parse test-stanly-utils test-graph test-analyse)
 endforeach()
 
 add_library(parser parser.cpp)
+# add_library(string_index string_index.cpp)
 add_library(analyse analyse.cpp)
 
 target_link_libraries(parser PUBLIC tree-sitter tree-sitter-python project_props)

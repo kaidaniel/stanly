@@ -23,7 +23,7 @@ class graph {
   // TODO: make parser return the conlit of each node so that it can be recorded here.
   std::unordered_map<size_t, std::string_view> syntax_node_handle_to_source_lit_{};
   std::vector<VariantT> syntax_nodes_{};
-  StringIndex string_index_{};
+  string_index string_index_{};
 
  public:
   auto view_syntax() {

@@ -136,7 +136,7 @@ struct ast_node_cursor : public cursor {
     unreachable();
   }
 };
-std::vector<ast_node> parse(std::string_view program, StringIndex idx = {}) {
+std::vector<ast_node> parse(std::string_view program, string_index idx = {}) {
   auto* parser = ts_parser_new();
   ts_parser_set_language(parser, tree_sitter_python());
   auto* tree = ts_parser_parse_string(parser, nullptr, program.begin(), program.size());

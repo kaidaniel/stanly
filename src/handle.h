@@ -1,6 +1,13 @@
 #pragma once
 
-#include "stanly-utils.h"
+
+
+#include <compare>
+#include <cstddef>
+#include <cstdint>
+#include <ostream>
+#include <format>
+#include "stanly-assert.h"
 
 namespace stanly {
 class handle {
