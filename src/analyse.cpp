@@ -23,22 +23,6 @@ std::ostream& operator<<(std::ostream& os, RowVarEls rve) {
 using namespace domains;
 using namespace syntax;
 
-object join_addresses(const var_repr var, state* s) {
-  using enum sparta::AbstractValueKind;
-  const scope& scp = s->get<state::idx<scope>>();
-  const memory& mem = s->get<state::idx<memory>>();
-  const addresses& addresses = scp.get(var);
-  object src = object::bottom();
-  if (addresses.is_top()) { src.set_to_top(); }
-  if (addresses.is_value()) {
-    for (const address_repr& a : addresses.elements()) {
-      src.join_with(mem.get(a));
-      if (src.is_top()) { break; }
-    }
-  }
-  return src;
-}
-
 void analyse(const alloc& alloc, domain* d) {
   d->template set_key<scope>(alloc.var, addresses{alloc.var});
   d->template set_key<memory>(

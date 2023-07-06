@@ -1,9 +1,9 @@
 #include <string_view>
 #include <vector>
 
+#include "string_index.h"
 #include "syntax.h"
 
 namespace stanly {
-template <ast S>
-std::vector<S> parse(std::string_view program);
+std::vector<syntax::firstorder> parse(std::string_view program, StringIndex = {});
 }

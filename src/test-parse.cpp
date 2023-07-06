@@ -3,40 +3,37 @@
 #include <ranges>
 
 #include "catch2/matchers/catch_matchers_range_equals.hpp"
+#include "handle_pool.h"
 #include "parse.h"
 #include "syntax.h"
 
 namespace stanly {
+using namespace syntax;
 
 TEST_CASE("parse firstorder", "[parser]") {
-  struct statements : nodes {
-    std::vector<std::pair<std::string_view, std::vector<firstorder>>> operator()() {
-      return {
-          {"x=y", {ref{"x", "y"}}},
-          {"x=1", {lit{"x", "int", "1"}}},
-          {"x=f's'", {lit{"x", "str", "f's'"}}},
-          {"y=[]", {alloc{"y", "top"}}},
-          {"z = {}", {alloc{"z", "dict"}}},
+  auto [program, nodes] =
+      GENERATE(from_range(std::vector<std::pair<std::string_view, std::vector<firstorder>>>{
+          {"x=y", {ref{"x"_h, "y"_h}}},
+          {"x=1", {lit{"x"_h, "int"_h, "1"_h}}},
+          {"x=f's'", {lit{"x"_h, "str"_h, "f's'"_h}}},
+          {"y=[]", {alloc{"y"_h, "top"_h}}},
+          {"z = {}", {alloc{"z"_h, "dict"_h}}},
           {"z = {1: 'x', 3: {}}",
-           {alloc{"z", "dict"}, update{"z", "1", "'x'"}, update{"z", "3", "{}"}}},
-          {"a = {1: 'x'}", {alloc{"a", "dict"}, update{"a", "1", "'x'"}}},
-          {"a = {1,2,3}", {alloc{"a", "top"}}},
-          {"a[b] = x", {update{"a", "b", "x"}}},
-          {"x = a[b]", {load{"x", "a", "b"}}},
-          {"x = y", {ref{"x", "y"}}},
-          {"x = 1", {lit{"x", "int", "1"}}},
-          {"z={}; x=a[b]", {alloc{"z", "dict"}, load{"x", "a", "b"}}},
-          {"x=y; y=[]", {ref{"x", "y"}, alloc{"y", "top"}}},
-          {"x=y\ny=[]\nz=1", {ref{"x", "y"}, alloc{"y", "top"}, lit{"z", "int", "1"}}},
+           {alloc{"z"_h, "dict"_h}, update{"z"_h, "1"_h, "'x'"_h}, update{"z"_h, "3"_h, "{}"_h}}},
+          {"a = {1: 'x'}", {alloc{"a"_h, "dict"_h}, update{"a"_h, "1"_h, "'x'"_h}}},
+          {"a = {1,2,3}", {alloc{"a"_h, "top"_h}}},
+          {"a[b] = x", {update{"a"_h, "b"_h, "x"_h}}},
+          {"x = a[b]", {load{"x"_h, "a"_h, "b"_h}}},
+          {"x = y", {ref{"x"_h, "y"_h}}},
+          {"x = 1", {lit{"x"_h, "int"_h, "1"_h}}},
+          {"z={}; x=a[b]", {alloc{"z"_h, "dict"_h}, load{"x"_h, "a"_h, "b"_h}}},
+          {"x=y; y=[]", {ref{"x"_h, "y"_h}, alloc{"y"_h, "top"_h}}},
+          {"x=y\ny=[]\nz=1",
+           {ref{"x"_h, "y"_h}, alloc{"y"_h, "top"_h}, lit{"z"_h, "int"_h, "1"_h}}},
           {"e=1;f=2;r={};r[e]=f",
-           {lit{"e", "int", "1"}, lit{"f", "int", "2"}, alloc{"r", "dict"}, update{"r", "e", "f"}}},
-      };
-    }
-  };
-
-  auto [program, nodes] = GENERATE(from_range(statements{}()));
-  CHECK(parse<nodes::firstorder>(program) == nodes);
-  // CHECK_THAT(parse<nodes::firstorder>(program),
-  // Catch::Matchers::RangeEquals(nodes));
+           {lit{"e"_h, "int"_h, "1"_h}, lit{"f"_h, "int"_h, "2"_h}, alloc{"r"_h, "dict"_h},
+            update{"r"_h, "e"_h, "f"_h}}}}));
+  CHECK(parse(program, handle_pool.variables()) == nodes);
+  CHECK_THAT(parse(program, handle_pool.variables()), Catch::Matchers::RangeEquals(nodes));
 }
 }  // namespace stanly

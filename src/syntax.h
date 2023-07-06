@@ -12,62 +12,35 @@
 
 namespace stanly {
 
-template <class Repr>
-struct lang {
-  // clang-format off
-  struct alloc  { Repr var; Repr type; };
-  struct lit    { Repr var; Repr type; Repr value; };
-  struct ref    { Repr var; Repr src; };
-  struct update { Repr tgt; Repr field; Repr src; };
-  struct load   { Repr var; Repr src; Repr field; };
-  // clang-format on
-  using firstorder = std::variant<update, load, lit, alloc, ref>;
-};
-using nodes = lang<std::string_view>;
-
 namespace syntax {
-#define USE_NODE(n) using n = lang<handle>::n
-USE_NODE(alloc);
-USE_NODE(lit);
-USE_NODE(ref);
-USE_NODE(update);
-USE_NODE(load);
-#undef USE_NODE
-using firstorder = lang<handle>::firstorder;
-}  // namespace syntax
-using packed_nodes = lang<handle>;
-
+// clang-format off
+struct alloc  { handle var; handle type; };
+struct lit    { handle var; handle type; handle value; };
+struct ref    { handle var; handle src; };
+struct update { handle tgt; handle field; handle src; };
+struct load   { handle var; handle src; handle field; };
+// clang-format on
+using firstorder = std::variant<update, load, lit, alloc, ref>;
 template <class T>
-concept syntax_node = contains<nodes::firstorder, std::decay_t<T>> ||
-                      contains<packed_nodes::firstorder, std::decay_t<T>>;
-
-template <class T>
-concept ast = std::same_as<nodes::firstorder, std::decay_t<T>> ||
-              std::same_as<packed_nodes::firstorder, std::decay_t<T>>;
-
-const int kN_BYTES_PACKED = 8;
-template <class T>
-concept packed_syntax = ast<T> && sizeof(std::declval<T>()) <= kN_BYTES_PACKED;
-
-template <syntax_node X, syntax_node Y>
+concept node = contains<syntax::firstorder, std::decay_t<T>>;
+template <node X, node Y>
 bool operator==(X &&x, Y &&y) {
   if constexpr (std::same_as<X, Y>) {
     return to_tpl(std::forward<X>(x)) == to_tpl(std::forward<Y>(y));
   }
   return false;
 };
-template <ast S>
-bool operator==(S &&s1, S &&s2) {
-  return std::visit(std::equal_to{}, std::forward<S>(s1), std::forward<S>(s2));
-}
+static_assert(sizeof(std::declval<firstorder>()) == 8);
+}  // namespace syntax
+
 template <class T>
-  requires syntax_node<T> || ast<T>
+  requires syntax::node<T> || std::same_as<syntax::firstorder, std::decay_t<T>>
 auto &operator<<(auto &s, const T &x) {
   return s << std::format("{}", x);
 }
 }  // namespace stanly
 
-template <stanly::syntax_node T, class CharT>
+template <stanly::syntax::node T, class CharT>
 struct std::formatter<T, CharT> : std::formatter<std::string_view, CharT> {
   auto format(const T x, auto &ctx) const {
     std::formatter<std::string_view, CharT>::format(stanly::type_name<T>, ctx);

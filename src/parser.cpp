@@ -2,6 +2,7 @@
 #include <string_view>
 #include <vector>
 
+#include "string_index.h"
 #include "syntax.h"
 #include "tree_sitter/api.h"
 
@@ -12,6 +13,7 @@ TSLanguage* tree_sitter_python(void);
 namespace stanly {
 auto lookup_symbol(std::string_view) -> TSSymbol;
 auto lookup_field(std::string_view) -> TSFieldId;
+using namespace syntax;
 struct symbols {
   TSSymbol expression_statement = lookup_symbol("expression_statement");
   TSSymbol assignment = lookup_symbol("assignment");
@@ -54,27 +56,6 @@ class cursor {
   }
 };
 
-template <class Result>
-std::vector<Result> parse_statement(TSTreeCursor*, std::string_view);
-
-template <ast S>
-std::vector<S> parse(std::string_view program) {
-  auto* parser = ts_parser_new();
-  ts_parser_set_language(parser, tree_sitter_python());
-  auto* tree = ts_parser_parse_string(parser, nullptr, program.begin(), program.size());
-  auto cursor = ts_tree_cursor_new(ts_node_named_child(ts_tree_root_node(tree), 0));
-  std::vector<S> nodes{};
-  while (true) {
-    auto sibling = ts_node_next_named_sibling(ts_tree_cursor_current_node(&cursor));
-    std::ranges::move(parse_statement<S>(&cursor, program), std::back_inserter(nodes));
-    if (ts_node_is_null(sibling)) { break; }
-    ts_tree_cursor_reset(&cursor, sibling);
-  }
-  ts_parser_delete(parser);
-  ts_tree_delete(tree);
-  ts_tree_cursor_delete(&cursor);
-  return nodes;
-}
 auto lookup_symbol(std::string_view name) -> TSSymbol {
   return ts_language_symbol_for_name(tree_sitter_python(), name.data(), name.length(), true);
 }
@@ -84,18 +65,18 @@ auto lookup_field(std::string_view name) -> TSFieldId {
 
 using std::string_view;
 using std::vector;
-struct firstorder_cursor : public cursor, public nodes {
+struct firstorder_cursor : public cursor {
   using cursor::cursor;
-  using nodes::firstorder;
-  auto parse_dictionary(std::string_view tgt) -> vector<firstorder> {
+  auto parse_dictionary(std::string_view tgt, StringIndex& idx) -> vector<firstorder> {
     // dictionary("{" commaSep1(pair | dictionary_splat)? ","? "}")
     stanly_assert(symbol() == symbols.dictionary);  // <dictionary(...)>
-    std::vector<firstorder> dictionary{alloc{tgt, "dict"}};
+    std::vector<firstorder> dictionary{alloc{idx.insert(tgt), idx.insert("dict")}};
     goto_child();                              // dictionary(<'{'> pair(...) ...)
     while (goto_sibling() && text() != "}") {  // dictionary(... <pair(...)> ...)
       // pair(key:expression ":" value:expression)
       stanly_assert(symbol() == symbols.pair);
-      dictionary.emplace_back(update{tgt, text(fields.key), text(fields.value)});
+      dictionary.emplace_back(
+          update{idx.insert(tgt), idx.insert(text(fields.key)), idx.insert(text(fields.value))});
       goto_sibling();  // dictionary(... <','> ...)
     }
     goto_parent();  // <dictionary(...)>
@@ -114,7 +95,7 @@ struct firstorder_cursor : public cursor, public nodes {
     return {variable, text()};
   };
 
-  auto parse_statement() -> std::vector<firstorder> {
+  auto parse_statement(StringIndex& idx) -> std::vector<firstorder> {
     stanly_assert(symbol() == symbols.expression_statement);
     goto_child();
     stanly_assert(symbol() == symbols.assignment);
@@ -123,21 +104,23 @@ struct firstorder_cursor : public cursor, public nodes {
 
     auto symbol_ = symbol();
     if (symbol_ == symbols.identifier) {
-      auto const left = text();
+      auto const left = idx.insert(text());
       goto_sibling();  // assignment(left:identifier <"="> ...)
       goto_sibling();  // assignment(left:identifier "=" <right:...>)
       stanly_assert(field() == fields.right);
 
       symbol_ = symbol();
-      auto const right = text();
+      auto const right = idx.insert(text());
       if (symbol_ == symbols.identifier) { return {ref{left, right}}; }
-      if (symbol_ == symbols.string) { return {lit{left, "str", right}}; }
-      if (symbol_ == symbols.integer) { return {lit{left, "int", right}}; }
-      if (symbol_ == symbols.dictionary) { return parse_dictionary(left); }
-      if (symbol_ == symbols.set || symbol_ == symbols.list) { return {alloc{left, "top"}}; }
+      if (symbol_ == symbols.string) { return {lit{left, idx.insert("str"), right}}; }
+      if (symbol_ == symbols.integer) { return {lit{left, idx.insert("int"), right}}; }
+      if (symbol_ == symbols.dictionary) { return parse_dictionary(idx.get_sv(left), idx); }
+      if (symbol_ == symbols.set || symbol_ == symbols.list) {
+        return {alloc{left, idx.insert("top")}};
+      }
       if (symbol_ == symbols.subscript) {
         auto [variable, field_] = parse_variable_and_field_from_subscript();
-        return {load{left, variable, field_}};
+        return {load{left, idx.insert(variable), idx.insert(field_)}};
       }
       unreachable();
     }
@@ -148,17 +131,29 @@ struct firstorder_cursor : public cursor, public nodes {
       goto_sibling();  // skip "="
       goto_sibling();
       stanly_assert(symbol() == symbols.identifier);
-      return {update{variable, field_, text()}};
+      return {update{idx.insert(variable), idx.insert(field_), idx.insert(text())}};
     };
 
     unreachable();
   }
 };
-template <>
-std::vector<nodes::firstorder> parse_statement<nodes::firstorder>(TSTreeCursor* cursor,
-                                                                  string_view program) {
-  return firstorder_cursor{cursor, program}.parse_statement();
-};
-template std::vector<nodes::firstorder> parse<nodes::firstorder>(std::string_view);
+std::vector<firstorder> parse(std::string_view program, StringIndex idx = {}) {
+  auto* parser = ts_parser_new();
+  ts_parser_set_language(parser, tree_sitter_python());
+  auto* tree = ts_parser_parse_string(parser, nullptr, program.begin(), program.size());
+  auto cursor = ts_tree_cursor_new(ts_node_named_child(ts_tree_root_node(tree), 0));
+  std::vector<firstorder> nodes{};
+  while (true) {
+    auto sibling = ts_node_next_named_sibling(ts_tree_cursor_current_node(&cursor));
+    std::ranges::move(firstorder_cursor{&cursor, program}.parse_statement(idx),
+                      std::back_inserter(nodes));
+    if (ts_node_is_null(sibling)) { break; }
+    ts_tree_cursor_reset(&cursor, sibling);
+  }
+  ts_parser_delete(parser);
+  ts_tree_delete(tree);
+  ts_tree_cursor_delete(&cursor);
+  return nodes;
+}
 
 }  // namespace stanly

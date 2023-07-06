@@ -7,5 +7,5 @@
 
 namespace stanly {
 
-domain analyse(const std::vector<packed_nodes::firstorder>&);
+domain analyse(const std::vector<syntax::firstorder>&);
 }  // namespace stanly
