@@ -25,3 +25,5 @@ target_link_libraries(parser PUBLIC tree-sitter tree-sitter-python)
 target_link_libraries(analyse PUBLIC sparta)
 
 add_executable(stanly stanly.cpp)
+
+target_link_libraries(stanly PRIVATE cxxopts parser analyse "string-index" project_props)

@@ -8,8 +8,7 @@
 #include "stanly-utils.h"
 #include "to_tpl.h"
 
-namespace stanly {
-namespace syntax {
+namespace stanly::syntax {
 // clang-format off
 struct alloc  { handle var; handle type; };
 struct lit    { handle var; handle type; handle value; };
@@ -30,14 +29,13 @@ bool operator==(X &&x, Y &&y) {
   }
   return false;
 };
-}  // namespace syntax
 
 template <class T>
-  requires syntax::ast_cons<T> || std::same_as<syntax::ast_node, std::decay_t<T>>
+  requires stanly::syntax::ast_cons<T> || std::same_as<stanly::syntax::ast_node, std::decay_t<T>>
 auto &operator<<(auto &s, const T &x) {
   return s << std::format("{}", x);
 }
-}  // namespace stanly
+}  // namespace stanly::syntax
 
 template <stanly::syntax::ast_cons T, class CharT>
 struct std::formatter<T, CharT> : std::formatter<std::string_view, CharT> {
