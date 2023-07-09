@@ -38,15 +38,10 @@ void print(const domain& t) {
 int main(int argc, char* argv[]) {
   cxxopts::Options options("stanly",
                            "Statically analyse dynamic records (dictionaries, dataframes, ...).");
-  // clang-format off
-  options.add_options()
-    ("c,command", "Program read from a string instead of a file")
-    ("v,verbose", "Verbose output", cxxopts::value<bool>()->default_value("false"))
-    ("h,help", "Show usage")
-    ("p,parse", "Only parse, don't analyse (printing IR)")
-    ("program", "File or string containing a python program", cxxopts::value<std::string>())
-  ;
-  // clang-format on
+  options.add_options()("c,command", "Program read from a string instead of a file")(
+      "v,verbose", "Verbose output", cxxopts::value<bool>()->default_value("false"))(
+      "h,help", "Show usage")("p,parse", "Only parse, don't analyse (printing IR)")(
+      "program", "File or string containing a python program", cxxopts::value<std::string>());
   options.parse_positional({"program"});
   auto result = options.parse(argc, argv);
   if (result.count("help")) {
