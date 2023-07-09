@@ -30,7 +30,7 @@ void set_key(auto&&... args) {
   results.back().state.set_key<Target>(args...);
 }
 
-TEST_CASE("analyse ast_node programs", "[ast_node][analyse]") {
+TEST_CASE("analyse a basic block node-by-node", "[ast_node][analyse]") {
   add_node(alloc{"alloc1"_h, "unknown"_h});
   set_key<scope>("alloc1"_h, addresses{"alloc1"_h});
   set_key<memory>("alloc1"_h,

@@ -8,7 +8,7 @@
 
 namespace stanly {
 using namespace syntax;
-TEST_CASE("ast_node", "[format]") {
+TEST_CASE("format syntax nodes", "[format]") {
   SECTION("node") {
     auto [node, str] = GENERATE(from_range(std::vector<std::pair<ast_node, std::string>>{
         {load{"a"_h, "b"_h, "c"_h}, std::format("{}(a b c)", type_name<load>)},

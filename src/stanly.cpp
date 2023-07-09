@@ -8,6 +8,8 @@
 #include "analyse.h"
 #include "parse.h"
 
+using namespace stanly;
+
 std::string read_file(const std::string& filename) {
   std::ifstream file{filename};
   if (file) { return {std::istreambuf_iterator<char>{file}, std::istreambuf_iterator<char>{}}; }
@@ -25,17 +27,15 @@ void print(const T& t) {
   return print("{}\n", t);
 }
 template <>
-void print(const std::vector<stanly::syntax::ast_node>& t) {
-  for (const auto& n : t) { print(stanly::resolve_handles(n)); }
+void print(const std::vector<syntax::ast_node>& t) {
+  for (const auto& n : t) { print(resolve_handles(n)); }
 }
 template <>
-void print(const stanly::domain& t) {
+void print(const domain& t) {
   print(with_handles{t});
 }
 
 int main(int argc, char* argv[]) {
-  using namespace stanly;
-
   cxxopts::Options options("stanly",
                            "Statically analyse dynamic records (dictionaries, dataframes, ...).");
   // clang-format off

@@ -10,13 +10,18 @@
 
 namespace stanly::syntax {
 // clang-format off
-struct alloc  { handle var; handle type; };
-struct lit    { handle var; handle type; handle value; };
-struct ref    { handle var; handle src; };
-struct update { handle tgt; handle field; handle src; };
-struct load   { handle var; handle src; handle field; };
+struct alloc  { handle var; handle type;                };
+struct lit    { handle var; handle type;  handle value; };
+struct ref    { handle var; handle src;                 };
+struct copy   { handle var; handle src;                 };
+
+struct update { handle tgt; handle field; handle src;   };
+struct append { handle tgt; handle src;                 };
+struct load   { handle var; handle src;   handle field; };
+struct merge  { handle var; handle old;   handle niu;   };
+struct call   { handle var; handle fn;    handle arg;   };
 // clang-format on
-using ast_node = std::variant<update, load, lit, alloc, ref>;
+using ast_node = std::variant<alloc, lit, ref, copy, update, append, load, merge, call>;
 static_assert(sizeof(std::declval<ast_node>()) == 8);
 
 template <class T>

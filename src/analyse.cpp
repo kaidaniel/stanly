@@ -112,6 +112,12 @@ void analyse(const update& update, domain* d) {
     }
   });
 }
+
+template <class T>
+void analyse(const T&, domain*) {
+  unreachable(std::format("analyse({}, {}*) not yet implemented", type_name<T>, type_name<domain>));
+}
+
 domain analyse(const std::vector<ast_node>& graph) {
   domain domain{};
   for (const auto& node : graph) {

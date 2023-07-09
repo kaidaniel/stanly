@@ -1,4 +1,6 @@
 
+#include <algorithm>
+#include <ranges>
 #include <string_view>
 #include <vector>
 
@@ -36,20 +38,40 @@ struct fields {
 } const fields{};
 
 class cursor {
-  TSTreeCursor* cursor_;
+  TSTreeCursor cursor_{};
   std::string_view program_;
-  auto node() -> TSNode { return ts_tree_cursor_current_node(cursor_); }
+  std::function<void()> destroy;
+  auto node() -> TSNode { return ts_tree_cursor_current_node(&cursor_); }
   auto text(const TSNode node) -> std::string_view {
     return {program_.begin() + ts_node_start_byte(node), program_.begin() + ts_node_end_byte(node)};
   };
 
  public:
-  cursor(TSTreeCursor* crsr, std::string_view program) : cursor_{crsr}, program_{program} {};
+  cursor(std::string_view program) : program_(program) {
+    auto* parser = ts_parser_new();
+    ts_parser_set_language(parser, tree_sitter_python());
+    auto* tree = ts_parser_parse_string(parser, nullptr, program_.begin(), program_.size());
+    cursor_ = ts_tree_cursor_new(ts_node_named_child(ts_tree_root_node(tree), 0));
+    destroy = [parser, tree, cursor = &cursor_]() mutable {
+      ts_parser_delete(parser);
+      ts_tree_delete(tree);
+      ts_tree_cursor_delete(cursor);
+    };
+  }
+  cursor(const cursor&) = delete;
+  cursor(cursor&&) = delete;
+  cursor& operator=(const cursor&) = delete;
+  cursor& operator=(const cursor&&) = delete;
+  ~cursor() { destroy(); }
   auto symbol() -> TSSymbol { return ts_node_symbol(node()); };
-  auto field() -> TSFieldId { return ts_tree_cursor_current_field_id(cursor_); };
-  bool goto_child() { return ts_tree_cursor_goto_first_child(cursor_); };
-  bool goto_sibling() { return ts_tree_cursor_goto_next_sibling(cursor_); };
-  bool goto_parent() { return ts_tree_cursor_goto_parent(cursor_); };
+  auto field() -> TSFieldId { return ts_tree_cursor_current_field_id(&cursor_); };
+  auto next_sibling() -> TSNode {
+    return ts_node_next_named_sibling(ts_tree_cursor_current_node(&cursor_));
+  }
+  bool goto_child() { return ts_tree_cursor_goto_first_child(&cursor_); };
+  bool goto_sibling() { return ts_tree_cursor_goto_next_sibling(&cursor_); };
+  bool goto_parent() { return ts_tree_cursor_goto_parent(&cursor_); };
+  void reset_cursor(TSNode node) { ts_tree_cursor_reset(&cursor_, node); }
   auto text() -> std::string_view { return text(node()); }
   auto text(TSFieldId field) -> std::string_view {
     return text(ts_node_child_by_field_id(node(), field));
@@ -63,12 +85,10 @@ auto lookup_field(std::string_view name) -> TSFieldId {
   return ts_language_field_id_for_name(tree_sitter_python(), name.data(), name.size());
 }
 
-using std::string_view;
-using std::vector;
 using ast_node_args = std::tuple<ast_node, std::vector<std::string_view>>;
 struct ast_node_cursor : public cursor {
   using cursor::cursor;
-  auto parse_dictionary(std::string_view tgt) -> vector<ast_node_args> {
+  auto parse_dictionary(std::string_view tgt) -> std::vector<ast_node_args> {
     // dictionary("{" commaSep1(pair | dictionary_splat)? ","? "}")
     stanly_assert(symbol() == symbols.dictionary);  // <dictionary(...)>
     std::vector<ast_node_args> dictionary{{alloc{}, {tgt, "dict"}}};
@@ -135,42 +155,24 @@ struct ast_node_cursor : public cursor {
 
     unreachable();
   }
+
+  auto parse_basic_block() -> std::vector<ast_node_args> {
+    std::vector<ast_node_args> node_args{};
+    while (true) {
+      auto sibling = next_sibling();
+      std::ranges::move(parse_statement(), std::back_inserter(node_args));
+      if (ts_node_is_null(sibling)) { break; }
+      reset_cursor(sibling);
+    }
+    return node_args;
+  }
 };
+
 std::vector<ast_node> parse(std::string&& program, string_index& idx) {
-  std::string_view program_view = idx.add_string_to_index(std::move(program));
-  auto* parser = ts_parser_new();
-  ts_parser_set_language(parser, tree_sitter_python());
-  auto* tree = ts_parser_parse_string(parser, nullptr, program_view.begin(), program_view.size());
-  auto cursor = ts_tree_cursor_new(ts_node_named_child(ts_tree_root_node(tree), 0));
-  std::vector<ast_node_args> node_args{};
-  ast_node_cursor c = {&cursor, program_view};
-  while (true) {
-    auto sibling = ts_node_next_named_sibling(ts_tree_cursor_current_node(&cursor));
-    std::ranges::move(c.parse_statement(), std::back_inserter(node_args));
-    if (ts_node_is_null(sibling)) { break; }
-    ts_tree_cursor_reset(&cursor, sibling);
-  }
-  ts_parser_delete(parser);
-  ts_tree_delete(tree);
-  ts_tree_cursor_delete(&cursor);
-  std::vector<ast_node> nodes{};
-  for (auto [node, args] : node_args) {
-    std::vector<handle> args_h{};
-    for (const auto& arg : args) { args_h.push_back(idx.insert(arg)); }
-    std::visit(
-        [&](auto& n) {
-          if constexpr (requires { n = {args_h[0], args_h[1], args_h[2]}; }) {
-            n = {args_h[0], args_h[1], args_h[2]};
-          } else if constexpr (requires { n = {args_h[0], args_h[1]}; }) {
-            n = {args_h[0], args_h[1]};
-          } else if constexpr (requires { n = {args_h[0]}; }) {
-            n = {args_h[0]};
-          }
-        },
-        node);
-    nodes.push_back(node);
-  }
-  return nodes;
+  auto cursor = ast_node_cursor{idx.add_string_to_index(std::move(program))};
+  std::vector<ast_node> out{};
+  for (auto&& [n, args] : cursor.parse_basic_block()) { out.push_back(idx.set_handles(n, args)); }
+  return out;
 }
 std::vector<ast_node> parse(std::string&& program) {
   return parse(std::move(program), global_string_index);

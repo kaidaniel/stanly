@@ -12,18 +12,15 @@ target_include_directories(project_props INTERFACE ${Boost_INCLUDE_DIRS})
 
 foreach(test test-parse test-format test-analyse)
     add_executable(${test} ${test}.cpp)
-    target_link_libraries(${test} PRIVATE project_props Catch2::Catch2WithMain "string-index" parser analyse)
+    target_link_libraries(${test} PRIVATE Catch2::Catch2WithMain parse analyse project_props)
     catch_discover_tests(${test} EXTRA_ARGS --colour-mode ansi)
 endforeach()
 
-foreach(lib parser "string-index" analyse)
-    add_library(${lib} ${lib}.cpp)
-    target_link_libraries(${lib} PUBLIC project_props)
-endforeach()
+add_library(parse parse.cpp "string-index.cpp")
+target_link_libraries(parse PUBLIC tree-sitter tree-sitter-python project_props)
 
-target_link_libraries(parser PUBLIC tree-sitter tree-sitter-python)
-target_link_libraries(analyse PUBLIC sparta)
+add_library(analyse analyse.cpp)
+target_link_libraries(analyse PUBLIC sparta project_props)
 
 add_executable(stanly stanly.cpp)
-
-target_link_libraries(stanly PRIVATE cxxopts parser analyse "string-index" project_props)
+target_link_libraries(stanly PRIVATE cxxopts parse analyse)

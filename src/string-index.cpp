@@ -27,6 +27,27 @@ std::string_view string_index::add_string_to_index(std::string&& string) {
   strings_.push_front(std::move(string));
   return {*strings_.begin()};
 };
+
+syntax::ast_node string_index::set_handles(syntax::ast_node& node,
+                                           const std::vector<std::string_view>& args) {
+  std::visit(
+      [&](auto& n) {
+        if constexpr (requires(handle h) { n = {h, h, h, h, h}; }) {
+          n = {insert(args[0]), insert(args[1]), insert(args[2]), insert(args[3]), insert(args[4])};
+        } else if constexpr (requires(handle h) { n = {h, h, h, h}; }) {
+          n = {insert(args[0]), insert(args[1]), insert(args[2]), insert(args[3])};
+        } else if constexpr (requires(handle h) { n = {h, h, h}; }) {
+          n = {insert(args[0]), insert(args[1]), insert(args[2])};
+        } else if constexpr (requires(handle h) { n = {h, h}; }) {
+          n = {insert(args[0]), insert(args[1])};
+        } else if constexpr (requires(handle h) { n = {h}; }) {
+          n = {insert(args[0])};
+        }
+      },
+      node);
+  return node;
+}
+
 string_index global_string_index{};
 handle operator""_h(const char* str, std::size_t size) {
   return global_string_index.insert(std::string_view{str, size});
