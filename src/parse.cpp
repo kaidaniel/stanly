@@ -1,42 +1,18 @@
 
 #include <algorithm>
+#include <boost/concept_check.hpp>
 #include <ranges>
+#include <stdexcept>
 #include <string_view>
 #include <vector>
 
 #include "string-index.h"
+#include "symbol-tables.h"
 #include "syntax.h"
 #include "tree_sitter/api.h"
 
-extern "C" {
-TSLanguage*
-tree_sitter_python(void);
-}
-
 namespace stanly {
-TSSymbol lookup_symbol(std::string_view);
-TSFieldId lookup_field(std::string_view);
 using namespace syntax;
-struct symbols {
-  TSSymbol expression_statement = lookup_symbol("expression_statement");
-  TSSymbol assignment = lookup_symbol("assignment");
-  TSSymbol module = lookup_symbol("module");
-  TSSymbol identifier = lookup_symbol("identifier");
-  TSSymbol integer = lookup_symbol("integer");
-  TSSymbol string = lookup_symbol("string");
-  TSSymbol dictionary = lookup_symbol("dictionary");
-  TSSymbol pair = lookup_symbol("pair");
-  TSSymbol list = lookup_symbol("list");
-  TSSymbol set = lookup_symbol("set");
-  TSSymbol subscript = lookup_symbol("subscript");
-} const symbols{};
-struct fields {
-  TSFieldId left = lookup_field("left");
-  TSFieldId right = lookup_field("right");
-  TSFieldId key = lookup_field("key");
-  TSFieldId value = lookup_field("value");
-  TSFieldId subscript = lookup_field("subscript");
-} const fields{};
 
 class cursor {
   TSTreeCursor cursor_{};
@@ -62,6 +38,7 @@ class cursor {
       ts_tree_delete(tree);
       ts_tree_cursor_delete(cursor);
     };
+    check_symbols();
   }
   cursor(const cursor&) = delete;
   cursor(cursor&&) = delete;
@@ -74,6 +51,10 @@ class cursor {
   symbol() {
     return ts_node_symbol(node());
   };
+  void
+  assert_at_symbol(auto sym) {
+    stanly_assert(symbol() == static_cast<TSSymbol>(sym));
+  }
   TSFieldId
   field() {
     return ts_tree_cursor_current_field_id(&cursor_);
@@ -108,58 +89,51 @@ class cursor {
   }
 };
 
-TSSymbol
-lookup_symbol(std::string_view name) {
-  return ts_language_symbol_for_name(tree_sitter_python(), name.data(), name.length(), true);
-}
-TSFieldId
-lookup_field(std::string_view name) {
-  return ts_language_field_id_for_name(tree_sitter_python(), name.data(), name.size());
-}
-
 using ast_node_args = std::tuple<ast_node, std::vector<std::string_view>>;
 struct ast_node_cursor : public cursor {
   using cursor::cursor;
+  using enum symbs;
+  using enum simple_statement;
+  using enum compound_statement;
   std::vector<ast_node_args>
   parse_dictionary(std::string_view tgt) {
     // dictionary("{" commaSep1(pair | dictionary_splat)? ","? "}")
-    stanly_assert(symbol() == symbols.dictionary);  // <dictionary(...)>
-    std::vector<ast_node_args> dictionary{{alloc{}, {tgt, "dict"}}};
+    assert_at_symbol(dictionary);  // <dictionary(...)>
+    std::vector<ast_node_args> dict{{alloc{}, {tgt, "dict"}}};
     goto_child();                              // dictionary(<'{'> pair(...) ...)
     while (goto_sibling() && text() != "}") {  // dictionary(... <pair(...)> ...)
       // pair(key:expression ":" value:expression)
-      stanly_assert(symbol() == symbols.pair);
-      dictionary.emplace_back(ast_node{update{}},
-                              std::vector{tgt, text(fields.key), text(fields.value)});
+      assert_at_symbol(pair);
+      dict.emplace_back(ast_node{update{}}, std::vector{tgt, text(fields.key), text(fields.value)});
       goto_sibling();  // dictionary(... <','> ...)
     }
     goto_parent();  // <dictionary(...)>
-    stanly_assert(symbol() == symbols.dictionary);
-    return dictionary;
+    assert_at_symbol(dictionary);
+    return dict;
   }
   std::tuple<std::string_view, std::string_view>
   parse_variable_and_field_from_subscript() {
     goto_child();
     stanly_assert(field() == fields.value);
-    stanly_assert(symbol() == symbols.identifier);
+    assert_at_symbol(identifier);
     auto const variable = text();
     goto_sibling();  // skip '['
     goto_sibling();
     stanly_assert(field() == fields.subscript);
-    stanly_assert(symbol() == symbols.identifier);
+    assert_at_symbol(identifier);
     return {variable, text()};
   };
 
   std::vector<ast_node_args>
   parse_statement() {
-    stanly_assert(symbol() == symbols.expression_statement);
+    assert_at_symbol(expression_statement);
     goto_child();
-    stanly_assert(symbol() == symbols.assignment);
+    assert_at_symbol(assignment);
     goto_child();
     stanly_assert(field() == fields.left);
 
     auto symbol_ = symbol();
-    if (symbol_ == symbols.identifier) {
+    if (symbol_ == static_cast<TSSymbol>(identifier)) {
       auto const left = text();
       goto_sibling();  // assignment(left:identifier <"="> ...)
       goto_sibling();  // assignment(left:identifier "=" <right:...>)
@@ -167,27 +141,31 @@ struct ast_node_cursor : public cursor {
 
       symbol_ = symbol();
       auto const right = text();
-      if (symbol_ == symbols.identifier) { return {{ref{}, {left, right}}}; }
-      if (symbol_ == symbols.string) { return {{lit{}, {left, "str", right}}}; }
-      if (symbol_ == symbols.integer) { return {{lit{}, {left, "int", right}}}; }
-      if (symbol_ == symbols.dictionary) { return parse_dictionary(left); }
-      if (symbol_ == symbols.set || symbol_ == symbols.list) { return {{alloc{}, {left, "top"}}}; }
-      if (symbol_ == symbols.subscript) {
-        auto [variable, field_] = parse_variable_and_field_from_subscript();
-        return {{load{}, {left, variable, field_}}};
+      switch (static_cast<symbs>(symbol_)) {
+        case identifier: return {{ref{}, {left, right}}};
+        case string: return {{lit{}, {left, "str", right}}};
+        case integer: return {{lit{}, {left, "int", right}}};
+        case dictionary: return parse_dictionary(left);
+        case set: [[fallthrough]];
+        case list: return {{alloc{}, {left, "top"}}};
+        case subscript: {
+          auto [variable, field_] = parse_variable_and_field_from_subscript();
+          return {{load{}, {left, variable, field_}}};
+        }
+        case module: [[fallthrough]];
+        case assignment: [[fallthrough]];
+        case pair: unreachable();
       }
-      unreachable();
     }
 
-    if (symbol_ == symbols.subscript) {
+    if (symbol_ == static_cast<TSSymbol>(subscript)) {
       auto [variable, field_] = parse_variable_and_field_from_subscript();
       goto_parent();
       goto_sibling();  // skip "="
       goto_sibling();
-      stanly_assert(symbol() == symbols.identifier);
+      assert_at_symbol(identifier);
       return {{update{}, {variable, field_, text()}}};
     };
-
     unreachable();
   }
 

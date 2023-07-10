@@ -42,17 +42,28 @@ print(const domain& t) {
 
 int
 main(int argc, char* argv[]) {
-  cxxopts::Options options("stanly",
-                           "Statically analyse dynamic records (dictionaries, dataframes, ...).");
-  options.add_options()("c,command", "Program read from a string instead of a file")(
-      "v,verbose", "Verbose output", cxxopts::value<bool>()->default_value("false"))(
-      "h,help", "Show usage")("p,parse", "Only parse, don't analyse (printing IR)")(
-      "program", "File or string containing a python program", cxxopts::value<std::string>());
+  // clang-format off
+  cxxopts::Options options(
+    "stanly", "Statically analyse dynamic records (dictionaries, dataframes, ...).");
+  options.add_options()
+    ("c,command", "Program read from a string instead of a file")
+    ("v,verbose", "Verbose output", cxxopts::value<bool>()->default_value("false"))
+    ("h,help", "Show usage")
+    ("p,parse", "Only parse, don't analyse (printing IR)")
+    ("program", "File or string containing a python program", cxxopts::value<std::string>())
+    ("s,symbols","(for development) print symbol ids")
+    ;
+  // clang-format on
   options.parse_positional({"program"});
   auto result = options.parse(argc, argv);
   if (result.count("help")) {
     std::cout << options.help() << "\n";
     return 1;
+  }
+
+  if (result.count("symbols")) {
+    std::cout << stanly::generate_tree_sitter_symbols();
+    return 0;
   }
 
   const auto& program = result["program"].as<std::string>();

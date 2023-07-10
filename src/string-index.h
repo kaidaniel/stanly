@@ -19,10 +19,10 @@ class string_index {
   std::forward_list<std::string> strings_;
 
  public:
-  std::map<handle, std::string_view>
-  handles() {
+  [[nodiscard]] std::map<handle, std::string_view>
+  handles() const {
     std::map<handle, std::string_view> out{};
-    for (auto& [sv, handle] : string_view_to_handle_) { out[handle] = sv; }
+    for (const auto& [sv, handle] : string_view_to_handle_) { out[handle] = sv; }
     return out;
   }
   string_index(const std::map<std::string_view, handle>&);

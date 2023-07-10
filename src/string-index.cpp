@@ -34,8 +34,16 @@ string_index::add_string_to_index(std::string&& string) {
 syntax::ast_node
 string_index::set_handles(syntax::ast_node& node, const std::vector<std::string_view>& args) {
   std::visit(
-      [&](auto& n) {
-        if constexpr (requires(handle h) { n = {h, h, h, h, h}; }) {
+      [&]<class T>(T& n) {
+        // clang-format off
+        if constexpr (requires(handle h) { n = {h, h, h, h, h, h, h, h}; }) {
+          n = {insert(args[0]), insert(args[1]), insert(args[2]), insert(args[3]), insert(args[4]), insert(args[5]), insert(args[6]), insert(args[7])};
+        } else if constexpr (requires(handle h) { n = {h, h, h, h, h, h, h}; }) {
+          n = {insert(args[0]), insert(args[1]), insert(args[2]), insert(args[3]), insert(args[4]), insert(args[5]), insert(args[6])};
+        } else if constexpr (requires(handle h) { n = {h, h, h, h, h, h}; }) {
+          n = {insert(args[0]), insert(args[1]), insert(args[2]), insert(args[3]), insert(args[4]), insert(args[5])};
+          // clang-format on
+        } else if constexpr (requires(handle h) { n = {h, h, h, h, h}; }) {
           n = {insert(args[0]), insert(args[1]), insert(args[2]), insert(args[3]), insert(args[4])};
         } else if constexpr (requires(handle h) { n = {h, h, h, h}; }) {
           n = {insert(args[0]), insert(args[1]), insert(args[2]), insert(args[3])};
@@ -43,7 +51,8 @@ string_index::set_handles(syntax::ast_node& node, const std::vector<std::string_
           n = {insert(args[0]), insert(args[1]), insert(args[2])};
         } else if constexpr (requires(handle h) { n = {h, h}; }) {
           n = {insert(args[0]), insert(args[1])};
-        } else if constexpr (requires(handle h) { n = {h}; }) {
+        } else {
+          static_assert(requires(handle h) { n = {h}; });
           n = {insert(args[0])};
         }
       },
@@ -52,6 +61,7 @@ string_index::set_handles(syntax::ast_node& node, const std::vector<std::string_
 }
 
 string_index global_string_index{};
+
 handle
 operator""_h(const char* str, std::size_t size) {
   return global_string_index.insert(std::string_view{str, size});
