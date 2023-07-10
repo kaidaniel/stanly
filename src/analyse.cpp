@@ -11,7 +11,8 @@
 
 namespace stanly {
 namespace domains {
-std::ostream& operator<<(std::ostream& os, RowVarEls rve) {
+std::ostream&
+operator<<(std::ostream& os, RowVarEls rve) {
   switch (rve) {
     case RowVarEls::Closed: os << "Closed"; break;
     case RowVarEls::Open: os << "Open"; break;
@@ -23,18 +24,24 @@ std::ostream& operator<<(std::ostream& os, RowVarEls rve) {
 using namespace domains;
 using namespace syntax;
 
-void analyse(const alloc& alloc, domain* d) {
+void
+analyse(const alloc& alloc, domain* d) {
   d->template set_key<scope>(alloc.var, addresses{alloc.var});
   d->template set_key<memory>(
       alloc.var,
       object{{type{alloc.type}, data{record{{row_var{RowVarEls::Closed}, defined{}, used{}}}}}});
 }
-void analyse(const lit& lit, domain* d) {
+void
+analyse(const lit& lit, domain* d) {
   d->template set_key<scope>(lit.var, addresses{lit.value});
   d->template set_key<memory>(lit.value, object{{type{lit.type}, data{constant{lit.value}}}});
 }
-void analyse(const ref& ref, domain* d) { d->template set_key<scope>(ref.var, addresses{ref.src}); }
-void analyse(const load& load, domain* d) {
+void
+analyse(const ref& ref, domain* d) {
+  d->template set_key<scope>(ref.var, addresses{ref.src});
+}
+void
+analyse(const load& load, domain* d) {
   using enum sparta::AbstractValueKind;
   using enum RowVarEls;
   const scope& scp = d->get<domain::idx<scope>>();
@@ -92,7 +99,8 @@ void analyse(const load& load, domain* d) {
   }
 }
 
-void analyse(const update& update, domain* d) {
+void
+analyse(const update& update, domain* d) {
   const scope& scp = d->get<domain::idx<scope>>();
   const addresses& fields = scp.get(update.field);
   const auto& elements = fields.is_value() ? fields.elements() : std::unordered_set<handle>{};
@@ -114,11 +122,13 @@ void analyse(const update& update, domain* d) {
 }
 
 template <class T>
-void analyse(const T&, domain*) {
+void
+analyse(const T&, domain*) {
   unreachable(std::format("analyse({}, {}*) not yet implemented", type_name<T>, type_name<domain>));
 }
 
-domain analyse(const std::vector<ast_node>& graph) {
+domain
+analyse(const std::vector<ast_node>& graph) {
   domain domain{};
   for (const auto& node : graph) {
     std::visit([&](const auto& n) { analyse(n, &domain); }, node);

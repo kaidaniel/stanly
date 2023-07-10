@@ -21,12 +21,14 @@ struct result {
   state state{};
 };
 std::vector<result> results{result{{}, {}}};
-void add_node(ast_node&& n) {
+void
+add_node(ast_node&& n) {
   results.push_back(results.back());
   results.back().nodes.push_back(n);
 }
 template <class Target>
-void set_key(auto&&... args) {
+void
+set_key(auto&&... args) {
   results.back().state.set_key<Target>(args...);
 }
 

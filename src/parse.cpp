@@ -9,12 +9,13 @@
 #include "tree_sitter/api.h"
 
 extern "C" {
-TSLanguage* tree_sitter_python(void);
+TSLanguage*
+tree_sitter_python(void);
 }
 
 namespace stanly {
-auto lookup_symbol(std::string_view) -> TSSymbol;
-auto lookup_field(std::string_view) -> TSFieldId;
+TSSymbol lookup_symbol(std::string_view);
+TSFieldId lookup_field(std::string_view);
 using namespace syntax;
 struct symbols {
   TSSymbol expression_statement = lookup_symbol("expression_statement");
@@ -41,8 +42,12 @@ class cursor {
   TSTreeCursor cursor_{};
   std::string_view program_;
   std::function<void()> destroy;
-  auto node() -> TSNode { return ts_tree_cursor_current_node(&cursor_); }
-  auto text(const TSNode node) -> std::string_view {
+  TSNode
+  node() {
+    return ts_tree_cursor_current_node(&cursor_);
+  }
+  std::string_view
+  text(const TSNode node) {
     return {program_.begin() + ts_node_start_byte(node), program_.begin() + ts_node_end_byte(node)};
   };
 
@@ -60,35 +65,63 @@ class cursor {
   }
   cursor(const cursor&) = delete;
   cursor(cursor&&) = delete;
-  cursor& operator=(const cursor&) = delete;
-  cursor& operator=(const cursor&&) = delete;
+  cursor&
+  operator=(const cursor&) = delete;
+  cursor&
+  operator=(const cursor&&) = delete;
   ~cursor() { destroy(); }
-  auto symbol() -> TSSymbol { return ts_node_symbol(node()); };
-  auto field() -> TSFieldId { return ts_tree_cursor_current_field_id(&cursor_); };
-  auto next_sibling() -> TSNode {
+  TSSymbol
+  symbol() {
+    return ts_node_symbol(node());
+  };
+  TSFieldId
+  field() {
+    return ts_tree_cursor_current_field_id(&cursor_);
+  };
+  TSNode
+  next_sibling() {
     return ts_node_next_named_sibling(ts_tree_cursor_current_node(&cursor_));
   }
-  bool goto_child() { return ts_tree_cursor_goto_first_child(&cursor_); };
-  bool goto_sibling() { return ts_tree_cursor_goto_next_sibling(&cursor_); };
-  bool goto_parent() { return ts_tree_cursor_goto_parent(&cursor_); };
-  void reset_cursor(TSNode node) { ts_tree_cursor_reset(&cursor_, node); }
-  auto text() -> std::string_view { return text(node()); }
-  auto text(TSFieldId field) -> std::string_view {
+  bool
+  goto_child() {
+    return ts_tree_cursor_goto_first_child(&cursor_);
+  };
+  bool
+  goto_sibling() {
+    return ts_tree_cursor_goto_next_sibling(&cursor_);
+  };
+  bool
+  goto_parent() {
+    return ts_tree_cursor_goto_parent(&cursor_);
+  };
+  void
+  reset_cursor(TSNode node) {
+    ts_tree_cursor_reset(&cursor_, node);
+  }
+  std::string_view
+  text() {
+    return text(node());
+  }
+  std::string_view
+  text(TSFieldId field) {
     return text(ts_node_child_by_field_id(node(), field));
   }
 };
 
-auto lookup_symbol(std::string_view name) -> TSSymbol {
+TSSymbol
+lookup_symbol(std::string_view name) {
   return ts_language_symbol_for_name(tree_sitter_python(), name.data(), name.length(), true);
 }
-auto lookup_field(std::string_view name) -> TSFieldId {
+TSFieldId
+lookup_field(std::string_view name) {
   return ts_language_field_id_for_name(tree_sitter_python(), name.data(), name.size());
 }
 
 using ast_node_args = std::tuple<ast_node, std::vector<std::string_view>>;
 struct ast_node_cursor : public cursor {
   using cursor::cursor;
-  auto parse_dictionary(std::string_view tgt) -> std::vector<ast_node_args> {
+  std::vector<ast_node_args>
+  parse_dictionary(std::string_view tgt) {
     // dictionary("{" commaSep1(pair | dictionary_splat)? ","? "}")
     stanly_assert(symbol() == symbols.dictionary);  // <dictionary(...)>
     std::vector<ast_node_args> dictionary{{alloc{}, {tgt, "dict"}}};
@@ -104,7 +137,8 @@ struct ast_node_cursor : public cursor {
     stanly_assert(symbol() == symbols.dictionary);
     return dictionary;
   }
-  auto parse_variable_and_field_from_subscript() -> std::tuple<std::string_view, std::string_view> {
+  std::tuple<std::string_view, std::string_view>
+  parse_variable_and_field_from_subscript() {
     goto_child();
     stanly_assert(field() == fields.value);
     stanly_assert(symbol() == symbols.identifier);
@@ -116,7 +150,8 @@ struct ast_node_cursor : public cursor {
     return {variable, text()};
   };
 
-  auto parse_statement() -> std::vector<ast_node_args> {
+  std::vector<ast_node_args>
+  parse_statement() {
     stanly_assert(symbol() == symbols.expression_statement);
     goto_child();
     stanly_assert(symbol() == symbols.assignment);
@@ -156,7 +191,8 @@ struct ast_node_cursor : public cursor {
     unreachable();
   }
 
-  auto parse_basic_block() -> std::vector<ast_node_args> {
+  std::vector<ast_node_args>
+  parse_basic_block() {
     std::vector<ast_node_args> node_args{};
     while (true) {
       auto sibling = next_sibling();
@@ -168,13 +204,15 @@ struct ast_node_cursor : public cursor {
   }
 };
 
-std::vector<ast_node> parse(std::string&& program, string_index& idx) {
+std::vector<ast_node>
+parse(std::string&& program, string_index& idx) {
   auto cursor = ast_node_cursor{idx.add_string_to_index(std::move(program))};
   std::vector<ast_node> out{};
   for (auto&& [n, args] : cursor.parse_basic_block()) { out.push_back(idx.set_handles(n, args)); }
   return out;
 }
-std::vector<ast_node> parse(std::string&& program) {
+std::vector<ast_node>
+parse(std::string&& program) {
   return parse(std::move(program), global_string_index);
 }
 

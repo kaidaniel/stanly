@@ -28,7 +28,8 @@ template <class T>
 concept ast_cons = contains<syntax::ast_node, std::decay_t<T>>;
 
 template <ast_cons X, ast_cons Y>
-bool operator==(X &&x, Y &&y) {
+bool
+operator==(X &&x, Y &&y) {
   if constexpr (std::same_as<X, Y>) {
     return to_tpl(std::forward<X>(x)) == to_tpl(std::forward<Y>(y));
   }
@@ -37,14 +38,16 @@ bool operator==(X &&x, Y &&y) {
 
 template <class T>
   requires stanly::syntax::ast_cons<T> || std::same_as<stanly::syntax::ast_node, std::decay_t<T>>
-auto &operator<<(auto &s, const T &x) {
+auto &
+operator<<(auto &s, const T &x) {
   return s << std::format("{}", x);
 }
 }  // namespace stanly::syntax
 
 template <stanly::syntax::ast_cons T, class CharT>
 struct std::formatter<T, CharT> : std::formatter<std::string_view, CharT> {
-  auto format(const T x, auto &ctx) const {
+  auto
+  format(const T x, auto &ctx) const {
     std::formatter<std::string_view, CharT>::format(stanly::type_name<T>, ctx);
     using tpl_type = std::decay_t<decltype(to_tpl(x))>;
     return static_cast<std::formatter<tpl_type>>(*this).format(to_tpl(x), ctx);

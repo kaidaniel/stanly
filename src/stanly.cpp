@@ -10,7 +10,8 @@
 
 using namespace stanly;
 
-std::string read_file(const std::string& filename) {
+std::string
+read_file(const std::string& filename) {
   std::ifstream file{filename};
   if (file) { return {std::istreambuf_iterator<char>{file}, std::istreambuf_iterator<char>{}}; }
   std::cerr << "Error opening file: " << filename << "\n";
@@ -18,24 +19,29 @@ std::string read_file(const std::string& filename) {
 }
 
 template <class T>
-void print(std::format_string<const T&> fmt, const T& t) {
+void
+print(std::format_string<const T&> fmt, const T& t) {
   std::cout << std::format(fmt, t);
 }
 
 template <class T>
-void print(const T& t) {
+void
+print(const T& t) {
   return print("{}\n", t);
 }
 template <>
-void print(const std::vector<syntax::ast_node>& t) {
+void
+print(const std::vector<syntax::ast_node>& t) {
   for (const auto& n : t) { print(resolve_handles(n)); }
 }
 template <>
-void print(const domain& t) {
+void
+print(const domain& t) {
   print(with_handles{t});
 }
 
-int main(int argc, char* argv[]) {
+int
+main(int argc, char* argv[]) {
   cxxopts::Options options("stanly",
                            "Statically analyse dynamic records (dictionaries, dataframes, ...).");
   options.add_options()("c,command", "Program read from a string instead of a file")(

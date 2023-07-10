@@ -33,7 +33,8 @@ using namespace sparta;
 template <class T>
 concept abstract_domain = std::derived_from<T, AbstractDomain<T>>;
 enum class RowVarEls { Closed, Open };
-std::ostream& operator<<(std::ostream& os, RowVarEls rve);
+std::ostream&
+operator<<(std::ostream& os, RowVarEls rve);
 using enum RowVarEls;
 using row_var_l = BitVectorLattice<RowVarEls, 2>;
 static row_var_l l_({Closed, Open}, {{Closed, Open}});
@@ -73,14 +74,15 @@ struct state : DirectProductAbstractDomain<state, scope, memory> {
     requires std::same_as<T, memory> || std::same_as<T, scope>
   constexpr static int idx = std::same_as<T, memory> ? 1 : 0;
   template <class Target>
-  void set_key(
-      const std::conditional_t<std::same_as<Target, memory>, address_repr, var_repr>& index,
-      const std::conditional_t<std::same_as<Target, memory>, object, addresses>& value) {
+  void
+  set_key(const std::conditional_t<std::same_as<Target, memory>, address_repr, var_repr>& index,
+          const std::conditional_t<std::same_as<Target, memory>, object, addresses>& value) {
     dp::template apply<idx<Target>>([&](Target* t) { t->set(index, value); });
   }
   template <class F>
     requires requires(F f, used* u) { f(u); } || requires(F f, defined* d) { f(d); }
-  void apply_to_record(var_repr var, F&& f) {
+  void
+  apply_to_record(var_repr var, F&& f) {
     dp::template apply<idx<memory>>([&](memory* m) {
       m->update(var, [&](object* o) {
         o->template apply<1>([&](data* d) {
@@ -90,10 +92,12 @@ struct state : DirectProductAbstractDomain<state, scope, memory> {
       });
     });
   }
-  void add_used_field(var_repr var, field_repr field) {
+  void
+  add_used_field(var_repr var, field_repr field) {
     apply_to_record(var, [field](used* u) { u->add(field); });
   }
-  void define_field(var_repr tgt, field_repr field, address_repr src) {
+  void
+  define_field(var_repr tgt, field_repr field, address_repr src) {
     apply_to_record(tgt, [field, src](defined* d) { d->set(field, addresses{src}); });
   }
 };
@@ -128,11 +132,13 @@ struct with_handles {
 };
 
 template <class T>
-const T& ref_to_t(const with_handles<T>& x) {
+const T&
+ref_to_t(const with_handles<T>& x) {
   return x.t;
 }
 template <class T>
-const T& ref_to_t(const T& x) {
+const T&
+ref_to_t(const T& x) {
   return x;
 }
 
@@ -145,7 +151,8 @@ with_handles(const T&) -> with_handles<T>;
 template <class Repr, class CharT>
 struct std::formatter<sparta::HashedSetAbstractDomain<Repr>, CharT>
     : std::formatter<std::string_view, CharT> {
-  auto format(const sparta::HashedSetAbstractDomain<Repr>& hsad, auto& ctx) const {
+  auto
+  format(const sparta::HashedSetAbstractDomain<Repr>& hsad, auto& ctx) const {
     std::ostringstream oss{};
     oss << hsad;
     std::string str = oss.str();
@@ -158,7 +165,8 @@ struct std::formatter<sparta::HashedSetAbstractDomain<Repr>, CharT>
 template <class Repr, class CharT>
 struct std::formatter<with_handles<sparta::HashedSetAbstractDomain<Repr>>, CharT>
     : std::formatter<std::string_view, CharT> {
-  auto format(const with_handles<sparta::HashedSetAbstractDomain<Repr>>& hsad, auto& ctx) const {
+  auto
+  format(const with_handles<sparta::HashedSetAbstractDomain<Repr>>& hsad, auto& ctx) const {
     switch (hsad.t.kind()) {
       case sparta::AbstractValueKind::Top: [[fallthrough]];
       case sparta::AbstractValueKind::Bottom: {
@@ -178,7 +186,8 @@ struct std::formatter<with_handles<sparta::HashedSetAbstractDomain<Repr>>, CharT
 
 template <class CharT>
 struct std::formatter<stanly::domains::row_var, CharT> : std::formatter<std::string_view, CharT> {
-  auto format(const stanly::domains::row_var& row_var, auto& ctx) const {
+  auto
+  format(const stanly::domains::row_var& row_var, auto& ctx) const {
     using namespace stanly::domains;
     std::ostringstream oss{};
     ::operator<<(oss, row_var);
@@ -187,7 +196,8 @@ struct std::formatter<stanly::domains::row_var, CharT> : std::formatter<std::str
 };
 
 template <class T>
-std::unordered_map<std::string, std::string> format_bindings(const T& x) {
+std::unordered_map<std::string, std::string>
+format_bindings(const T& x) {
   std::unordered_map<std::string, std::string> out;
   if constexpr (requires { x.t.bindings(); }) {
     for (const auto& [key, value] : x.t.bindings()) {
@@ -205,7 +215,8 @@ std::unordered_map<std::string, std::string> format_bindings(const T& x) {
 template <class Record, class CharT>
   requires std::same_as<stanly::domains::record, Record>
 struct std::formatter<Record, CharT> : std::formatter<std::string_view, CharT> {
-  auto format(const Record& record, auto& ctx) const {
+  auto
+  format(const Record& record, auto& ctx) const {
     using namespace stanly::domains;
     return std::format_to(
         ctx.out(), "({}defined{}, used{})",
@@ -218,7 +229,8 @@ struct std::formatter<Record, CharT> : std::formatter<std::string_view, CharT> {
 template <class CharT>
 struct std::formatter<with_handles<stanly::domains::record>, CharT>
     : std::formatter<std::string_view, CharT> {
-  auto format(const with_handles<stanly::domains::record>& record, auto& ctx) const {
+  auto
+  format(const with_handles<stanly::domains::record>& record, auto& ctx) const {
     using namespace stanly::domains;
     std::string s_used = std::format(
         "{}",
@@ -237,7 +249,8 @@ template <class Constant, class CharT>
   requires std::same_as<stanly::domains::constant, Constant> ||
            std::same_as<with_handles<stanly::domains::constant>, Constant>
 struct std::formatter<Constant, CharT> : std::formatter<std::string_view, CharT> {
-  auto format(const Constant& cnst, auto& ctx) const {
+  auto
+  format(const Constant& cnst, auto& ctx) const {
     using namespace stanly::domains;
     std::ostringstream oss{};
     if constexpr (std::same_as<constant, Constant>) { oss << cnst; }
@@ -267,7 +280,8 @@ struct std::formatter<Data, CharT> : std::formatter<std::string_view, CharT> {
   struct data_visitor {
     using result_type = std::string;
     const std::map<stanly::handle, std::string_view>& handles_to_str;
-    result_type operator()(auto&& x) const {
+    result_type
+    operator()(auto&& x) const {
       if constexpr (std::same_as<stanly::domains::data, Data>) { return std::format("{}", x); }
       if constexpr (std::same_as<with_handles<stanly::domains::data>, Data>) {
         return std::format("{}", with_handles{x, handles_to_str});
@@ -275,7 +289,8 @@ struct std::formatter<Data, CharT> : std::formatter<std::string_view, CharT> {
       }
     };
   };
-  auto format(const Data& data, auto& ctx) const {
+  auto
+  format(const Data& data, auto& ctx) const {
     using namespace stanly::domains;
     std::ostringstream oss{};
     ::operator<<(oss, ref_to_t(data));
@@ -293,7 +308,8 @@ template <class Object, class CharT>
   requires std::same_as<stanly::domains::object, Object> ||
            std::same_as<with_handles<stanly::domains::object>, Object>
 struct std::formatter<Object, CharT> : std::formatter<std::string_view, CharT> {
-  auto format(const Object& obj, auto& ctx) const {
+  auto
+  format(const Object& obj, auto& ctx) const {
     if constexpr (std::same_as<stanly::domains::object, Object>) {
       return std::format_to(ctx.out(), "({} {})", obj.template get<0>(), obj.template get<1>());
     }
@@ -308,7 +324,8 @@ struct std::formatter<Object, CharT> : std::formatter<std::string_view, CharT> {
 template <class Derived, class CharT>
 struct scope_or_memory_formatter
     : stanly::detail::lines_arg_parser<std::formatter<std::string_view, CharT>> {
-  auto format(const auto& x, auto& ctx) const {
+  auto
+  format(const auto& x, auto& ctx) const {
     if (ref_to_t(x).is_top()) { return std::format_to(ctx.out(), Derived::s_fmt, Derived::s_top); }
     if (ref_to_t(x).is_bottom()) {
       return std::format_to(ctx.out(), Derived::s_fmt, Derived::s_bot);
@@ -360,7 +377,8 @@ template <class State, class CharT>
            std::same_as<with_handles<stanly::domains::state>, State>
 struct std::formatter<State, CharT>
     : stanly::detail::lines_arg_parser<std::formatter<std::string_view, CharT>> {
-  auto format(const State& state, auto& ctx) const {
+  auto
+  format(const State& state, auto& ctx) const {
     using namespace stanly::domains;
     const auto& [scp, mem] = get_scope_and_memory(state);
     if (this->lines_arg) {

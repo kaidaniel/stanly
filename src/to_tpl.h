@@ -1,6 +1,7 @@
 #include <tuple>
 
-auto to_tpl(auto &&object) noexcept {
+auto
+to_tpl(auto &&object) noexcept {
   using type = std::decay_t<decltype(object)>;
   if constexpr (requires(type t) { type{{}, {}, {}, {}, {}}; }) {
     auto &&[p1, p2, p3, p4, p5] = object;

@@ -20,7 +20,8 @@ constexpr std::string_view type_name = []<class S = T> {
 }
 ();
 
-[[noreturn]] inline void unreachable(std::string_view msg = "") {
+[[noreturn]] inline void
+unreachable(std::string_view msg = "") {
 #ifndef NDEBUG
   std::cerr << std::format("Unreachable. {}\n", msg);
   std::abort();
@@ -33,14 +34,16 @@ constexpr std::string_view type_name = []<class S = T> {
 
 template <class... Args, class CharT>
 struct std::formatter<std::variant<Args...>, CharT> : std::formatter<std::string_view, CharT> {
-  constexpr auto format(const std::variant<Args...> &v, auto &ctx) const {
+  constexpr auto
+  format(const std::variant<Args...> &v, auto &ctx) const {
     std::format_to(ctx.out(), "{}", "inj-");
     return std::visit([&](auto &&x) { return std::format_to(ctx.out(), "{}", x); }, v);
   }
 };
 
 namespace stanly::detail {
-constexpr auto strlen(const char *str) {
+constexpr auto
+strlen(const char *str) {
   const char *end = str;
   while (*end != '\0') { ++end; }
   return end - str;
@@ -48,7 +51,8 @@ constexpr auto strlen(const char *str) {
 template <class Base = std::formatter<std::string_view>>
 struct lines_arg_parser : Base {
   bool lines_arg = false;
-  constexpr auto parse(auto &ctx) {
+  constexpr auto
+  parse(auto &ctx) {
     constexpr const char *lines = "lines";
     constexpr auto len = strlen(lines);
     lines_arg =
@@ -64,7 +68,8 @@ template <template <class...> class Map, class Key, class Val, class... Args, cl
            std::same_as<Map<Key, Val, Args...>, std::map<Key, Val, Args...>>
 struct std::formatter<Map<Key, Val, Args...>, CharT>
     : public stanly::detail::lines_arg_parser<std::formatter<Val, CharT>> {
-  auto format(const Map<Key, Val, Args...> &map, auto &ctx) const {
+  auto
+  format(const Map<Key, Val, Args...> &map, auto &ctx) const {
     std::format_to(ctx.out(), "{}", "{");
     for (const auto &el : map) {
       const auto &[key, val] = el;
@@ -83,7 +88,8 @@ struct std::formatter<Map<Key, Val, Args...>, CharT>
 template <class El, class CharT>
 struct std::formatter<std::vector<El>, CharT>
     : stanly::detail::lines_arg_parser<std::formatter<El, CharT>> {
-  constexpr auto format(const std::vector<El> vec, auto &ctx) const {
+  constexpr auto
+  format(const std::vector<El> vec, auto &ctx) const {
     std::format_to(ctx.out(), "{}", '[');
     for (const auto &el : vec) {
       if (this->lines_arg) {
@@ -100,7 +106,8 @@ struct std::formatter<std::vector<El>, CharT>
 };
 template <class Arg, class... Args, class CharT>
 struct std::formatter<std::tuple<Arg, Args...>, CharT> : std::formatter<std::string_view, CharT> {
-  auto format(const std::tuple<Arg, Args...> &tpl, auto &ctx) const {
+  auto
+  format(const std::tuple<Arg, Args...> &tpl, auto &ctx) const {
     std::format_to(ctx.out(), "{}", "(");
     std::apply(
         [&ctx](const auto &x, const auto &...xs) {
@@ -112,5 +119,8 @@ struct std::formatter<std::tuple<Arg, Args...>, CharT> : std::formatter<std::str
 };
 template <class CharT>
 struct std::formatter<std::tuple<>, CharT> : std::formatter<std::string_view, CharT> {
-  auto format(const std::tuple<> &, auto &ctx) const { std::format_to(ctx.out(), "{}", "()"); }
+  auto
+  format(const std::tuple<> &, auto &ctx) const {
+    std::format_to(ctx.out(), "{}", "()");
+  }
 };

@@ -19,7 +19,8 @@ class string_index {
   std::forward_list<std::string> strings_;
 
  public:
-  std::map<handle, std::string_view> handles() {
+  std::map<handle, std::string_view>
+  handles() {
     std::map<handle, std::string_view> out{};
     for (auto& [sv, handle] : string_view_to_handle_) { out[handle] = sv; }
     return out;
@@ -28,15 +29,21 @@ class string_index {
   string_index();
   handle insert(std::string_view);
   [[nodiscard]] std::string_view get_sv(handle) const;
-  std::string_view add_string_to_index(std::string&&);
-  syntax::ast_node set_handles(syntax::ast_node& node, const std::vector<std::string_view>& args);
+  std::string_view
+  add_string_to_index(std::string&&);
+  syntax::ast_node
+  set_handles(syntax::ast_node& node, const std::vector<std::string_view>& args);
 };
 extern string_index global_string_index;
-handle operator""_h(const char* str, std::size_t);
+handle
+operator""_h(const char* str, std::size_t);
 
-std::string resolve_handles(const syntax::ast_node&);
-std::vector<std::string> resolve_handles(const std::vector<syntax::ast_node>&);
-std::map<std::string, std::string> resolve_handles(
-    const std::unordered_map<std::string_view, syntax::ast_node>&);
-std::vector<syntax::ast_node> parse(std::string&&, string_index&);
+std::string
+resolve_handles(const syntax::ast_node&);
+std::vector<std::string>
+resolve_handles(const std::vector<syntax::ast_node>&);
+std::map<std::string, std::string>
+resolve_handles(const std::unordered_map<std::string_view, syntax::ast_node>&);
+std::vector<syntax::ast_node>
+parse(std::string&&, string_index&);
 }  // namespace stanly
