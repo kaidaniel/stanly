@@ -64,6 +64,10 @@ enum class expression_statement {
   augmented_assignment = 179,
   yield = 182,
 };
+enum class dictionary {
+  dictionary_splat = 145,
+  pair = 194,
+};
 enum class expression {
   identifier = 1,
   ellipsis = 83,
@@ -97,11 +101,7 @@ enum class expression {
   string = 206,
   await = 211,
 };
-enum class dictionary {
-  dictionary_splat = 145,
-  pair = 194,
-};
-// clang-format off
+ // clang-format off
 inline void
 check_symbols() {
   stanly_assert(static_cast<TSSymbol>(simple_statement::import_statement) == lookup_symbol("import_statement"));
@@ -132,6 +132,8 @@ check_symbols() {
   stanly_assert(static_cast<TSSymbol>(expression_statement::assignment) == lookup_symbol("assignment"));
   stanly_assert(static_cast<TSSymbol>(expression_statement::augmented_assignment) == lookup_symbol("augmented_assignment"));
   stanly_assert(static_cast<TSSymbol>(expression_statement::yield) == lookup_symbol("yield"));
+  stanly_assert(static_cast<TSSymbol>(dictionary::dictionary_splat) == lookup_symbol("dictionary_splat"));
+  stanly_assert(static_cast<TSSymbol>(dictionary::pair) == lookup_symbol("pair"));
   stanly_assert(static_cast<TSSymbol>(expression::identifier) == lookup_symbol("identifier"));
   stanly_assert(static_cast<TSSymbol>(expression::ellipsis) == lookup_symbol("ellipsis"));
   stanly_assert(static_cast<TSSymbol>(expression::integer) == lookup_symbol("integer"));
@@ -163,8 +165,6 @@ check_symbols() {
   stanly_assert(static_cast<TSSymbol>(expression::concatenated_string) == lookup_symbol("concatenated_string"));
   stanly_assert(static_cast<TSSymbol>(expression::string) == lookup_symbol("string"));
   stanly_assert(static_cast<TSSymbol>(expression::await) == lookup_symbol("await"));
-  stanly_assert(static_cast<TSSymbol>(dictionary::dictionary_splat) == lookup_symbol("dictionary_splat"));
-  stanly_assert(static_cast<TSSymbol>(dictionary::pair) == lookup_symbol("pair"));
 };
 // clang-format on
 

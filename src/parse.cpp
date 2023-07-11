@@ -3,6 +3,7 @@
 #include <boost/concept_check.hpp>
 #include <ranges>
 #include <stdexcept>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -32,7 +33,7 @@ class cursor {
     auto* parser = ts_parser_new();
     ts_parser_set_language(parser, tree_sitter_python());
     auto* tree = ts_parser_parse_string(parser, nullptr, program_.begin(), program_.size());
-    cursor_ = ts_tree_cursor_new(ts_node_named_child(ts_tree_root_node(tree), 0));
+    cursor_ = ts_tree_cursor_new(ts_tree_root_node(tree));
     destroy = [parser, tree, cursor = &cursor_]() mutable {
       ts_parser_delete(parser);
       ts_tree_delete(tree);
@@ -88,6 +89,13 @@ class cursor {
   std::string_view
   text(TSFieldId field) {
     return text(ts_node_child_by_field_id(node(), field));
+  }
+  std::string
+  parse_tree() {
+    char* str = ts_node_string(node());
+    std::string out{str};
+    free(str);
+    return out;
   }
 };
 
@@ -240,18 +248,29 @@ struct ast_node_cursor : public cursor {
     }
     return node_args;
   }
+
+  std::vector<ast_node_args>
+  parse_module() {
+    goto_child();
+    return parse_basic_block();
+  }
 };
 
 std::vector<ast_node>
 parse(std::string&& program, string_index& idx) {
   auto cursor = ast_node_cursor{idx.add_string_to_index(std::move(program))};
   std::vector<ast_node> out{};
-  for (auto&& [n, args] : cursor.parse_basic_block()) { out.push_back(idx.set_handles(n, args)); }
+  for (auto&& [n, args] : cursor.parse_module()) { out.push_back(idx.set_handles(n, args)); }
   return out;
 }
 std::vector<ast_node>
 parse(std::string&& program) {
   return parse(std::move(program), global_string_index);
+}
+
+std::string
+show_surface_syntax(std::string_view program) {
+  return ast_node_cursor{program}.parse_tree();
 }
 
 }  // namespace stanly

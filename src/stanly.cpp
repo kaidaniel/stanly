@@ -52,6 +52,8 @@ main(int argc, char* argv[]) {
     ("p,parse", "Only parse, don't analyse (printing IR)")
     ("program", "File or string containing a python program", cxxopts::value<std::string>())
     ("s,symbols","(for development) print symbol ids")
+    ("y,syntax", "(for development) show surface level syntax")
+    ("x,xx", "(for development)")
     ;
   // clang-format on
   options.parse_positional({"program"});
@@ -62,12 +64,21 @@ main(int argc, char* argv[]) {
   }
 
   if (result.count("symbols")) {
-    std::cout << stanly::generate_tree_sitter_symbols();
+    std::cout << stanly::generate_tree_sitter_symbols(
+        "/home/kai/projects/stanly/build-default/tree-sitter-python/src/node-types.json");
     return 0;
   }
 
+  if (result.count("xx")) { return 0; }
+
   const auto& program = result["program"].as<std::string>();
-  auto ast = parse(result.count("c") ? std::string{program} : read_file(program));
+  auto program_str = result.count("c") ? std::string{program} : read_file(program);
+  if (result.count("syntax")) {
+    std::cout << stanly::show_surface_syntax(program_str) << "\n";
+    return 0;
+  }
+
+  auto ast = parse(std::move(program_str));
 
   result.count("p") ? print(ast) : print(analyse(ast));
 

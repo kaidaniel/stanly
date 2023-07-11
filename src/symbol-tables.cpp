@@ -1,36 +1,104 @@
 #include "symbol-tables.h"
 
+#include <__ranges/concepts.h>
+#include <__ranges/join_view.h>
+
+#include <cstdlib>
+#include <iostream>
 #include <map>
+#include <numeric>
+#include <ranges>
 #include <set>
+#include <sstream>
 #include <string>
 #include <string_view>
 #include <vector>
 
 namespace stanly {
-std::string
-generate_tree_sitter_symbols() {
-  static std::set<std::string> cpp_key_words{"true", "false", "int", "float"};
 
-  std::string check = "// clang-format off\ninline void\ncheck_symbols() {\n";
-  auto make_enum = [&](std::string_view name,
-                       const std::vector<std::string>& items) -> std::string {
-    std::map<TSSymbol, std::tuple<std::string, std::string>> m;
-    std::string out = std::format("enum class {} {}\n", name, "{");
-    for (const auto& s : items) {
-      auto sym = lookup_symbol(s);
-      stanly_assert(sym != 0U, std::format("symbol '{}' not found.", s));
-      m[sym] = std::tuple{cpp_key_words.contains(s) ? std::format("s_{}", s) : s, s};
-    };
-    for (const auto& [sym, nm] : m) {
-      out += std::format("  {} = {},\n", std::get<0>(nm), sym);
-      check +=
-          std::format("  stanly_assert(static_cast<TSSymbol>({}::{}) == lookup_symbol(\"{}\"));\n",
-                      name, std::get<0>(nm), std::get<1>(nm));
+namespace rg = std::ranges;
+namespace vw = rg::views;
+std::string
+process(std::string_view command) {
+  std::array<char, 1024> buffer{};
+  std::string out;
+  FILE* pipe = popen(command.data(), "r");
+  if (pipe == nullptr) {
+    std::cerr << "Failed to create pipe.\n";
+    std::exit(1);
+  }
+  while (size_t bytes = std::fread(buffer.data(), 1, buffer.size(), pipe)) {
+    out.append(buffer.data(), bytes);
+  }
+  pclose(pipe);
+  return out;
+}
+
+std::vector<std::string>
+split(const std::string& str, const char sep = '\n') {
+  std::vector<std::string> out;
+  std::stringstream ss{str};
+  for (std::string el; std::getline(ss, el, sep);) { out.push_back(el); }
+  return out;
+}
+
+template <class Range>
+std::vector<rg::range_value_t<Range>>
+to_vec(Range&& range) {
+  std::vector<rg::range_value_t<Range>> out{};
+  for (const auto& e : range) { out.push_back(e); }
+  return out;
+}
+
+auto
+reduce(auto&& range, auto&& f) {
+  return std::accumulate(rg::begin(range), rg::end(range), rg::range_value_t<decltype(range)>{}, f);
+}
+
+std::vector<std::string>
+all_tree_sitter_dependent_nodes(std::string_view node_types_json, std::string_view tp) {
+  static constexpr const char* fmt = "< {} jq -r '.[] | select(.type==\"{}\") | {}' 2>/dev/null";
+  auto call_jq = [&](auto q) { return split(process(std::format(fmt, node_types_json, tp, q))); };
+  auto queries = std::vector{".subtypes[].type", ".children.types[].type"};
+  return to_vec(queries | vw::transform(call_jq) | vw::join);
+}
+
+std::tuple<std::string, std::string>
+make_enum(const std::vector<std::string>& items, std::string_view name) {
+  std::map<TSSymbol, std::tuple<std::string, std::string>> m;
+  std::string name_ = std::string{name[0] == '_' ? name.substr(1, name.size() - 1) : name};
+  std::string enum_str = std::format("enum class {} {}\n", name_, "{");
+  std::string check_str;
+  static std::set<std::string> cpp_key_words{"true", "false", "int", "float"};
+  static constexpr const char* check_fmt =
+      "  stanly_assert(static_cast<TSSymbol>({}::{}) == lookup_symbol(\"{}\"));\n";
+  for (const auto& s : items) {
+    auto sym = lookup_symbol(s);
+    stanly_assert(sym != 0U, std::format("symbol '{}' not found.", s));
+    m[sym] = std::tuple{cpp_key_words.contains(s) ? std::format("s_{}", s) : s, s};
+  }
+  for (const auto& [sym, nm] : m) {
+    if (std::get<0>(nm) == "primary_expression") { continue; }
+    enum_str += std::format("  {} = {},\n", std::get<0>(nm), sym);
+    check_str += std::format(check_fmt, name_, std::get<0>(nm), std::get<1>(nm));
+  }
+  return {enum_str + "};\n", check_str};
+}
+
+std::tuple<std::string, std::string>
+make_enum(std::string_view node_types_json, std::string_view name) {
+  auto items = all_tree_sitter_dependent_nodes(node_types_json, name);
+  if (name == "expression") {
+    for (auto&& s : all_tree_sitter_dependent_nodes(node_types_json, "primary_expression")) {
+      items.push_back(std::move(s));
     }
-    return out + "};\n";
-  };
-  return
-      R"(#pragma once
+  }
+  return make_enum(items, name);
+};
+
+std::string
+generate_tree_sitter_symbols(std::string_view node_types_json) {
+  const std::string preamble = R"(#pragma once
 
 #include <string_view>
 
@@ -61,56 +129,26 @@ struct fields {
   TSFieldId children = lookup_field("children");
   TSFieldId argument = lookup_field("argument");
 } const fields{};
+)";
 
-)" +
-      make_enum(
-          "simple_statement",
-          {"assert_statement", "break_statement", "continue_statement", "delete_statement",
-           "exec_statement", "expression_statement", "future_import_statement", "global_statement",
-           "import_from_statement", "import_statement", "nonlocal_statement", "pass_statement",
-           "print_statement", "raise_statement", "return_statement"}) +
-      make_enum("compound_statement", {"class_definition", "decorated_definition", "for_statement",
-                                       "function_definition", "if_statement", "match_statement",
-                                       "try_statement", "while_statement", "with_statement"}) +
-      make_enum("expression_statement",
-                {"assignment", "augmented_assignment", "expression", "yield"}) +
-      make_enum("expression", {"as_pattern",
-                               "await",
-                               "boolean_operator",
-                               "comparison_operator",
-                               "conditional_expression",
-                               "lambda",
-                               "named_expression",
-                               "not_operator",
-                               /*primary_expression*/ "attribute",
-                               "binary_operator",
-                               "call",
-                               "concatenated_string",
-                               "dictionary",
-                               "dictionary_comprehension",
-                               "ellipsis",
-                               "false",
-                               "float",
-                               "generator_expression",
-                               "identifier",
-                               "integer",
-                               "list",
-                               "list_comprehension",
-                               "none",
-                               "parenthesized_expression",
-                               "set",
-                               "set_comprehension",
-                               "string",
-                               "subscript",
-                               "true",
-                               "tuple",
-                               "unary_operator"}) +
-      make_enum("dictionary", {"dictionary_splat", "pair"}) + check + "};\n// clang-format on\n" +
-      R"(
+  const std::string postamble = R"(};
+// clang-format on
+
 std::string
 generate_tree_sitter_symbols();
 }  // namespace stanly
-      )";
+)";
+  static constexpr const char* fmt = "{} // clang-format off\ninline void\ncheck_symbols() {}\n{}";
+  std::vector types = {"_simple_statement", "_compound_statement", "expression_statement",
+                       "dictionary", "expression"};
+  auto left_sum = [](auto&& x, auto&& y) { return std::get<0>(x) + std::get<0>(y); };
+  auto right_sum = [](auto&& x, auto&& y) { return std::get<1>(x) + std::get<1>(y); };
+  auto f = [&](auto&& a, auto&& x) { return std::tuple{left_sum(a, x), right_sum(a, x)}; };
+  auto enums = std::apply(
+      [](auto&& enum_str, auto&& check_str) { return std::format(fmt, enum_str, "{", check_str); },
+      reduce(types | vw::transform([&](auto&& tp) { return make_enum(node_types_json, tp); }), f));
+
+  return std::format("{}\n{}{}", preamble, enums, postamble);
 }
 
 TSSymbol
