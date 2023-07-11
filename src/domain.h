@@ -102,20 +102,6 @@ struct state : DirectProductAbstractDomain<state, scope, memory> {
   }
 };
 using kind = AbstractValueKind;
-static const struct {
-  template <class T>
-    requires requires { T::bottom(); }
-  operator T() const {
-    return T::bottom();
-  }
-} bot{};
-static const struct {
-  template <class T>
-    requires requires { T::top(); }
-  operator T() const {
-    return T::top();
-  }
-} top{};
 static_assert(std::derived_from<state, AbstractDomain<state>>);
 static_assert(std::derived_from<scope, AbstractDomain<scope>>);
 static_assert(std::derived_from<memory, AbstractDomain<memory>>);

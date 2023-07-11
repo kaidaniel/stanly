@@ -51,9 +51,11 @@ class cursor {
   symbol() {
     return ts_node_symbol(node());
   };
-  void
-  assert_at_symbol(auto sym) {
+  template <class T>
+  T
+  assert_at_symbol(T sym) {
     stanly_assert(symbol() == static_cast<TSSymbol>(sym));
+    return sym;
   }
   TSFieldId
   field() {
@@ -126,6 +128,72 @@ struct ast_node_cursor : public cursor {
 
   std::vector<ast_node_args>
   parse_statement() {
+    switch (static_cast<simple_statement>(symbol())) {
+      case expression_statement: return parse_expression_statement();
+      default: unreachable(std::format("parsing statement {} not yet implemented.", symbol()));
+    }
+  }
+
+  std::vector<ast_node_args>
+  parse_expression(std::string_view var) {
+    using enum expression;
+    std::string_view sv = text();
+    switch (static_cast<expression>(symbol())) {
+      case as_pattern:
+        goto_child();
+        stanly_assert(field() == fields.alias);
+        goto_sibling();
+        stanly_assert(field() == fields.children);
+        return parse_expression(var);
+      case await:
+        goto_child();
+        assert_at_symbol(expression_statement::expression);
+        return parse_expression(var);
+      case identifier: return {{ref{}, {var, sv}}};
+      case string: return {{lit{}, {var, "str", sv}}};
+      case integer: return {{lit{}, {var, "int", sv}}};
+      case s_float: return {{lit{}, {var, "float", sv}}};
+      case s_true: return {{lit{}, {var, "bool", sv}}};
+      case s_false: return {{lit{}, {var, "bool", sv}}};
+      case none: return {{lit{}, {var, "None", sv}}};
+      case dictionary: return parse_dictionary(var);
+      case set: [[fallthrough]];
+      case list: return {{{alloc{}, {var, "top"}}}};
+      case subscript: {
+        auto [variable, field_] = parse_variable_and_field_from_subscript();
+        return {{load{}, {var, variable, field_}}};
+      }
+      case ellipsis: return {{lit{}, {var, "Ellipsis", "ellipsis"}}};
+      case named_expression: {
+        goto_child();
+        assert_at_symbol(identifier);
+        auto lhs = text();
+        auto out = parse_expression(lhs);
+        out.emplace_back(ref{}, std::vector{var, lhs});
+        return out;
+      }
+      case not_operator: [[fallthrough]];
+      case boolean_operator: [[fallthrough]];
+      case binary_operator: [[fallthrough]];
+      case unary_operator: [[fallthrough]];
+      case comparison_operator: [[fallthrough]];
+      case lambda: [[fallthrough]];
+      case conditional_expression:
+        return {{top{}, {var, std::format("expression {} not implemented", symbol())}}};
+      case attribute: [[fallthrough]];
+      case call: [[fallthrough]];
+      case tuple: [[fallthrough]];
+      case list_comprehension: [[fallthrough]];
+      case dictionary_comprehension: [[fallthrough]];
+      case set_comprehension: [[fallthrough]];
+      case generator_expression: [[fallthrough]];
+      case parenthesized_expression: [[fallthrough]];
+      case concatenated_string: unreachable(std::format("expression {} not implemented", symbol()));
+    }
+  }
+
+  inline std::vector<ast_node_args>
+  parse_expression_statement() {
     assert_at_symbol(expression_statement);
     goto_child();
     assert_at_symbol(assignment);
@@ -138,24 +206,7 @@ struct ast_node_cursor : public cursor {
       goto_sibling();  // assignment(left:identifier <"="> ...)
       goto_sibling();  // assignment(left:identifier "=" <right:...>)
       stanly_assert(field() == fields.right);
-
-      symbol_ = symbol();
-      auto const right = text();
-      switch (static_cast<symbs>(symbol_)) {
-        case identifier: return {{ref{}, {left, right}}};
-        case string: return {{lit{}, {left, "str", right}}};
-        case integer: return {{lit{}, {left, "int", right}}};
-        case dictionary: return parse_dictionary(left);
-        case set: [[fallthrough]];
-        case list: return {{alloc{}, {left, "top"}}};
-        case subscript: {
-          auto [variable, field_] = parse_variable_and_field_from_subscript();
-          return {{load{}, {left, variable, field_}}};
-        }
-        case module: [[fallthrough]];
-        case assignment: [[fallthrough]];
-        case pair: unreachable();
-      }
+      return parse_expression(left);
     }
 
     if (symbol_ == static_cast<TSSymbol>(subscript)) {

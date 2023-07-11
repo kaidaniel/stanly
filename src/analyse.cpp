@@ -59,7 +59,7 @@ analyse(const load& load, domain* d) {
     d->apply<domain::idx<scope>>([&](scope* s) { s->set(load.var, x); });
   };
   switch (sources.kind()) {
-    case Top: set_load_var(top); return;
+    case Top: set_load_var(addresses::top()); return;
     case Bottom: set_invalid_state(); return;
     case Value: set_load_var(addresses{}); break;
   }
