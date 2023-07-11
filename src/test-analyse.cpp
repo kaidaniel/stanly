@@ -36,22 +36,25 @@ TEST_CASE("analyse a basic block node-by-node", "[ast_node][analyse]") {
   add_node(alloc{"alloc1"_h, "unknown"_h});
   set_key<scope>("alloc1"_h, addresses{"alloc1"_h});
   set_key<memory>("alloc1"_h,
-                  object{{type{"unknown"_h}, data{record{{row_var{Closed}, defined{}, used{}}}}}});
+                  object{{type{"unknown"_h},
+                          data{{record{{row_var{Closed}, defined{}, used{}}}, constant{}}}}});
 
   add_node(lit{"lit1"_h, "int"_h, "123"_h});
   set_key<scope>("lit1"_h, addresses{"123"_h});
-  set_key<memory>("123"_h, object{{type{"int"_h}, data{constant{"123"_h}}}});
+  set_key<memory>("123"_h, object{{type{"int"_h}, data{{record{}, constant{"123"_h}}}}});
 
   add_node(lit{"field1"_h, "str"_h, "field1_val"_h});
   set_key<scope>("field1"_h, addresses{"field1_val"_h});
-  set_key<memory>("field1_val"_h, object{{type{"str"_h}, data{constant{"field1_val"_h}}}});
+  set_key<memory>("field1_val"_h,
+                  object{{type{"str"_h}, data{{record{}, constant{"field1_val"_h}}}}});
 
   add_node(update{"alloc1"_h, "field1"_h, "lit1"_h});
   set_key<memory>(
       "alloc1"_h,
-      object{{type{"unknown"_h},
-              data{record{
-                  {row_var{Closed}, defined{{{"field1_val"_h, addresses{"123"_h}}}}, used{}}}}}});
+      object{
+          {type{"unknown"_h},
+           data{{record{{row_var{Closed}, defined{{{"field1_val"_h, addresses{"123"_h}}}}, used{}}},
+                 constant{}}}}});
 
   add_node(ref{"ref1"_h, "alloc1"_h});
   set_key<scope>("ref1"_h, addresses{"alloc1"_h});
@@ -61,17 +64,20 @@ TEST_CASE("analyse a basic block node-by-node", "[ast_node][analyse]") {
   set_key<memory>(
       "alloc1"_h,
       object{{type{"unknown"_h},
-              data{record{{row_var{Closed}, defined{{{"field1_val"_h, addresses{"123"_h}}}},
-                           used{"field1_val"_h}}}}}});
+              data{{record{{row_var{Closed}, defined{{{"field1_val"_h, addresses{"123"_h}}}},
+                            used{"field1_val"_h}}},
+                    constant{}}}}});
 
   add_node(lit{"field2"_h, "str"_h, "field2_val"_h});
   set_key<scope>("field2"_h, addresses{"field2_val"_h});
-  set_key<memory>("field2_val"_h, object{{type{"str"_h}, data{constant{"field2_val"_h}}}});
+  set_key<memory>("field2_val"_h,
+                  object{{type{"str"_h}, data{{record{}, constant{"field2_val"_h}}}}});
 
   add_node(alloc{"alloc1"_h, "dict"_h});
   set_key<scope>("alloc1"_h, addresses{"alloc1"_h});
-  set_key<memory>("alloc1"_h,
-                  object{{type{"dict"_h}, data{record{{row_var{Closed}, defined{}, used{}}}}}});
+  set_key<memory>(
+      "alloc1"_h,
+      object{{type{"dict"_h}, data{{record{{row_var{Closed}, defined{}, used{}}}, constant{}}}}});
 
   add_node(ref{"ref1"_h, "alloc1"_h});
   set_key<scope>("ref1"_h, addresses{"alloc1"_h});

@@ -9,17 +9,18 @@
 namespace stanly {
 std::string
 generate_tree_sitter_symbols() {
-  auto kw = [](std::string s) {
-    static std::set<std::string> cpp_key_words{"true", "false", "int", "float"};
-    return cpp_key_words.contains(s) ? std::format("s_{}", s) : s;
-  };
+  static std::set<std::string> cpp_key_words{"true", "false", "int", "float"};
 
   std::string check = "// clang-format off\ninline void\ncheck_symbols() {\n";
   auto make_enum = [&](std::string_view name,
                        const std::vector<std::string>& items) -> std::string {
     std::map<TSSymbol, std::tuple<std::string, std::string>> m;
     std::string out = std::format("enum class {} {}\n", name, "{");
-    for (const auto& s : items) { m[lookup_symbol(s)] = std::tuple{kw(s), s}; };
+    for (const auto& s : items) {
+      auto sym = lookup_symbol(s);
+      stanly_assert(sym != 0U, std::format("symbol '{}' not found.", s));
+      m[sym] = std::tuple{cpp_key_words.contains(s) ? std::format("s_{}", s) : s, s};
+    };
     for (const auto& [sym, nm] : m) {
       out += std::format("  {} = {},\n", std::get<0>(nm), sym);
       check +=

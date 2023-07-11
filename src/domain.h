@@ -56,7 +56,13 @@ struct record : DirectProductAbstractDomain<record, row_var, defined, used> {
                              : std::same_as<T, defined> ? 1
                                                         : 2;
 };
-using data = DisjointUnionAbstractDomain<record, constant>;
+struct data : DirectProductAbstractDomain<data, record, constant> {
+  using DirectProductAbstractDomain<data, record, constant>::DirectProductAbstractDomain;
+  template <class T>
+    requires std::same_as<T, record> || std::same_as<T, constant>
+  constexpr static int idx = std::same_as<T, record> ? 0 : 1;
+};
+// using data = DisjointUnionAbstractDomain<record, constant>;
 using type = ConstantAbstractDomain<type_repr>;
 struct object : DirectProductAbstractDomain<object, type, data> {
   using DirectProductAbstractDomain<object, type, data>::DirectProductAbstractDomain;
@@ -86,7 +92,7 @@ struct state : DirectProductAbstractDomain<state, scope, memory> {
     dp::template apply<idx<memory>>([&](memory* m) {
       m->update(var, [&](object* o) {
         o->template apply<1>([&](data* d) {
-          d->template apply<record>(
+          d->template apply<data::idx<record>>(
               [&](record* r) { r->template apply<requires(used* u) { f(u); } ? 2 : 1>(f); });
         });
       });
@@ -101,7 +107,6 @@ struct state : DirectProductAbstractDomain<state, scope, memory> {
     apply_to_record(tgt, [field, src](defined* d) { d->set(field, addresses{src}); });
   }
 };
-using kind = AbstractValueKind;
 static_assert(std::derived_from<state, AbstractDomain<state>>);
 static_assert(std::derived_from<scope, AbstractDomain<scope>>);
 static_assert(std::derived_from<memory, AbstractDomain<memory>>);
@@ -276,16 +281,14 @@ struct std::formatter<Data, CharT> : std::formatter<std::string_view, CharT> {
     };
   };
   auto
-  format(const Data& data, auto& ctx) const {
-    using namespace stanly::domains;
-    std::ostringstream oss{};
-    ::operator<<(oss, ref_to_t(data));
+  format(const Data& dt, auto& ctx) const {
     if constexpr (std::same_as<stanly::domains::data, Data>) {
-      return std::format_to(ctx.out(), "{}", data::apply_visitor(data_visitor{{}}, data));
+      return std::format_to(ctx.out(), "({} {})", dt.template get<0>(), dt.template get<1>());
     }
     if constexpr (std::same_as<with_handles<stanly::domains::data>, Data>) {
-      return std::format_to(ctx.out(), "{}",
-                            data::apply_visitor(data_visitor{data.handles_to_str}, data.t));
+      return std::format_to(ctx.out(), "({} {})",
+                            with_handles{dt.t.template get<0>(), dt.handles_to_str},
+                            with_handles{dt.t.template get<1>(), dt.handles_to_str});
     }
   }
 };

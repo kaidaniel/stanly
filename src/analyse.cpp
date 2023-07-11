@@ -28,13 +28,13 @@ void
 analyse(const alloc& alloc, domain* d) {
   d->template set_key<scope>(alloc.var, addresses{alloc.var});
   d->template set_key<memory>(
-      alloc.var,
-      object{{type{alloc.type}, data{record{{row_var{RowVarEls::Closed}, defined{}, used{}}}}}});
+      alloc.var, object{{type{alloc.type},
+                         data{{record{{row_var{RowVarEls::Closed}, defined{}, used{}}}, {}}}}});
 }
 void
 analyse(const lit& lit, domain* d) {
   d->template set_key<scope>(lit.var, addresses{lit.value});
-  d->template set_key<memory>(lit.value, object{{type{lit.type}, data{constant{lit.value}}}});
+  d->template set_key<memory>(lit.value, object{{type{lit.type}, data{{{}, constant{lit.value}}}}});
 }
 void
 analyse(const ref& ref, domain* d) {
@@ -68,7 +68,7 @@ analyse(const load& load, domain* d) {
     d->apply<domain::idx<memory>>([&](memory* m) {
       m->update(source, [&](object* o) {
         o->apply<object::idx<data>>([&](data* dt) {
-          dt->apply<record>([&](record* r) {
+          dt->apply<data::idx<record>>([&](record* r) {
             r->apply<record::idx<used>>([&](used* u) { u->join_with(fields); });
             r->apply<record::idx<defined>>([&](defined* def) {
               d->apply<domain::idx<scope>>([&](scope* scope) {
@@ -104,12 +104,12 @@ analyse(const update& update, domain* d) {
   const scope& scp = d->get<domain::idx<scope>>();
   const addresses& fields = scp.get(update.field);
   const auto& elements = fields.is_value() ? fields.elements() : std::unordered_set<handle>{};
-  if (!scp.get(update.tgt).is_value()) { return; }
+  if (!scp.get(update.var).is_value()) { return; }
   d->apply<domain::idx<memory>>([&](memory* m) {
-    for (const address_repr target : scp.get(update.tgt).elements()) {
+    for (const address_repr target : scp.get(update.var).elements()) {
       m->update(target, [&](object* o) {
         o->apply<object::idx<data>>([&](data* dt) {
-          dt->apply<record>([&](record* r) {
+          dt->apply<data::idx<record>>([&](record* r) {
             r->apply<record::idx<defined>>([&](defined* def) {
               if (fields.is_top()) { def->set_to_top(); }
               for (const address_repr field : elements) { def->set(field, scp.get(update.src)); }
