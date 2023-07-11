@@ -42,12 +42,24 @@ split(const std::string& str, const char sep = '\n') {
   return out;
 }
 
+template <class Result>
+Result
+to(auto&& range) {
+  Result out{};
+  for (const auto& e : range) {
+    if constexpr (requires { out.push_back(e); }) {
+      out.push_back(e);
+    } else {
+      out.insert(e);
+    }
+  }
+  return out;
+}
+
 template <class Range>
 std::vector<rg::range_value_t<Range>>
 to_vec(Range&& range) {
-  std::vector<rg::range_value_t<Range>> out{};
-  for (const auto& e : range) { out.push_back(e); }
-  return out;
+  return to<std::vector<rg::range_value_t<Range>>>(std::forward<Range>(range));
 }
 
 auto
@@ -65,24 +77,25 @@ all_tree_sitter_dependent_nodes(std::string_view node_types_json, std::string_vi
 
 std::tuple<std::string, std::string>
 make_enum(const std::vector<std::string>& items, std::string_view name) {
-  std::map<TSSymbol, std::tuple<std::string, std::string>> m;
   std::string name_ = std::string{name[0] == '_' ? name.substr(1, name.size() - 1) : name};
-  std::string enum_str = std::format("enum class {} {}\n", name_, "{");
-  std::string check_str;
   static std::set<std::string> cpp_key_words{"true", "false", "int", "float"};
   static constexpr const char* check_fmt =
       "  stanly_assert(static_cast<TSSymbol>({}::{}) == lookup_symbol(\"{}\"));\n";
-  for (const auto& s : items) {
-    auto sym = lookup_symbol(s);
-    stanly_assert(sym != 0U, std::format("symbol '{}' not found.", s));
-    m[sym] = std::tuple{cpp_key_words.contains(s) ? std::format("s_{}", s) : s, s};
-  }
-  for (const auto& [sym, nm] : m) {
+  auto items_map = to<std::map<TSSymbol, std::tuple<std::string, std::string>>>(
+      items | vw::transform([](auto&& s) {
+        auto sym = lookup_symbol(s);
+        stanly_assert(sym != 0U, std::format("symbol '{}' not found.", s));
+        return std::pair{sym,
+                         std::tuple{cpp_key_words.contains(s) ? std::format("s_{}", s) : s, s}};
+      }));
+  std::string enum_str;
+  std::string check_str;
+  for (const auto& [sym, nm] : items_map) {
     if (std::get<0>(nm) == "primary_expression") { continue; }
     enum_str += std::format("  {} = {},\n", std::get<0>(nm), sym);
     check_str += std::format(check_fmt, name_, std::get<0>(nm), std::get<1>(nm));
   }
-  return {enum_str + "};\n", check_str};
+  return {std::format("enum class {} {}\n{}{};\n", name_, "{", enum_str, "}"), check_str};
 }
 
 std::tuple<std::string, std::string>
