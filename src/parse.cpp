@@ -94,35 +94,34 @@ class cursor {
 using ast_node_args = std::tuple<ast_node, std::vector<std::string_view>>;
 struct ast_node_cursor : public cursor {
   using cursor::cursor;
-  using enum symbs;
   using enum simple_statement;
   using enum compound_statement;
   std::vector<ast_node_args>
   parse_dictionary(std::string_view tgt) {
     // dictionary("{" commaSep1(pair | dictionary_splat)? ","? "}")
-    assert_at_symbol(dictionary);  // <dictionary(...)>
+    assert_at_symbol(expression::dictionary);  // <dictionary(...)>
     std::vector<ast_node_args> dict{{alloc{}, {tgt, "dict"}}};
     goto_child();                              // dictionary(<'{'> pair(...) ...)
     while (goto_sibling() && text() != "}") {  // dictionary(... <pair(...)> ...)
       // pair(key:expression ":" value:expression)
-      assert_at_symbol(pair);
+      assert_at_symbol(dictionary::pair);
       dict.emplace_back(ast_node{update{}}, std::vector{tgt, text(fields.key), text(fields.value)});
       goto_sibling();  // dictionary(... <','> ...)
     }
     goto_parent();  // <dictionary(...)>
-    assert_at_symbol(dictionary);
+    assert_at_symbol(expression::dictionary);
     return dict;
   }
   std::tuple<std::string_view, std::string_view>
   parse_variable_and_field_from_subscript() {
     goto_child();
     stanly_assert(field() == fields.value);
-    assert_at_symbol(identifier);
+    assert_at_symbol(expression::identifier);
     auto const variable = text();
     goto_sibling();  // skip '['
     goto_sibling();
     stanly_assert(field() == fields.subscript);
-    assert_at_symbol(identifier);
+    assert_at_symbol(expression::identifier);
     return {variable, text()};
   };
 
@@ -196,27 +195,37 @@ struct ast_node_cursor : public cursor {
   parse_expression_statement() {
     assert_at_symbol(expression_statement);
     goto_child();
-    assert_at_symbol(assignment);
-    goto_child();
-    stanly_assert(field() == fields.left);
+    switch (static_cast<enum expression_statement>(symbol())) {
+      case expression_statement::assignment: {
+        goto_child();
+        stanly_assert(field() == fields.left);
 
-    auto symbol_ = symbol();
-    if (symbol_ == static_cast<TSSymbol>(identifier)) {
-      auto const left = text();
-      goto_sibling();  // assignment(left:identifier <"="> ...)
-      goto_sibling();  // assignment(left:identifier "=" <right:...>)
-      stanly_assert(field() == fields.right);
-      return parse_expression(left);
+        auto symbol_ = symbol();
+        if (symbol_ == static_cast<TSSymbol>(expression::identifier)) {
+          auto const left = text();
+          goto_sibling();  // assignment(left:identifier <"="> ...)
+          goto_sibling();  // assignment(left:identifier "=" <right:...>)
+          stanly_assert(field() == fields.right);
+          return parse_expression(left);
+        }
+
+        if (symbol_ == static_cast<TSSymbol>(expression::subscript)) {
+          auto [variable, field_] = parse_variable_and_field_from_subscript();
+          goto_parent();
+          goto_sibling();  // skip "="
+          goto_sibling();
+          assert_at_symbol(expression::identifier);
+          return {{update{}, {variable, field_, text()}}};
+        };
+      }
+      case expression_statement::augmented_assignment:
+        goto_child();
+        stanly_assert(field() == fields.left);
+        assert_at_symbol(expression::identifier);
+        return {{top{}, {text(), "augmented assignment not implemented"}}};
+      case expression_statement::expression: [[fallthrough]];
+      case expression_statement::yield: unreachable("not implemented");
     }
-
-    if (symbol_ == static_cast<TSSymbol>(subscript)) {
-      auto [variable, field_] = parse_variable_and_field_from_subscript();
-      goto_parent();
-      goto_sibling();  // skip "="
-      goto_sibling();
-      assert_at_symbol(identifier);
-      return {{update{}, {variable, field_, text()}}};
-    };
     unreachable();
   }
 

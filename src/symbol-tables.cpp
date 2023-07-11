@@ -104,9 +104,7 @@ struct fields {
                                "true",
                                "tuple",
                                "unary_operator"}) +
-      make_enum("symbs", {"assignment", "module", "identifier", "integer", "string", "dictionary",
-                          "pair", "list", "set", "subscript"}) +
-      check + "};\n// clang-format on\n" +
+      make_enum("dictionary", {"dictionary_splat", "pair"}) + check + "};\n// clang-format on\n" +
       R"(
 std::string
 generate_tree_sitter_symbols();

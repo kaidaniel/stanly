@@ -97,17 +97,9 @@ enum class expression {
   string = 206,
   await = 211,
 };
-enum class symbs {
-  identifier = 1,
-  integer = 92,
-  module = 105,
-  assignment = 178,
-  subscript = 184,
-  list = 190,
-  set = 191,
-  dictionary = 193,
+enum class dictionary {
+  dictionary_splat = 145,
   pair = 194,
-  string = 206,
 };
 // clang-format off
 inline void
@@ -171,16 +163,8 @@ check_symbols() {
   stanly_assert(static_cast<TSSymbol>(expression::concatenated_string) == lookup_symbol("concatenated_string"));
   stanly_assert(static_cast<TSSymbol>(expression::string) == lookup_symbol("string"));
   stanly_assert(static_cast<TSSymbol>(expression::await) == lookup_symbol("await"));
-  stanly_assert(static_cast<TSSymbol>(symbs::identifier) == lookup_symbol("identifier"));
-  stanly_assert(static_cast<TSSymbol>(symbs::integer) == lookup_symbol("integer"));
-  stanly_assert(static_cast<TSSymbol>(symbs::module) == lookup_symbol("module"));
-  stanly_assert(static_cast<TSSymbol>(symbs::assignment) == lookup_symbol("assignment"));
-  stanly_assert(static_cast<TSSymbol>(symbs::subscript) == lookup_symbol("subscript"));
-  stanly_assert(static_cast<TSSymbol>(symbs::list) == lookup_symbol("list"));
-  stanly_assert(static_cast<TSSymbol>(symbs::set) == lookup_symbol("set"));
-  stanly_assert(static_cast<TSSymbol>(symbs::dictionary) == lookup_symbol("dictionary"));
-  stanly_assert(static_cast<TSSymbol>(symbs::pair) == lookup_symbol("pair"));
-  stanly_assert(static_cast<TSSymbol>(symbs::string) == lookup_symbol("string"));
+  stanly_assert(static_cast<TSSymbol>(dictionary::dictionary_splat) == lookup_symbol("dictionary_splat"));
+  stanly_assert(static_cast<TSSymbol>(dictionary::pair) == lookup_symbol("pair"));
 };
 // clang-format on
 
