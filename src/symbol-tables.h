@@ -101,7 +101,7 @@ enum class expression {
   string = 206,
   await = 211,
 };
- // clang-format off
+// clang-format off
 inline void
 check_symbols() {
   stanly_assert(static_cast<TSSymbol>(simple_statement::import_statement) == lookup_symbol("import_statement"));

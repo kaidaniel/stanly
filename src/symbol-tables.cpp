@@ -76,37 +76,36 @@ all_tree_sitter_dependent_nodes(std::string_view node_types_json, std::string_vi
 }
 
 std::tuple<std::string, std::string>
-make_enum(const std::vector<std::string>& items, std::string_view name) {
-  std::string name_ = std::string{name[0] == '_' ? name.substr(1, name.size() - 1) : name};
-  static std::set<std::string> cpp_key_words{"true", "false", "int", "float"};
-  static constexpr const char* check_fmt =
+make_enum(const std::vector<std::string>& items, std::string name) {
+  name = name[0] == '_' ? name.substr(1, name.size() - 1) : name;
+  static constexpr const char* f1 =
       "  stanly_assert(static_cast<TSSymbol>({}::{}) == lookup_symbol(\"{}\"));\n";
-  auto items_map = to<std::map<TSSymbol, std::tuple<std::string, std::string>>>(
-      items | vw::transform([](auto&& s) {
-        auto sym = lookup_symbol(s);
-        stanly_assert(sym != 0U, std::format("symbol '{}' not found.", s));
-        return std::pair{sym,
-                         std::tuple{cpp_key_words.contains(s) ? std::format("s_{}", s) : s, s}};
-      }));
-  std::string enum_str;
-  std::string check_str;
-  for (const auto& [sym, nm] : items_map) {
-    if (std::get<0>(nm) == "primary_expression") { continue; }
-    enum_str += std::format("  {} = {},\n", std::get<0>(nm), sym);
-    check_str += std::format(check_fmt, name_, std::get<0>(nm), std::get<1>(nm));
-  }
-  return {std::format("enum class {} {}\n{}{};\n", name_, "{", enum_str, "}"), check_str};
+  static constexpr const char* f2 = "'{}' not a symbol.";
+  static constexpr const char* f3 = "  {} = {},\n";
+  static constexpr const char* f4 = "enum class {} {}\n{}{};\n";
+  rg::for_each(items, [](auto&& s) { stanly_assert(lookup_symbol(s), std::format(f2, s)); });
+  std::set<std::string> kewywords{"true", "false", "int", "float"};
+  auto kw = [&](const std::string& s) { return kewywords.contains(s) ? "s_" + s : s; };
+  auto concat = [](auto&& r) { return std::reduce(rg::begin(r), rg::end(r)); };
+
+  auto range = items | vw::filter([](auto&& s) { return s != "primary_expression"; }) |
+               vw::transform([](auto&& s) {
+                 return std::pair{lookup_symbol(s), s};
+               });
+  auto map = to<std::map<TSSymbol, std::string>>(range);
+  auto checks =
+      map | vw::transform([&](auto&& p) { return std::format(f1, name, kw(p.second), p.second); });
+  auto enums =
+      map | vw::transform([&](auto&& p) { return std::format(f3, kw(p.second), p.first); });
+  return {std::format(f4, name, "{", concat(enums), "}"), concat(checks)};
 }
 
 std::tuple<std::string, std::string>
 make_enum(std::string_view node_types_json, std::string_view name) {
-  auto items = all_tree_sitter_dependent_nodes(node_types_json, name);
-  if (name == "expression") {
-    for (auto&& s : all_tree_sitter_dependent_nodes(node_types_json, "primary_expression")) {
-      items.push_back(std::move(s));
-    }
-  }
-  return make_enum(items, name);
+  auto nodes = std::bind_front(all_tree_sitter_dependent_nodes, node_types_json);
+  auto items = nodes(name);
+  if (name == "expression") { rg::move(nodes("primary_expression"), std::back_inserter(items)); }
+  return make_enum(items, std::string{name});
 };
 
 std::string
