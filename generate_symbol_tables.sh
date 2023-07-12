@@ -10,6 +10,7 @@ else
     lookup_symbols="build-default/src/lookup-symbols"
 fi
 
+function preamble {
 cat << EOF
 #pragma once
 
@@ -20,6 +21,17 @@ cat << EOF
 namespace stanly {
 
 EOF
+}
+
+function format {
+clang-format -i $1
+sed -i '/{}/d' $1
+}
+
+# ------ generate src/symbol-tables.h -------- #
+exec > "src/symbol-tables.h"
+preamble
+
 for non_terminal in $(jq -r '.[] | select(.named) | select((.fields | length !=0) or has("children")) | .type' < $nodes_json ); do
     echo "enum class $non_terminal {"
     jq -r ".[] | select(.named and .type == \"$non_terminal\") | .fields?[]?.types[]?.type, .children?[\"types\"][]?.type" < $nodes_json | $lookup_symbols
@@ -31,6 +43,24 @@ for supertype in $(jq -r '.[] | select(has("subtypes")) | .type' < $nodes_json )
     echo "};"
 done
 echo "}"
+format "src/symbol-tables.h"
+
+# ------ generate src/field-names.h -------- #
+exec > "src/field-names.h"
+preamble
+
+echo "enum class field_names {"
+jq -r ".[] | select(.named == true and has(\"fields\")) | select(.fields | length != 0) | .fields | keys[]" < $nodes_json | $lookup_symbols fields
+echo "};"
+echo "}"
+
+format "src/field-names.h"
+
+
+
+
+# grep -v '{}' > "src/symbol-tables.h"
+# clang-format "src/symbol-tables.h" | grep -v '{}' > 'src/symbol-tables.h';
 # > resources/symbols/field_names < $nodes_json jq -r ".[] | select(.named == true and has(\"fields\")) | select(.fields | length != 0) | .fields | keys[]"
 # > resources/symbols/supertypes < $nodes_json jq -r '.[] | select(has("subtypes")) | .type'
 # > resources/symbols/all_types < $nodes_json jq -r '.[] | select(.named) | .type'
