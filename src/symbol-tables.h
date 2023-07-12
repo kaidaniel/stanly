@@ -53,7 +53,6 @@ enum class await {
 enum class binary_operator {
   primary_expression = 170,
 };
-enum class block {};
 enum class boolean_operator {
   expression = 169,
 };
@@ -250,7 +249,6 @@ enum class match_statement {
   case_clause = 132,
   expression = 169,
 };
-enum class module {};
 enum class named_expression {
   identifier = 1,
   expression = 169,
