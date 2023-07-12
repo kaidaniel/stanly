@@ -12,8 +12,29 @@
 #include "syntax.h"
 #include "tree_sitter/api.h"
 
+extern "C" {
+TSLanguage*
+tree_sitter_python(void);
+}
+
 namespace stanly {
 using namespace syntax;
+
+TSFieldId
+lookup_field(std::string_view name) {
+  return ts_language_field_id_for_name(tree_sitter_python(), name.data(), name.size());
+}
+
+struct fields {
+  TSFieldId left = lookup_field("left");
+  TSFieldId right = lookup_field("right");
+  TSFieldId key = lookup_field("key");
+  TSFieldId value = lookup_field("value");
+  TSFieldId subscript = lookup_field("subscript");
+  TSFieldId alias = lookup_field("alias");
+  TSFieldId children = lookup_field("children");
+  TSFieldId argument = lookup_field("argument");
+} const fields{};
 
 class cursor {
   TSTreeCursor cursor_{};
@@ -39,7 +60,6 @@ class cursor {
       ts_tree_delete(tree);
       ts_tree_cursor_delete(cursor);
     };
-    check_symbols();
   }
   cursor(const cursor&) = delete;
   cursor(cursor&&) = delete;
@@ -102,12 +122,10 @@ class cursor {
 using ast_node_args = std::tuple<ast_node, std::vector<std::string_view>>;
 struct ast_node_cursor : public cursor {
   using cursor::cursor;
-  using enum simple_statement;
-  using enum compound_statement;
   std::vector<ast_node_args>
   parse_dictionary(std::string_view tgt) {
     // dictionary("{" commaSep1(pair | dictionary_splat)? ","? "}")
-    assert_at_symbol(expression::dictionary);  // <dictionary(...)>
+    assert_at_symbol(primary_expression::dictionary);  // <dictionary(...)>
     std::vector<ast_node_args> dict{{alloc{}, {tgt, "dict"}}};
     goto_child();                              // dictionary(<'{'> pair(...) ...)
     while (goto_sibling() && text() != "}") {  // dictionary(... <pair(...)> ...)
@@ -117,35 +135,35 @@ struct ast_node_cursor : public cursor {
       goto_sibling();  // dictionary(... <','> ...)
     }
     goto_parent();  // <dictionary(...)>
-    assert_at_symbol(expression::dictionary);
+    assert_at_symbol(primary_expression::dictionary);
     return dict;
   }
   std::tuple<std::string_view, std::string_view>
   parse_variable_and_field_from_subscript() {
     goto_child();
     stanly_assert(field() == fields.value);
-    assert_at_symbol(expression::identifier);
+    assert_at_symbol(primary_expression::identifier);
     auto const variable = text();
     goto_sibling();  // skip '['
     goto_sibling();
     stanly_assert(field() == fields.subscript);
-    assert_at_symbol(expression::identifier);
+    assert_at_symbol(primary_expression::identifier);
     return {variable, text()};
   };
 
   std::vector<ast_node_args>
   parse_statement() {
-    switch (static_cast<simple_statement>(symbol())) {
-      case expression_statement: return parse_expression_statement();
+    switch (static_cast<_simple_statement>(symbol())) {
+      case _simple_statement::expression_statement: return parse_expression_statement();
       default: unreachable(std::format("parsing statement {} not yet implemented.", symbol()));
     }
   }
 
   std::vector<ast_node_args>
   parse_expression(std::string_view var) {
-    using enum expression;
     std::string_view sv = text();
     switch (static_cast<expression>(symbol())) {
+      using enum expression;
       case as_pattern:
         goto_child();
         stanly_assert(field() == fields.alias);
@@ -156,6 +174,24 @@ struct ast_node_cursor : public cursor {
         goto_child();
         assert_at_symbol(expression_statement::expression);
         return parse_expression(var);
+      case named_expression: {
+        goto_child();
+        assert_at_symbol(primary_expression::identifier);
+        auto lhs = text();
+        auto out = parse_expression(lhs);
+        out.emplace_back(ref{}, std::vector{var, lhs});
+        return out;
+      }
+      case not_operator: [[fallthrough]];
+      case boolean_operator: [[fallthrough]];
+      case comparison_operator: [[fallthrough]];
+      case lambda: [[fallthrough]];
+      case conditional_expression:
+        return {{top{}, {var, std::format("expression {} not implemented", symbol())}}};
+      case primary_expression: unreachable("only subtypes of primary_expression should appear.");
+    }
+    switch (static_cast<primary_expression>(symbol())) {
+      using enum primary_expression;
       case identifier: return {{ref{}, {var, sv}}};
       case string: return {{lit{}, {var, "str", sv}}};
       case integer: return {{lit{}, {var, "int", sv}}};
@@ -171,22 +207,8 @@ struct ast_node_cursor : public cursor {
         return {{load{}, {var, variable, field_}}};
       }
       case ellipsis: return {{lit{}, {var, "Ellipsis", "ellipsis"}}};
-      case named_expression: {
-        goto_child();
-        assert_at_symbol(identifier);
-        auto lhs = text();
-        auto out = parse_expression(lhs);
-        out.emplace_back(ref{}, std::vector{var, lhs});
-        return out;
-      }
-      case not_operator: [[fallthrough]];
-      case boolean_operator: [[fallthrough]];
       case binary_operator: [[fallthrough]];
       case unary_operator: [[fallthrough]];
-      case comparison_operator: [[fallthrough]];
-      case lambda: [[fallthrough]];
-      case conditional_expression:
-        return {{top{}, {var, std::format("expression {} not implemented", symbol())}}};
       case attribute: [[fallthrough]];
       case call: [[fallthrough]];
       case tuple: [[fallthrough]];
@@ -196,20 +218,22 @@ struct ast_node_cursor : public cursor {
       case generator_expression: [[fallthrough]];
       case parenthesized_expression: [[fallthrough]];
       case concatenated_string: unreachable(std::format("expression {} not implemented", symbol()));
+      default: unreachable("should have been either an expression or a primary_expression");
     }
   }
 
   inline std::vector<ast_node_args>
   parse_expression_statement() {
-    assert_at_symbol(expression_statement);
+    assert_at_symbol(_simple_statement::expression_statement);
     goto_child();
-    switch (static_cast<enum expression_statement>(symbol())) {
-      case expression_statement::assignment: {
+    switch (static_cast<expression_statement>(symbol())) {
+      using enum expression_statement;
+      case assignment: {
         goto_child();
         stanly_assert(field() == fields.left);
 
         auto symbol_ = symbol();
-        if (symbol_ == static_cast<TSSymbol>(expression::identifier)) {
+        if (symbol_ == static_cast<TSSymbol>(primary_expression::identifier)) {
           auto const left = text();
           goto_sibling();  // assignment(left:identifier <"="> ...)
           goto_sibling();  // assignment(left:identifier "=" <right:...>)
@@ -217,22 +241,22 @@ struct ast_node_cursor : public cursor {
           return parse_expression(left);
         }
 
-        if (symbol_ == static_cast<TSSymbol>(expression::subscript)) {
+        if (symbol_ == static_cast<TSSymbol>(primary_expression::subscript)) {
           auto [variable, field_] = parse_variable_and_field_from_subscript();
           goto_parent();
           goto_sibling();  // skip "="
           goto_sibling();
-          assert_at_symbol(expression::identifier);
+          assert_at_symbol(primary_expression::identifier);
           return {{update{}, {variable, field_, text()}}};
         };
       }
-      case expression_statement::augmented_assignment:
+      case augmented_assignment:
         goto_child();
         stanly_assert(field() == fields.left);
-        assert_at_symbol(expression::identifier);
+        assert_at_symbol(primary_expression::identifier);
         return {{top{}, {text(), "augmented assignment not implemented"}}};
-      case expression_statement::expression: [[fallthrough]];
-      case expression_statement::yield: unreachable("not implemented");
+      case expression: [[fallthrough]];
+      case yield: unreachable("not implemented");
     }
     unreachable();
   }

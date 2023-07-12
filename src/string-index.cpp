@@ -100,8 +100,8 @@ resolve_handles(const std::vector<syntax::ast_node>& nodes) {
 }
 
 std::map<std::string, std::string>
-resolve_handles(const std::unordered_map<std::string_view, syntax::ast_node>& map,
-                const string_index& idx) {
+resolve_handles(
+    const std::unordered_map<std::string_view, syntax::ast_node>& map, const string_index& idx) {
   std::map<std::string, std::string> out;
   // out.reserve(map.size());
   for (const auto& [key, value] : map) { out[std::string{key}] = resolve_handles(value, idx); }

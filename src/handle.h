@@ -14,10 +14,9 @@ class handle {
   explicit operator size_t() const { return value; };
   using repr = uint16_t;
   explicit constexpr handle(size_t i) : value{static_cast<repr>(i)} {
-    stanly_assert(
-        i < (std::numeric_limits<handle::repr>::max() - 1),
+    stanly_assert(i < (std::numeric_limits<handle::repr>::max() - 1),
         std::format("{}-byte index can't support more than {} elements.", sizeof(handle::repr),
-                    (std::numeric_limits<handle::repr>::max() - 2)));
+            (std::numeric_limits<handle::repr>::max() - 2)));
   };
   constexpr handle() : value{0} {};
   constexpr std::strong_ordering

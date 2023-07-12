@@ -16,7 +16,7 @@ foreach(test test-parse test-format test-analyse)
     catch_discover_tests(${test} EXTRA_ARGS --colour-mode ansi)
 endforeach()
 
-add_library(parse parse.cpp string-index.cpp symbol-tables.cpp)
+add_library(parse parse.cpp string-index.cpp)
 target_link_libraries(parse PUBLIC tree-sitter tree-sitter-python project_props)
 
 add_library(analyse analyse.cpp)
@@ -24,3 +24,6 @@ target_link_libraries(analyse PUBLIC sparta project_props)
 
 add_executable(stanly stanly.cpp)
 target_link_libraries(stanly PRIVATE cxxopts parse analyse)
+
+add_executable(lookup-symbols lookup-symbols.cpp)
+target_link_libraries(lookup-symbols PRIVATE tree-sitter tree-sitter-python project_props)
