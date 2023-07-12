@@ -8,7 +8,7 @@
 #include <vector>
 
 #include "string-index.h"
-#include "symbol-tables.h"
+#include "symbols.h"
 #include "syntax.h"
 #include "tree_sitter/api.h"
 

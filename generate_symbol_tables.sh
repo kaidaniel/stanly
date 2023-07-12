@@ -29,7 +29,7 @@ sed -i '/{}/d' $1
 }
 
 # ------ generate src/symbol-tables.h -------- #
-exec > "src/symbol-tables.h"
+exec > "src/symbols.h"
 preamble
 
 for non_terminal in $(jq -r '.[] | select(.named) | select((.fields | length !=0) or has("children")) | .type' < $nodes_json ); do
@@ -43,18 +43,18 @@ for supertype in $(jq -r '.[] | select(has("subtypes")) | .type' < $nodes_json )
     echo "};"
 done
 echo "}"
-format "src/symbol-tables.h"
+format "src/symbols.h"
 
 # ------ generate src/field-names.h -------- #
-exec > "src/field-names.h"
+exec > "src/fields.h"
 preamble
 
-echo "enum class field_names {"
+echo "enum class fields {"
 jq -r ".[] | select(.named == true and has(\"fields\")) | select(.fields | length != 0) | .fields | keys[]" < $nodes_json | $lookup_symbols fields
 echo "};"
 echo "}"
 
-format "src/field-names.h"
+format "src/fields.h"
 
 
 

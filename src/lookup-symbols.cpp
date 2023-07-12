@@ -24,15 +24,15 @@ const std::set<std::string> cpp_keywords = {"alignas", "alignof", "and", "and_eq
     "volatile", "wchar_t", "while", "xor", "xor_eq"};
 
 int
-main(int argc) {
+main(int argc, const char* argv[]) {
   std::map<int, std::string> names;
   std::string line;
   while (std::getline(std::cin, line)) {
-    TSSymbol sym{};
-    if (argc == 1) {
-      sym = ts_language_symbol_for_name(py, line.data(), line.length(), true);
-    } else {
+    unsigned short sym{};
+    if (argc > 1 && std::string_view{argv[1]} == "fields") {
       sym = ts_language_field_id_for_name(py, line.data(), line.length());
+    } else {
+      sym = ts_language_symbol_for_name(py, line.data(), line.length(), true);
     }
     names[sym] = std::move(line);
   }

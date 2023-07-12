@@ -6,7 +6,7 @@
 
 namespace stanly {
 
-enum class field_names {
+enum class fields {
   alias = 1,
   alternative = 2,
   argument = 3,
