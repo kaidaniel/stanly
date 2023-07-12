@@ -7,6 +7,7 @@
 #include <string_view>
 #include <vector>
 
+#include "fields.h"
 #include "string-index.h"
 #include "symbols.h"
 #include "syntax.h"
@@ -19,22 +20,6 @@ tree_sitter_python(void);
 
 namespace stanly {
 using namespace syntax;
-
-TSFieldId
-lookup_field(std::string_view name) {
-  return ts_language_field_id_for_name(tree_sitter_python(), name.data(), name.size());
-}
-
-struct fields {
-  TSFieldId left = lookup_field("left");
-  TSFieldId right = lookup_field("right");
-  TSFieldId key = lookup_field("key");
-  TSFieldId value = lookup_field("value");
-  TSFieldId subscript = lookup_field("subscript");
-  TSFieldId alias = lookup_field("alias");
-  TSFieldId children = lookup_field("children");
-  TSFieldId argument = lookup_field("argument");
-} const fields{};
 
 class cursor {
   TSTreeCursor cursor_{};
@@ -72,11 +57,9 @@ class cursor {
   symbol() {
     return ts_node_symbol(node());
   };
-  template <class T>
-  T
-  assert_at_symbol(T sym) {
+  void
+  assert_at_symbol(symbols sym) {
     stanly_assert(symbol() == static_cast<TSSymbol>(sym));
-    return sym;
   }
   TSFieldId
   field() {
@@ -107,8 +90,8 @@ class cursor {
     return text(node());
   }
   std::string_view
-  text(TSFieldId field) {
-    return text(ts_node_child_by_field_id(node(), field));
+  text(fields field) {
+    return text(ts_node_child_by_field_id(node(), static_cast<TSFieldId>(field)));
   }
   std::string
   parse_tree() {
@@ -125,27 +108,28 @@ struct ast_node_cursor : public cursor {
   std::vector<ast_node_args>
   parse_dictionary(std::string_view tgt) {
     // dictionary("{" commaSep1(pair | dictionary_splat)? ","? "}")
-    assert_at_symbol(primary_expression::dictionary);  // <dictionary(...)>
+    assert_at_symbol(symbols::dictionary);  // <dictionary(...)>
     std::vector<ast_node_args> dict{{alloc{}, {tgt, "dict"}}};
     goto_child();                              // dictionary(<'{'> pair(...) ...)
     while (goto_sibling() && text() != "}") {  // dictionary(... <pair(...)> ...)
       // pair(key:expression ":" value:expression)
-      assert_at_symbol(dictionary::pair);
-      dict.emplace_back(ast_node{update{}}, std::vector{tgt, text(fields.key), text(fields.value)});
+      assert_at_symbol(symbols::pair);
+      dict.emplace_back(
+          ast_node{update{}}, std::vector{tgt, text(fields::key), text(fields::value)});
       goto_sibling();  // dictionary(... <','> ...)
     }
     goto_parent();  // <dictionary(...)>
-    assert_at_symbol(primary_expression::dictionary);
+    assert_at_symbol(symbols::dictionary);
     return dict;
   }
   std::tuple<std::string_view, std::string_view>
   parse_variable_and_field_from_subscript() {
     goto_child();
-    assert_at_symbol(primary_expression::identifier);
+    assert_at_symbol(symbols::identifier);
     auto const variable = text();
     goto_sibling();  // skip '['
     goto_sibling();
-    assert_at_symbol(primary_expression::identifier);
+    assert_at_symbol(symbols::identifier);
     return {variable, text()};
   };
 
@@ -167,11 +151,11 @@ struct ast_node_cursor : public cursor {
         return parse_expression(var);
       case await:
         goto_child();
-        assert_at_symbol(expression_statement::expression);
+        assert_at_symbol(symbols::expression);
         return parse_expression(var);
       case named_expression: {
         goto_child();
-        assert_at_symbol(primary_expression::identifier);
+        assert_at_symbol(symbols::identifier);
         auto lhs = text();
         auto out = parse_expression(lhs);
         out.emplace_back(ref{}, std::vector{var, lhs});
@@ -224,7 +208,7 @@ struct ast_node_cursor : public cursor {
 
   inline std::vector<ast_node_args>
   parse_expression_statement() {
-    assert_at_symbol(_simple_statement::expression_statement);
+    assert_at_symbol(symbols::expression_statement);
     goto_child();
     switch (static_cast<expression_statement>(symbol())) {
       using enum expression_statement;
@@ -244,13 +228,13 @@ struct ast_node_cursor : public cursor {
           goto_parent();
           goto_sibling();  // skip "="
           goto_sibling();
-          assert_at_symbol(primary_expression::identifier);
+          assert_at_symbol(symbols::identifier);
           return {{update{}, {variable, field_, text()}}};
         };
       }
       case augmented_assignment:
         goto_child();
-        assert_at_symbol(primary_expression::identifier);
+        assert_at_symbol(symbols::identifier);
         return {{top{}, {text(), "augmented assignment not implemented"}}};
       case expression: [[fallthrough]];
       case yield: unreachable("not implemented");

@@ -42,6 +42,10 @@ for supertype in $(jq -r '.[] | select(has("subtypes")) | .type' < $nodes_json )
     jq -r ".[] | select(.named and .type==\"$supertype\") | .subtypes[].type" < $nodes_json | $lookup_symbols
     echo "};"
 done
+echo "enum class symbols {"
+jq -r '.[] | select(.named) | .type' < $nodes_json | $lookup_symbols
+echo "};"
+
 echo "}"
 format "src/symbols.h"
 
