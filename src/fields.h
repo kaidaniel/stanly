@@ -1,5 +1,5 @@
 #pragma once
-
+#include <array>
 // generated using "generate_symbol_tables.sh"
 // nodes_json="build-default/tree-sitter-python/src/node-types.json"
 // lookup_symbols="build-default/src/lookup-symbols"
