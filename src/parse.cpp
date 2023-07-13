@@ -106,6 +106,49 @@ using ast_node_args = std::tuple<ast_node, std::vector<std::string_view>>;
 struct ast_node_cursor : public cursor {
   using cursor::cursor;
   std::vector<ast_node_args>
+  parse_module(std::string_view tgt) {
+    assert_at_symbol(symbols::module);
+    goto_child();
+    std::vector<ast_node_args> out{};
+    auto simple_or_compound_statement = [&]() -> std::vector<ast_node_args> {
+      switch (static_cast<_simple_statement>(symbol())) {
+        using enum _simple_statement;
+        case assert_statement:
+        case import_statement:
+        case import_from_statement:
+        case future_import_statement:
+        case print_statement:
+        case expression_statement:
+        case return_statement:
+        case delete_statement:
+        case raise_statement:
+        case pass_statement:
+        case break_statement:
+        case continue_statement:
+        case nonlocal_statement:
+        case global_statement:
+        case exec_statement: unreachable("not implemented");
+      }
+      switch (static_cast<_compound_statement>(symbol())) {
+        using enum _compound_statement;
+        case if_statement:
+        case match_statement:
+        case for_statement:
+        case while_statement:
+        case try_statement:
+        case with_statement:
+        case function_definition:
+        case decorated_definition:
+        case class_definition: unreachable("not implemented yet.");
+      }
+      unreachable("module matched neither _simple_statement nor _compound_statement.");
+    };
+    do {  // module -> (_simple_statement | _compound_statement)*
+      for (auto&& e : simple_or_compound_statement()) { out.push_back(std::move(e)); }
+    } while (goto_sibling());
+    return out;
+  }
+  std::vector<ast_node_args>
   parse_dictionary(std::string_view tgt) {
     // dictionary("{" commaSep1(pair | dictionary_splat)? ","? "}")
     assert_at_symbol(symbols::dictionary);  // <dictionary(...)>
