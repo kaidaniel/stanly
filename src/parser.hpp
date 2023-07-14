@@ -2,7 +2,7 @@
 #include <string_view>
 #include <utility>
 
-// generated using "generate_parser_symbols.sh"
+// generated using "generate_parser_skeleton.sh"
 // nodes_json="build-default/tree-sitter-python/src/node-types.json"
 // lookup_symbols="build-default/src/lookup-symbols"
 

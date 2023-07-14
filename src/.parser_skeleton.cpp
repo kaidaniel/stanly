@@ -3,13 +3,11 @@
 
 #include "parser.hpp"
 
-// generated using "generate_parser_symbols.sh"
+// generated using "generate_parser_skeleton.sh"
 // nodes_json="build-default/tree-sitter-python/src/node-types.json"
 // lookup_symbols="build-default/src/lookup-symbols"
 
 namespace stanly::parser {
-
-void f();
 
 void
 parse_sym__compound_statement(parser& p) {

@@ -5,20 +5,18 @@
 
 non_terminals=$(jq -r -c '.[] | select(.named) | select(has("children") or (has("fields") and (.fields | length !=0)) or has("subtypes")) | {type: .type, subtypes: [.subtypes[]?.type], children: [.children.types[]?.type], fields: [select(.fields | length !=0).fields], field_names: [select(.fields | length !=0).fields | keys[]]}' < $nodes_json)
 terminals=$(< $nodes_json jq -r '.[] | select(.named and .children == null and .subtypes == null and ((.fields == null) or (.fields | length == 0))).type')
-echo $(date +'%D %H:%M:%S') symbols terminals fields > /dev/tty
+echo $(date +'%D %H:%M:%S') generating "src/parser.hpp" and "src/.parser_skeleton.cpp" > /dev/tty
 
 cat << EOF > src/.parser_skeleton.cpp
 #include "parser.hpp"
 #include <utility>
 #include <string_view>
 
-// generated using "generate_parser_symbols.sh"
+// generated using "generate_parser_skeleton.sh"
 // nodes_json="$nodes_json"
 // lookup_symbols="$lookup_symbols"
 
 namespace stanly::parser {
-
-    void f();
 
 EOF
 
@@ -27,7 +25,7 @@ cat << HEADER > src/parser.hpp
 #include <utility>
 #include <string_view>
 
-// generated using "generate_parser_symbols.sh"
+// generated using "generate_parser_skeleton.sh"
 // nodes_json="$nodes_json"
 // lookup_symbols="$lookup_symbols"
 
@@ -49,7 +47,6 @@ namespace stanly::parser {
 
     
     $( for symbol in $(jq -r -c '.[] | select(.named)' < $nodes_json); do
-        echo $(date +'%D %H:%M:%S') generating parse_$name > /dev/tty
         name="sym_"$( <<< $symbol jq -r '.type') 
         field_names=$(<<< $symbol jq -r -c '.fields | keys? | .[]')
         echo "void parse_$name(parser&);"
@@ -63,7 +60,7 @@ $( jq '{fields: (.fields // {}) | map_values([.types[]?.type]), children: (if .c
 */
         }
 SOURCE
-    
+    echo $(date +'%D %H:%M:%S') generated parse_$name > /dev/tty
     done)
 }
 HEADER
