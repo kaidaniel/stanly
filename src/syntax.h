@@ -37,7 +37,6 @@ operator==(X &&x, Y &&y) {
   }
   return false;
 };
-
 template <class T>
   requires stanly::syntax::ast_cons<T> || std::same_as<stanly::syntax::ast_node, std::decay_t<T>>
 auto &

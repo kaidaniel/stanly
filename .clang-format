@@ -8,5 +8,5 @@ AllowShortFunctionsOnASingleLine: All
 AllowShortIfStatementsOnASingleLine: AllIfsAndElse
 AllowShortLambdasOnASingleLine: All
 AllowShortLoopsOnASingleLine: true
-AlwaysBreakAfterReturnType: All
+AlwaysBreakAfterReturnType: AllDefinitions
 AlignAfterOpenBracket: DontAlign

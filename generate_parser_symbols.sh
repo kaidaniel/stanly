@@ -7,9 +7,9 @@ non_terminals=$(jq -r -c '.[] | select(.named) | select(has("children") or (has(
 terminals=$(< $nodes_json jq -r '.[] | select(.named and .children == null and .subtypes == null and ((.fields == null) or (.fields | length == 0))).type')
 echo $(date +'%D %H:%M:%S') symbols terminals fields > /dev/tty
 
-cat << EOF > src/parser.cpp
+cat << EOF > src/.parser_skeleton.cpp
 #include "parser.hpp"
-#include <optional>
+#include <utility>
 #include <string_view>
 
 // generated using "generate_parser_symbols.sh"
@@ -22,8 +22,10 @@ namespace stanly::parser {
 
 EOF
 
-cat << EOF > src/parser.hpp
-# pragma once
+cat << HEADER > src/parser.hpp
+#pragma once
+#include <utility>
+#include <string_view>
 
 // generated using "generate_parser_symbols.sh"
 // nodes_json="$nodes_json"
@@ -31,86 +33,47 @@ cat << EOF > src/parser.hpp
 
 namespace stanly::parser {
 
-    enum class terminals;
     enum class fields;
-    enum class symbols;
     struct parser;
 
-    void parse(parser&, terminals);
     std::optional<std::string_view> parse_field(parser&, enum fields);
     std::optional<std::string_view> parse_children(parser&);
 
     enum class symbols {
-    $(< $nodes_json jq -r '.[] | select(.named).type'| $lookup_symbols)};
-
-    enum class terminals {
-    $( $lookup_symbols <<< $terminals)};
+        $(< $nodes_json jq -r '.[] | select(.named).type'| $lookup_symbols)
+    };
 
     enum class fields {
-    $(< $nodes_json jq -r ".[] | select(.named and has(\"fields\")) | select(.fields | length != 0).fields | keys[]" | $lookup_symbols fields)};
+        $(< $nodes_json jq -r ".[].fields | keys? | .[]" | $lookup_symbols fields)
+    };
 
-    $(
-    for symbol in $non_terminals; do
+    
+    $( for symbol in $(jq -r -c '.[] | select(.named)' < $nodes_json); do
+        echo $(date +'%D %H:%M:%S') generating parse_$name > /dev/tty
         name="sym_"$( <<< $symbol jq -r '.type') 
-        echo $(date +'%D %H:%M:%S') $name > /dev/tty
-        subtypes=$(<<< $symbol jq -r '.subtypes[]')
-        children=$(<<< $symbol jq -r '.children[]')
-        fields=$(<<< $symbol jq -r -c '.fields[]')
-        field_names=$(<<< $symbol jq -r -c '.field_names[]')
-cat << HEADER
-        namespace $name { 
-            void parse(parser&);
-            enum class subtypes { $(<<< $subtypes $lookup_symbols) };
-            enum class children { $(<<< $children $lookup_symbols) };
-            namespace fields { 
-                enum class field_names { $(<<< $field_names $lookup_symbols fields) };
-                $( [[ $field_names ]] && while read f; do echo "enum class $f { $(jq -r ".$f.types[]?.type" <<< $fields | $lookup_symbols) };"; done <<< "$field_names" )
-            }
-        }    
-HEADER
+        field_names=$(<<< $symbol jq -r -c '.fields | keys? | .[]')
+        echo "void parse_$name(parser&);"
 
-cat << SOURCE >> src/parser.cpp
-        namespace $name {
-            void parse(parser& p){ 
-                auto children = parse_children(p);
-                $( [[ $field_names ]] && while read f; do echo "auto $f = parse_field(p, fields::field_names::$f);"; done <<< "$field_names")              
-            }
+cat << SOURCE >> src/.parser_skeleton.cpp
+        void parse_$name(parser& p){ 
+            $( [[ $field_names ]] && while read f; do echo "auto sym_$f = parse_field(p, fields::sym_$f);"; done <<< "$field_names")
+            auto children = parse_children(p);
+/*
+$( jq '{fields: (.fields // {}) | map_values([.types[]?.type]), children: (if .children then {multiple: .children.multiple, required: .children.required, types: [.children.types[]?.type]} else null end), subtypes: [.subtypes[]?.type]} | map_values(select(length > 0))' <<< $symbol | tr -d '",{}[]' | sed '/^[[:space:]]*$/d')
+*/
         }
 SOURCE
     
-    done
-    )
+    done)
 }
-EOF
+HEADER
 
 function lint {
     sed -i '/{}/d' $1
     clang-format -i $1
     sed -i '/{}/d' $1
-    clang++ -fsyntax-only $1 -Wall -Werror
-    clang-tidy $1
+    /home/kai/projects/install/bin/clang++ -stdlib=libc++ -fexperimental-library -fsyntax-only $1 -Wall -Werror -Wno-unused-variable
 }
-echo "}" >> src/parser.cpp
+echo "}" >> src/.parser_skeleton.cpp
 lint src/parser.hpp
-lint src/parser.cpp
-
-# preamble "src/${header_file%.*}.cpp"
-
-# postamble "src/${header_file%.*}.cpp"
-
-
-# # ------ generate src/parser.cpp -------- #
-
-# preamble "${header_file%.*}.cpp"
-
-# echo "void f();"
-
-# echo "// clang-format off"
-# for non_terminal in $non_terminals; do
-#     name=$(echo $non_terminal | jq -r '.type')
-#     echo "namespace $name { void parse(parser& p); }"
-# done
-# echo "// clang-format on"
-
-
-# postamble
+lint src/.parser_skeleton.cpp
