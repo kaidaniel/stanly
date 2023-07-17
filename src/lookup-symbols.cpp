@@ -6,8 +6,7 @@
 #include "tree_sitter/api.h"
 
 extern "C" {
-TSLanguage*
-tree_sitter_python(void);
+TSLanguage* tree_sitter_python(void);
 }
 const auto* const py = tree_sitter_python();
 

@@ -33,8 +33,7 @@ using namespace sparta;
 template <class T>
 concept abstract_domain = std::derived_from<T, AbstractDomain<T>>;
 enum class RowVarEls { Closed, Open };
-std::ostream&
-operator<<(std::ostream& os, RowVarEls rve);
+std::ostream& operator<<(std::ostream& os, RowVarEls rve);
 using enum RowVarEls;
 using row_var_l = BitVectorLattice<RowVarEls, 2>;
 static row_var_l l_({Closed, Open}, {{Closed, Open}});
