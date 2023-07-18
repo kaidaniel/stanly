@@ -33,7 +33,8 @@ using namespace sparta;
 template <class T>
 concept abstract_domain = std::derived_from<T, AbstractDomain<T>>;
 enum class RowVarEls { Closed, Open };
-std::ostream& operator<<(std::ostream& os, RowVarEls rve);
+std::ostream&
+operator<<(std::ostream& os, RowVarEls rve);
 using enum RowVarEls;
 using row_var_l = BitVectorLattice<RowVarEls, 2>;
 static row_var_l l_({Closed, Open}, {{Closed, Open}});
@@ -81,7 +82,7 @@ struct state : DirectProductAbstractDomain<state, scope, memory> {
   template <class Target>
   void
   set_key(const std::conditional_t<std::same_as<Target, memory>, address_repr, var_repr>& index,
-      const std::conditional_t<std::same_as<Target, memory>, object, addresses>& value) {
+          const std::conditional_t<std::same_as<Target, memory>, object, addresses>& value) {
     dp::template apply<idx<Target>>([&](Target* t) { t->set(index, value); });
   }
 };
@@ -187,7 +188,8 @@ struct std::formatter<Record, CharT> : std::formatter<std::string_view, CharT> {
   auto
   format(const Record& record, auto& ctx) const {
     using namespace stanly::domains;
-    return std::format_to(ctx.out(), "({}defined{}, used{})",
+    return std::format_to(
+        ctx.out(), "({}defined{}, used{})",
         (record.template get<record::idx<row_var>>().element() == RowVarEls::Open) ? "* " : "",
         record.template get<record::idx<defined>>().bindings(),
         record.template get<record::idx<used>>());
@@ -200,9 +202,11 @@ struct std::formatter<with_handles<stanly::domains::record>, CharT>
   auto
   format(const with_handles<stanly::domains::record>& record, auto& ctx) const {
     using namespace stanly::domains;
-    std::string s_used = std::format("{}",
+    std::string s_used = std::format(
+        "{}",
         with_handles<used>{record.t.template get<record::idx<used>>(), record.handles_to_str});
-    return std::format_to(ctx.out(), "({}defined{}, used{})",
+    return std::format_to(
+        ctx.out(), "({}defined{}, used{})",
         (record.t.template get<record::idx<row_var>>().element() == RowVarEls::Open) ? "* " : "",
         format_bindings(
             with_handles{record.t.template get<record::idx<defined>>(), record.handles_to_str}),
@@ -262,8 +266,8 @@ struct std::formatter<Data, CharT> : std::formatter<std::string_view, CharT> {
     }
     if constexpr (std::same_as<with_handles<stanly::domains::data>, Data>) {
       return std::format_to(ctx.out(), "({} {})",
-          with_handles{dt.t.template get<0>(), dt.handles_to_str},
-          with_handles{dt.t.template get<1>(), dt.handles_to_str});
+                            with_handles{dt.t.template get<0>(), dt.handles_to_str},
+                            with_handles{dt.t.template get<1>(), dt.handles_to_str});
     }
   }
 };
@@ -279,8 +283,8 @@ struct std::formatter<Object, CharT> : std::formatter<std::string_view, CharT> {
     }
     if constexpr (std::same_as<with_handles<stanly::domains::object>, Object>) {
       return std::format_to(ctx.out(), "({} {})",
-          with_handles{obj.t.template get<0>(), obj.handles_to_str},
-          with_handles{obj.t.template get<1>(), obj.handles_to_str});
+                            with_handles{obj.t.template get<0>(), obj.handles_to_str},
+                            with_handles{obj.t.template get<1>(), obj.handles_to_str});
     }
   }
 };
@@ -326,14 +330,14 @@ struct std::formatter<Scope, CharT>
 inline std::tuple<const stanly::domains::scope&, const stanly::domains::memory&>
 get_scope_and_memory(const stanly::domains::state& state) {
   return {state.get<stanly::domains::state::idx<stanly::domains::scope>>(),
-      state.get<stanly::domains::state::idx<stanly::domains::memory>>()};
+          state.get<stanly::domains::state::idx<stanly::domains::memory>>()};
 }
 
 inline std::tuple<with_handles<stanly::domains::scope>, with_handles<stanly::domains::memory>>
 get_scope_and_memory(with_handles<stanly::domains::state> wstate) {
   const auto [scp, mem] = get_scope_and_memory(wstate.t);
   return {with_handles<stanly::domains::scope>{scp, wstate.handles_to_str},
-      with_handles<stanly::domains::memory>{mem, wstate.handles_to_str}};
+          with_handles<stanly::domains::memory>{mem, wstate.handles_to_str}};
 }
 
 template <class State, class CharT>

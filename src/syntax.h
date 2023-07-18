@@ -23,12 +23,7 @@ struct merge  { handle var; handle old;   handle niu;   };
 struct call   { handle var; handle fn;    handle arg;   };
 // clang-format on
 using ast_node = std::variant<alloc, top, lit, ref, copy, update, append, load, merge, call>;
-struct ast {
-  std::variant<alloc, top, lit, ref, copy, update, append, load, merge, call> value;
-  handle target;
-};
 static_assert(sizeof(std::declval<ast_node>()) == 8);
-// static_assert(sizeof(std::declval<ast>()) == 8);
 static_assert(requires(ast_node n) { std::visit([](auto inj) { return inj.var; }, n); });
 
 // clang-format off
@@ -36,8 +31,7 @@ struct branch { handle if_true; handle if_false; };
 struct loop   { handle body; handle afterwards; };
 // clang-format on
 struct basic_block {
-  handle source;
-  std::variant<branch, loop> targets;
+  std::variant<branch, loop> jump_targets;
   std::vector<ast_node> ast_nodes;
 };
 

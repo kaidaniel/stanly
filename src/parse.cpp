@@ -14,7 +14,8 @@
 #include "tree_sitter/api.h"
 
 extern "C" {
-TSLanguage* tree_sitter_python(void);
+TSLanguage*
+tree_sitter_python(void);
 }
 
 namespace stanly {
@@ -47,8 +48,10 @@ class cursor {
   }
   cursor(const cursor&) = delete;
   cursor(cursor&&) = delete;
-  cursor& operator=(const cursor&) = delete;
-  cursor& operator=(const cursor&&) = delete;
+  cursor&
+  operator=(const cursor&) = delete;
+  cursor&
+  operator=(const cursor&&) = delete;
   ~cursor() { destroy(); }
   TSSymbol
   symbol() {
@@ -154,8 +157,8 @@ struct ast_node_cursor : public cursor {
     while (goto_sibling() && text() != "}") {  // dictionary(... <pair(...)> ...)
       // pair(key:expression ":" value:expression)
       assert_at_symbol(symbols::pair);
-      dict.emplace_back(
-          ast_node{update{}}, std::vector{tgt, text(fields::key), text(fields::value)});
+      dict.emplace_back(ast_node{update{}},
+                        std::vector{tgt, text(fields::key), text(fields::value)});
       goto_sibling();  // dictionary(... <','> ...)
     }
     goto_parent();  // <dictionary(...)>

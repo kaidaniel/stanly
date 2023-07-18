@@ -6,7 +6,8 @@
 #include "tree_sitter/api.h"
 
 extern "C" {
-TSLanguage* tree_sitter_python(void);
+TSLanguage*
+tree_sitter_python(void);
 }
 const auto* const py = tree_sitter_python();
 
@@ -25,6 +26,6 @@ main(int argc, const char* argv[]) {
   }
   for (const auto& [sym, name] : names) {
     if (name.empty() || (sym == 0U)) { continue; }
-    std::cout << "sym_" + name << " = " << sym << ",\n";
+    std::cout << name << " = " << sym << "\n";
   }
 }
