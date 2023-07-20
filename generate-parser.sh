@@ -169,9 +169,7 @@ PARSER_CPP
 echo -ne "\r"$(date +'%D %H:%M:%S') done generating src/parser.cpp"\n"
 
 function lint {
-    sed -i '/{}/d' $1
     clang-format -i $1
-    sed -i '/{}/d' $1
     /home/kai/projects/install/bin/clang++ -std=c++20 -stdlib=libc++ -fexperimental-library -fsyntax-only $1 -Wall -Werror -Wno-unused-variable
 }
 lint src/cursor.hpp
