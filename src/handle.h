@@ -20,10 +20,8 @@ class handle {
                     (std::numeric_limits<handle::repr>::max() - 2)));
   };
   constexpr handle() : value{0} {};
-  constexpr std::strong_ordering
-  operator<=>(const handle& other) const = default;
-  friend constexpr std::ostream&
-  operator<<(std::ostream& os, const stanly::handle& h);
+  constexpr std::strong_ordering operator<=>(const handle& other) const = default;
+  friend constexpr std::ostream& operator<<(std::ostream& os, const stanly::handle& h);
 
  private:
   repr value;

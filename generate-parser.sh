@@ -1,10 +1,15 @@
 [[ $1 ]] && nodes_json="$1" || nodes_json="build-default/tree-sitter-python/src/node-types.json"
 [[ $2 ]] && lookup_symbols="$2" || lookup_symbols="build-default/src/lookup-symbols"
 
-fields=$(jq -r ".[].fields | keys? | .[]" < $nodes_json | $lookup_symbols fields | awk '{ print "fld_" $0 ","; }')
-n_fields=$(wc -l <<< $fields)
-symbols=$(jq -r '.[] | select("named") | select(.subtypes == null).type' < $nodes_json | $lookup_symbols | awk '{ print "sym_" $0 ","; }')
-n_symbols=$(jq '[.[] | select("named") | select(.subtypes == null)] | length' $nodes_json)
+symbols=$(jq -r -c '.[] | select(.named) | select(.subtypes == null)' < $nodes_json)
+name=$(jq -r '"sym_" + .type' <<< $symbols) 
+optional_fields=$(jq -r -c '.fields // {} | map_values(select(.required == false)) | keys' <<< $symbols)
+required_fields=$(jq -r -c '.fields // {} | map_values(select(.required)) | keys' <<< $symbols)
+children=$(jq -r -c '.children.types // [] | [.[].type]' <<< $symbols)
+#children=$(jq '. as $json | .[] | [select(.named)] | .[] | select(.subtypes == null) | .children.types // [] | [.[].type as $t | ($json[] | select(.type == $t).subtypes) as $st | if $st==null then $t else $st[].type end]' < $nodes_json)
+all_fields=$(jq -r -c '.fields // {} | keys' <<< $symbols)
+n_symbols=$(wc -l <<< $symbols)
+norca_vars=$(paste -d "^" <(echo "$name") <(echo "$optional_fields") <(echo "$required_fields") <(echo "$children") | awk '{ gsub("\[\]", ""); print  }' | tr -d "[]\"")
 n=0
 
 cat << CURSOR_HPP > src/cursor.hpp
@@ -32,20 +37,18 @@ void goto_parent(cursor&);
 
 std::vector<syntax::basic_block>& get_basic_blocks(cursor&);
 
-enum class symbol { ${symbols} };
-enum class field { ${fields} };
+enum class symbol { $(jq -r '.type' <<< $symbols | $lookup_symbols | awk '{ print "sym_" $0 ","; }') };
+enum class field { $(jq -r ".[].fields | keys? | .[]" < $nodes_json | $lookup_symbols fields | awk '{ print "fld_" $0 ","; }') };
 
 
 }
 
 CURSOR_HPP
-echo -e "\r"$(date +'%D %H:%M:%S') done generating "src/cursor.hpp"
+echo -e "\r"$(date +'%D %H:%M:%S') done generating src/cursor.hpp
 
-
-cat << PARSE_SYMBOLS_HPP > src/parse_symbols.hpp
+cat << PARSE_SYMBOLS_HPP > src/parse-symbols.hpp
 #pragma once
 
-#include "syntax.h"
 #include "handle.h"
 #include <utility>
 
@@ -55,25 +58,21 @@ namespace stanly::parser {
 
 struct cursor;
 
-$(  for symbol in $(jq -r -c '.[] | select(.named) | select(.subtypes == null)' < $nodes_json); do
-        name="sym_"$( <<< $symbol jq -r '.type') 
-        optional_fields=$(jq -r -c '.fields | map_values(select(.required == false))? | keys? | .[]' <<< $symbol)
-        required_fields=$(jq -r -c '.fields | map_values(select(.required))? | keys? | .[]' <<< $symbol)
-        children=$(jq -r -c 'select(.children != null).children.types[].type' <<< $symbol)
+$( while IFS="^" read -r name optional_fields required_fields children all_fields; do
         n=$((n + 1))
-        echo -ne "\r$n/$n_symbols generating src/parse_symbols.hpp" > /dev/tty
+        echo -ne "\r$n/$n_symbols generating src/parse-symbols.hpp" > /dev/tty
 cat << EOF
     void parse_$name(
         cursor& c\
-        $( [[ $children ]] && while read f; do echo ", std::optional<handle> child_$f "; done <<< "$children")\
-        $( [[ $optional_fields ]] && while read f; do echo ", std::optional<handle> fld_$f "; done <<< "$optional_fields")\
-        $( [[ $required_fields ]] && while read f; do echo ", handle fld_$f "; done <<< "$required_fields"));
+        $( [[ $children ]] && while read f; do echo ", std::optional<handle> child_$f "; done <<< ${children//,/$'\n'})\
+        $( [[ $optional_fields ]] && while read f; do echo ", std::optional<handle> fld_$f "; done <<< ${optional_fields//,/$'\n'})\
+        $( [[ $required_fields ]] && while read f; do echo ", handle fld_$f "; done <<< ${required_fields//,/$'\n'}));
 EOF
-    done)
+    done <<< "$norca_vars")
 }
 PARSE_SYMBOLS_HPP
 n=0
-echo -e "\r"$(date +'%D %H:%M:%S') done generating "src/parse_symbols.hpp"
+echo -e "\r"$(date +'%D %H:%M:%S') done generating "src/parse-symbols.hpp"
 
 cat << PARSER_HPP > src/parser.hpp
 #pragma once
@@ -89,7 +88,7 @@ echo -e "\r"$(date +'%D %H:%M:%S') done generating "src/parser.hpp"
 
 cat << PARSER_CPP > src/parser.cpp
 #include "cursor.hpp"
-#include "parse_symbols.hpp"
+#include "parse-symbols.hpp"
 #include "parser.hpp"
 #include <utility>
 
@@ -118,20 +117,14 @@ void parser_trampoline(cursor& c) {
     using enum symbol;
     using enum field;
     switch(current_symbol(c)){
-$( for symbol in $(jq -r -c '.[] | select(.named) | select(.subtypes == null)' < $nodes_json); do
-        name="sym_"$( <<< $symbol jq -r '.type') 
-        optional_fields=$(jq -r -c '.fields | map_values(select(.required == false))? | keys? | .[]' <<< $symbol)
-        required_fields=$(jq -r -c '.fields | map_values(select(.required))? | keys? | .[]' <<< $symbol)
-        children=$(jq -r -c 'select(.children != null).children.types[].type' <<< $symbol)
-        all_fields=$(jq -r -c '.fields | keys? | .[]' <<< $symbol)
-
+$( while IFS="^" read -r name optional_fields required_fields children all_fields; do
         n=$((n + 1))
         echo -ne "\r$n/$n_symbols generating src/parser.cpp" > /dev/tty
 cat << EOF
         case $name: {
-            $( [[ $children ]] && while read f; do echo "std::optional<handle> child_$f = std::nullopt; "; done <<< "$children")
-            $( [[ $optional_fields ]] && while read f; do echo "std::optional<handle> field_$f = std::nullopt; "; done <<< "$optional_fields")
-            $( [[ $required_fields ]] && while read f; do echo "handle field_$f; "; done <<< "$required_fields")
+            $( [[ $children ]] && while read f; do echo "std::optional<handle> child_$f = std::nullopt; "; done <<< ${children//,/$'\n'})
+            $( [[ $optional_fields ]] && while read f; do echo "std::optional<handle> field_$f = std::nullopt; "; done <<< ${optional_fields//,/$'\n'})
+            $( [[ $required_fields ]] && while read f; do echo "handle field_$f; "; done <<< ${required_fields//,/$'\n'})
             parse_descendants(\
                 c, \
                 [&](symbol s, handle h){\
@@ -143,13 +136,13 @@ cat << EOF
                                 [[ "$(jq -r -c ".[] | select(.type == \"$f\") | select(.subtypes == null)" < $nodes_json)" ]] && \
                                 echo "case sym_$child: child_$f = h; break;";
                             done);
-                        done <<< $children)\
+                        done <<< ${children//,/$'\n'})\
                         default: throw "unreachable";\
                     }\
                 },
                 [&](field f, handle h){
                     switch(f){
-                        $( [[ $all_fields ]] && while read f; do echo "case fld_$f: field_$f = h; break;"; done <<< "$all_fields")
+                        $( [[ $all_fields ]] && while read f; do echo "case fld_$f: field_$f = h; break;"; done <<< ${all_fields//,/$'\n'})
                         default: throw "unreachable";
                     }
                     
@@ -157,14 +150,14 @@ cat << EOF
             );
             parse_${name} (\
                 c\
-                $( [[ $children ]] && while read f; do echo ", child_$f"; done <<< "$children")\
-                $( [[ $optional_fields ]] && while read f; do echo ", field_$f"; done <<< "$optional_fields")\
-                $( [[ $required_fields ]] && while read f; do echo ", field_$f"; done <<< "$required_fields"));
+                $( [[ $children ]] && while read f; do echo ", child_$f"; done <<< ${children//,/$'\n'})\
+                $( [[ $optional_fields ]] && while read f; do echo ", field_$f"; done <<< ${optional_fields//,/$'\n'})\
+                $( [[ $required_fields ]] && while read f; do echo ", field_$f"; done <<< ${required_fields//,/$'\n'}));
             return;
         }
 EOF
 
-done)
+done <<< "$norca_vars")
     };
     throw "unreachable";
 }
@@ -173,7 +166,7 @@ done)
 
 PARSER_CPP
 
-echo $(date +'%D %H:%M:%S') done generating "src/parser.cpp"
+echo -ne "\r"$(date +'%D %H:%M:%S') done generating src/parser.cpp"\n"
 
 function lint {
     sed -i '/{}/d' $1
@@ -182,7 +175,7 @@ function lint {
     /home/kai/projects/install/bin/clang++ -std=c++20 -stdlib=libc++ -fexperimental-library -fsyntax-only $1 -Wall -Werror -Wno-unused-variable
 }
 lint src/cursor.hpp
-lint src/parse_symbols.hpp
+lint src/parse-symbols.hpp
 lint src/parser.hpp
 lint src/parser.cpp
 
