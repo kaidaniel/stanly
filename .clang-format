@@ -9,4 +9,4 @@ AllowShortIfStatementsOnASingleLine: AllIfsAndElse
 AllowShortLambdasOnASingleLine: All
 AllowShortLoopsOnASingleLine: true
 AlwaysBreakAfterReturnType: AllDefinitions
-#AlignAfterOpenBracket: DontAlign
+AlignAfterOpenBracket: AlwaysBreak

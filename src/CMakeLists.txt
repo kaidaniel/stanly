@@ -16,6 +16,9 @@ foreach(test test-parse test-format test-analyse)
     catch_discover_tests(${test} EXTRA_ARGS --colour-mode ansi)
 endforeach()
 
+add_library(cursor cursor.cpp)
+target_link_libraries(cursor PUBLIC tree-sitter tree-sitter-python project_props)
+
 add_library(parse parse.cpp string-index.cpp)
 target_link_libraries(parse PUBLIC tree-sitter tree-sitter-python project_props)
 

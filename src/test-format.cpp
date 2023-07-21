@@ -43,17 +43,21 @@ TEST_CASE("format syntax nodes", "[format]") {
             {{{"2", alloc{"c"_h, "top"_h}},
               {"0", lit{"a"_h, "s"_h, "b"_h}},
               {"3", update{"a"_h, "b"_h, "c"_h}}},
-             std::format("{}0: {}(a s b), 2: {}(c top), 3: {}(a b c){}", "{", type_name<lit>,
-                         type_name<alloc>, type_name<update>, "}")},
+             std::format(
+                 "{}0: {}(a s b), 2: {}(c top), 3: {}(a b c){}", "{", type_name<lit>,
+                 type_name<alloc>, type_name<update>, "}")},
             {{}, "{}"}}));
     CHECK(std::format("{}", resolve_handles(map)) == str);
   }
   SECTION("std::vector, std::unordered_map") {
     std::unordered_map<handle, ast_node> map{{0_i, alloc{1_i, 2_i}}, {3_i, lit{3_i, 1_i, 4_i}}};
-    CHECK(std::format("{}", map) == std::format("{}3: inj-{}(3 1 4), 0: inj-{}(1 2){}", "{",
-                                                type_name<lit>, type_name<alloc>, "}"));
-    CHECK(std::format("{}", std::vector<ast_node>{update{5_i, 6_i, 7_i}, lit{8_i, 1_i, 9_i}}) ==
-          std::format("[inj-{}(5 6 7), inj-{}(8 1 9)]", type_name<update>, type_name<lit>));
+    CHECK(
+        std::format("{}", map) ==
+        std::format(
+            "{}3: inj-{}(3 1 4), 0: inj-{}(1 2){}", "{", type_name<lit>, type_name<alloc>, "}"));
+    CHECK(
+        std::format("{}", std::vector<ast_node>{update{5_i, 6_i, 7_i}, lit{8_i, 1_i, 9_i}}) ==
+        std::format("[inj-{}(5 6 7), inj-{}(8 1 9)]", type_name<update>, type_name<lit>));
   }
 }
 

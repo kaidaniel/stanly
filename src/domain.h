@@ -80,8 +80,9 @@ struct state : DirectProductAbstractDomain<state, scope, memory> {
   constexpr static int idx = std::same_as<T, memory> ? 1 : 0;
   template <class Target>
   void
-  set_key(const std::conditional_t<std::same_as<Target, memory>, address_repr, var_repr>& index,
-          const std::conditional_t<std::same_as<Target, memory>, object, addresses>& value) {
+  set_key(
+      const std::conditional_t<std::same_as<Target, memory>, address_repr, var_repr>& index,
+      const std::conditional_t<std::same_as<Target, memory>, object, addresses>& value) {
     dp::template apply<idx<Target>>([&](Target* t) { t->set(index, value); });
   }
 };
@@ -264,9 +265,9 @@ struct std::formatter<Data, CharT> : std::formatter<std::string_view, CharT> {
       return std::format_to(ctx.out(), "({} {})", dt.template get<0>(), dt.template get<1>());
     }
     if constexpr (std::same_as<with_handles<stanly::domains::data>, Data>) {
-      return std::format_to(ctx.out(), "({} {})",
-                            with_handles{dt.t.template get<0>(), dt.handles_to_str},
-                            with_handles{dt.t.template get<1>(), dt.handles_to_str});
+      return std::format_to(
+          ctx.out(), "({} {})", with_handles{dt.t.template get<0>(), dt.handles_to_str},
+          with_handles{dt.t.template get<1>(), dt.handles_to_str});
     }
   }
 };
@@ -281,9 +282,9 @@ struct std::formatter<Object, CharT> : std::formatter<std::string_view, CharT> {
       return std::format_to(ctx.out(), "({} {})", obj.template get<0>(), obj.template get<1>());
     }
     if constexpr (std::same_as<with_handles<stanly::domains::object>, Object>) {
-      return std::format_to(ctx.out(), "({} {})",
-                            with_handles{obj.t.template get<0>(), obj.handles_to_str},
-                            with_handles{obj.t.template get<1>(), obj.handles_to_str});
+      return std::format_to(
+          ctx.out(), "({} {})", with_handles{obj.t.template get<0>(), obj.handles_to_str},
+          with_handles{obj.t.template get<1>(), obj.handles_to_str});
     }
   }
 };
@@ -328,15 +329,17 @@ struct std::formatter<Scope, CharT>
 
 inline std::tuple<const stanly::domains::scope&, const stanly::domains::memory&>
 get_scope_and_memory(const stanly::domains::state& state) {
-  return {state.get<stanly::domains::state::idx<stanly::domains::scope>>(),
-          state.get<stanly::domains::state::idx<stanly::domains::memory>>()};
+  return {
+      state.get<stanly::domains::state::idx<stanly::domains::scope>>(),
+      state.get<stanly::domains::state::idx<stanly::domains::memory>>()};
 }
 
 inline std::tuple<with_handles<stanly::domains::scope>, with_handles<stanly::domains::memory>>
 get_scope_and_memory(with_handles<stanly::domains::state> wstate) {
   const auto [scp, mem] = get_scope_and_memory(wstate.t);
-  return {with_handles<stanly::domains::scope>{scp, wstate.handles_to_str},
-          with_handles<stanly::domains::memory>{mem, wstate.handles_to_str}};
+  return {
+      with_handles<stanly::domains::scope>{scp, wstate.handles_to_str},
+      with_handles<stanly::domains::memory>{mem, wstate.handles_to_str}};
 }
 
 template <class State, class CharT>

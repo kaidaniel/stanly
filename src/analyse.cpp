@@ -28,8 +28,9 @@ void
 analyse(const alloc& alloc, domain* d) {
   d->template set_key<scope>(alloc.var, addresses{alloc.var});
   d->template set_key<memory>(
-      alloc.var, object{{type{alloc.type},
-                         data{{record{{row_var{RowVarEls::Closed}, defined{}, used{}}}, {}}}}});
+      alloc.var,
+      object{
+          {type{alloc.type}, data{{record{{row_var{RowVarEls::Closed}, defined{}, used{}}}, {}}}}});
 }
 void
 analyse(const lit& lit, domain* d) {

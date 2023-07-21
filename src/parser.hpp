@@ -1,6 +1,8 @@
 #pragma once
 
+#include "cursor.hpp"
+#include "program.hpp"
+
 namespace stanly::parser {
-struct cursor;
-void parser_trampoline(cursor&);
-}  // namespace stanly::parser
+void parser_trampoline(cursor&, program&);
+}
