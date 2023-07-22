@@ -31,12 +31,16 @@ struct branch { handle if_true; handle if_false; };
 struct loop   { handle body; handle afterwards; };
 // clang-format on
 struct basic_block {
-  std::variant<branch, loop> jump_targets;
+  using jump_targets = std::variant<branch, loop>;
+  jump_targets next;
   std::vector<ast_node> ast_nodes;
 };
 
 template <class T>
 concept ast_cons = contains<syntax::ast_node, std::decay_t<T>>;
+
+template <class T>
+concept basic_block_cons = contains<basic_block::jump_targets, std::decay_t<T>>;
 
 template <ast_cons X, ast_cons Y>
 bool

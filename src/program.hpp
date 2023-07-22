@@ -1,11 +1,11 @@
 #pragma once
 
-#include <vector>
 #include "syntax.h"
 
-namespace stanly::parser{
-struct program {
-    std::vector<syntax::ast_node> nodes;
-    std::vector<syntax::basic_block> basic_blocks;
-};
+namespace stanly{
+struct program;
+template<syntax::ast_cons T>
+void make_node(program&, std::same_as<std::string_view> auto... args);
+template<syntax::basic_block_cons T>
+void make_basic_block(program&, std::same_as<std::string_view> auto... args);
 }

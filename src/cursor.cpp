@@ -1,23 +1,23 @@
 #include "cursor.hpp"
 
-#include "handle.h"
-#include "string-index.h"
+#include <string_view>
+
 #include "tree_sitter/api.h"
 
 extern "C" {
 TSLanguage* tree_sitter_python(void);
 }
 
-namespace stanly::parser {
+namespace stanly {
 struct cursor {
-  cursor(std::string_view, string_index*);
+  cursor(std::string_view);
   cursor(const cursor&) = delete;
   cursor(cursor&&) = delete;
   cursor& operator=(const cursor&) = delete;
   cursor& operator=(const cursor&&) = delete;
   ~cursor();
 
-  friend handle current_handle(cursor&);
+  friend std::string_view current_text(cursor&);
   friend symbol current_symbol(cursor&);
   friend std::optional<field> current_field(cursor&);
   friend bool goto_child(cursor&);
@@ -27,11 +27,10 @@ struct cursor {
  private:
   std::function<void()> destroy;
   TSTreeCursor ts_cursor{};
-  string_index* idx;
   std::string_view program;
 };
 
-cursor::cursor(std::string_view p, string_index* si) : program(p), idx(si) {
+cursor::cursor(std::string_view p) : program(p) {
   auto* parser = ts_parser_new();
   ts_parser_set_language(parser, tree_sitter_python());
   auto* tree = ts_parser_parse_string(parser, nullptr, program.begin(), program.size());
@@ -44,12 +43,12 @@ cursor::cursor(std::string_view p, string_index* si) : program(p), idx(si) {
 }
 cursor::~cursor() { destroy(); }
 
-handle
-current_handle(cursor& c) {
+std::string_view
+current_text(cursor& c) {
   const auto node = ts_tree_cursor_current_node(&c.ts_cursor);
   const auto start = ts_node_start_byte(node);
   const auto end = ts_node_end_byte(node);
-  return c.idx->insert(c.program.substr(start, end - start));
+  return (c.program.substr(start, end - start));
 };
 symbol
 current_symbol(cursor& c) {
@@ -83,4 +82,4 @@ goto_parent(cursor& c) {
   ts_tree_cursor_goto_parent(&c.ts_cursor);
 }
 
-}  // namespace stanly::parser
+}  // namespace stanly

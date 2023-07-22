@@ -31,6 +31,12 @@ class string_index {
   [[nodiscard]] std::string_view get_sv(handle) const;
   std::string_view add_string_to_index(std::string&&);
   syntax::ast_node set_handles(syntax::ast_node& node, const std::vector<std::string_view>& args);
+  template <class T, std::same_as<std::string_view>... Args>
+    requires(std::tuple_size_v<decltype(to_tpl(std::declval<T>()))> == sizeof...(Args))
+  T
+  make(Args... args) {
+    return {insert(args)...};
+  }
 };
 extern string_index global_string_index;
 handle operator""_h(const char* str, std::size_t);
