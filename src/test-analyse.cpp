@@ -12,8 +12,6 @@
 
 namespace stanly {
 
-using namespace domains;
-using namespace syntax;
 using enum RowVarEls;
 
 struct result {

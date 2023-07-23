@@ -18,7 +18,6 @@ TSLanguage* tree_sitter_python(void);
 }
 
 namespace stanly {
-using namespace syntax;
 
 class cursor {
   TSTreeCursor cursor_{};

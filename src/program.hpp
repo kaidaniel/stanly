@@ -4,8 +4,8 @@
 
 namespace stanly{
 struct program;
-template<syntax::ast_cons T>
+template<ast_cons T>
 void make_node(program&, std::same_as<std::string_view> auto... args);
-template<syntax::basic_block_cons T>
+template<basic_block_cons T>
 void make_basic_block(program&, std::same_as<std::string_view> auto... args);
 }

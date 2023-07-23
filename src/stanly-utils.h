@@ -41,7 +41,8 @@ struct std::formatter<std::variant<Args...>, CharT> : std::formatter<std::string
   }
 };
 
-namespace stanly::detail {
+namespace stanly {
+namespace {
 constexpr auto
 strlen(const char *str) {
   const char *end = str;
@@ -61,13 +62,14 @@ struct lines_arg_parser : Base {
     return Base::parse(ctx);
   }
 };
-}  // namespace stanly::detail
+}  // namespace
+}  // namespace stanly
 
 template <template <class...> class Map, class Key, class Val, class... Args, class CharT>
   requires std::same_as<Map<Key, Val, Args...>, std::unordered_map<Key, Val, Args...>> ||
            std::same_as<Map<Key, Val, Args...>, std::map<Key, Val, Args...>>
 struct std::formatter<Map<Key, Val, Args...>, CharT>
-    : public stanly::detail::lines_arg_parser<std::formatter<Val, CharT>> {
+    : public stanly::lines_arg_parser<std::formatter<Val, CharT>> {
   auto
   format(const Map<Key, Val, Args...> &map, auto &ctx) const {
     std::format_to(ctx.out(), "{}", "{");
@@ -87,7 +89,7 @@ struct std::formatter<Map<Key, Val, Args...>, CharT>
 
 template <class El, class CharT>
 struct std::formatter<std::vector<El>, CharT>
-    : stanly::detail::lines_arg_parser<std::formatter<El, CharT>> {
+    : stanly::lines_arg_parser<std::formatter<El, CharT>> {
   constexpr auto
   format(const std::vector<El> vec, auto &ctx) const {
     std::format_to(ctx.out(), "{}", '[');

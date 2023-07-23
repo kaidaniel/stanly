@@ -10,7 +10,6 @@
 #include "syntax.h"
 
 namespace stanly {
-namespace domains {
 std::ostream&
 operator<<(std::ostream& os, RowVarEls rve) {
   switch (rve) {
@@ -19,10 +18,6 @@ operator<<(std::ostream& os, RowVarEls rve) {
   };
   return os;
 }
-
-}  // namespace domains
-using namespace domains;
-using namespace syntax;
 
 void
 analyse(const alloc& alloc, domain* d) {
@@ -136,5 +131,4 @@ analyse(const std::vector<ast_node>& graph) {
   }
   return domain;
 }
-
 }  // namespace stanly

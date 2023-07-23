@@ -8,7 +8,7 @@
 #include "stanly-utils.h"
 #include "to_tpl.h"
 
-namespace stanly::syntax {
+namespace stanly {
 // clang-format off
 struct alloc  { handle var; handle type;                };
 struct top    { handle var; handle reason;              };
@@ -20,9 +20,9 @@ struct update { handle var; handle field; handle src;   };
 struct append { handle var; handle src;                 };
 struct load   { handle var; handle src;   handle field; };
 struct merge  { handle var; handle old;   handle niu;   };
-struct call   { handle var; handle fn;    handle arg;   };
+struct dcall  { handle var; handle fn;    handle arg;   };
 // clang-format on
-using ast_node = std::variant<alloc, top, lit, ref, copy, update, append, load, merge, call>;
+using ast_node = std::variant<alloc, top, lit, ref, copy, update, append, load, merge, dcall>;
 static_assert(sizeof(std::declval<ast_node>()) == 8);
 static_assert(requires(ast_node n) { std::visit([](auto inj) { return inj.var; }, n); });
 
@@ -37,7 +37,7 @@ struct basic_block {
 };
 
 template <class T>
-concept ast_cons = contains<syntax::ast_node, std::decay_t<T>>;
+concept ast_cons = contains<ast_node, std::decay_t<T>>;
 
 template <class T>
 concept basic_block_cons = contains<basic_block::jump_targets, std::decay_t<T>>;
@@ -51,14 +51,14 @@ operator==(X &&x, Y &&y) {
   return false;
 };
 template <class T>
-  requires stanly::syntax::ast_cons<T> || std::same_as<stanly::syntax::ast_node, std::decay_t<T>>
+  requires stanly::ast_cons<T> || std::same_as<stanly::ast_node, std::decay_t<T>>
 auto &
 operator<<(auto &s, const T &x) {
   return s << std::format("{}", x);
 }
-}  // namespace stanly::syntax
+}  // namespace stanly
 
-template <stanly::syntax::ast_cons T, class CharT>
+template <stanly::ast_cons T, class CharT>
 struct std::formatter<T, CharT> : std::formatter<std::string_view, CharT> {
   auto
   format(const T x, auto &ctx) const {

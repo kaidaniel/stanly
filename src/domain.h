@@ -18,7 +18,7 @@
 #include "stanly-utils.h"
 #include "string-index.h"
 
-namespace stanly::domains {
+namespace stanly {
 
 // state: memory x scope
 // memory: address -> object  partition (implicit bottom)
@@ -89,10 +89,8 @@ struct state : DirectProductAbstractDomain<state, scope, memory> {
 static_assert(std::derived_from<state, AbstractDomain<state>>);
 static_assert(std::derived_from<scope, AbstractDomain<scope>>);
 static_assert(std::derived_from<memory, AbstractDomain<memory>>);
-}  // namespace stanly::domains
-namespace stanly {
-using domain = domains::state;
-}
+using domain = state;
+}  // namespace stanly
 
 template <class T>
 struct with_handles {
@@ -155,10 +153,9 @@ struct std::formatter<with_handles<sparta::HashedSetAbstractDomain<Repr>>, CharT
 };
 
 template <class CharT>
-struct std::formatter<stanly::domains::row_var, CharT> : std::formatter<std::string_view, CharT> {
+struct std::formatter<stanly::row_var, CharT> : std::formatter<std::string_view, CharT> {
   auto
-  format(const stanly::domains::row_var& row_var, auto& ctx) const {
-    using namespace stanly::domains;
+  format(const stanly::row_var& row_var, auto& ctx) const {
     std::ostringstream oss{};
     ::operator<<(oss, row_var);
     return std::format_to(ctx.out(), "{}", oss.str());
@@ -183,11 +180,11 @@ format_bindings(const T& x) {
 }
 
 template <class Record, class CharT>
-  requires std::same_as<stanly::domains::record, Record>
+  requires std::same_as<stanly::record, Record>
 struct std::formatter<Record, CharT> : std::formatter<std::string_view, CharT> {
   auto
   format(const Record& record, auto& ctx) const {
-    using namespace stanly::domains;
+    using namespace stanly;
     return std::format_to(
         ctx.out(), "({}defined{}, used{})",
         (record.template get<record::idx<row_var>>().element() == RowVarEls::Open) ? "* " : "",
@@ -197,11 +194,11 @@ struct std::formatter<Record, CharT> : std::formatter<std::string_view, CharT> {
 };
 
 template <class CharT>
-struct std::formatter<with_handles<stanly::domains::record>, CharT>
+struct std::formatter<with_handles<stanly::record>, CharT>
     : std::formatter<std::string_view, CharT> {
   auto
-  format(const with_handles<stanly::domains::record>& record, auto& ctx) const {
-    using namespace stanly::domains;
+  format(const with_handles<stanly::record>& record, auto& ctx) const {
+    using namespace stanly;
     std::string s_used = std::format(
         "{}",
         with_handles<used>{record.t.template get<record::idx<used>>(), record.handles_to_str});
@@ -216,12 +213,12 @@ struct std::formatter<with_handles<stanly::domains::record>, CharT>
 };
 
 template <class Constant, class CharT>
-  requires std::same_as<stanly::domains::constant, Constant> ||
-           std::same_as<with_handles<stanly::domains::constant>, Constant>
+  requires std::same_as<stanly::constant, Constant> ||
+           std::same_as<with_handles<stanly::constant>, Constant>
 struct std::formatter<Constant, CharT> : std::formatter<std::string_view, CharT> {
   auto
   format(const Constant& cnst, auto& ctx) const {
-    using namespace stanly::domains;
+    using namespace stanly;
     std::ostringstream oss{};
     if constexpr (std::same_as<constant, Constant>) { oss << cnst; }
     if constexpr (std::same_as<with_handles<constant>, Constant>) {
@@ -244,16 +241,15 @@ struct std::formatter<Constant, CharT> : std::formatter<std::string_view, CharT>
 };
 
 template <class Data, class CharT>
-  requires std::same_as<stanly::domains::data, Data> ||
-           std::same_as<with_handles<stanly::domains::data>, Data>
+  requires std::same_as<stanly::data, Data> || std::same_as<with_handles<stanly::data>, Data>
 struct std::formatter<Data, CharT> : std::formatter<std::string_view, CharT> {
   struct data_visitor {
     using result_type = std::string;
     const std::map<stanly::handle, std::string_view>& handles_to_str;
     result_type
     operator()(auto&& x) const {
-      if constexpr (std::same_as<stanly::domains::data, Data>) { return std::format("{}", x); }
-      if constexpr (std::same_as<with_handles<stanly::domains::data>, Data>) {
+      if constexpr (std::same_as<stanly::data, Data>) { return std::format("{}", x); }
+      if constexpr (std::same_as<with_handles<stanly::data>, Data>) {
         return std::format("{}", with_handles{x, handles_to_str});
         // return std::format("{}", x);
       }
@@ -261,10 +257,10 @@ struct std::formatter<Data, CharT> : std::formatter<std::string_view, CharT> {
   };
   auto
   format(const Data& dt, auto& ctx) const {
-    if constexpr (std::same_as<stanly::domains::data, Data>) {
+    if constexpr (std::same_as<stanly::data, Data>) {
       return std::format_to(ctx.out(), "({} {})", dt.template get<0>(), dt.template get<1>());
     }
-    if constexpr (std::same_as<with_handles<stanly::domains::data>, Data>) {
+    if constexpr (std::same_as<with_handles<stanly::data>, Data>) {
       return std::format_to(
           ctx.out(), "({} {})", with_handles{dt.t.template get<0>(), dt.handles_to_str},
           with_handles{dt.t.template get<1>(), dt.handles_to_str});
@@ -273,15 +269,15 @@ struct std::formatter<Data, CharT> : std::formatter<std::string_view, CharT> {
 };
 
 template <class Object, class CharT>
-  requires std::same_as<stanly::domains::object, Object> ||
-           std::same_as<with_handles<stanly::domains::object>, Object>
+  requires std::same_as<stanly::object, Object> ||
+           std::same_as<with_handles<stanly::object>, Object>
 struct std::formatter<Object, CharT> : std::formatter<std::string_view, CharT> {
   auto
   format(const Object& obj, auto& ctx) const {
-    if constexpr (std::same_as<stanly::domains::object, Object>) {
+    if constexpr (std::same_as<stanly::object, Object>) {
       return std::format_to(ctx.out(), "({} {})", obj.template get<0>(), obj.template get<1>());
     }
-    if constexpr (std::same_as<with_handles<stanly::domains::object>, Object>) {
+    if constexpr (std::same_as<with_handles<stanly::object>, Object>) {
       return std::format_to(
           ctx.out(), "({} {})", with_handles{obj.t.template get<0>(), obj.handles_to_str},
           with_handles{obj.t.template get<1>(), obj.handles_to_str});
@@ -289,9 +285,10 @@ struct std::formatter<Object, CharT> : std::formatter<std::string_view, CharT> {
   }
 };
 
+namespace {
 template <class Derived, class CharT>
 struct scope_or_memory_formatter
-    : stanly::detail::lines_arg_parser<std::formatter<std::string_view, CharT>> {
+    : stanly::lines_arg_parser<std::formatter<std::string_view, CharT>> {
   auto
   format(const auto& x, auto& ctx) const {
     if (ref_to_t(x).is_top()) { return std::format_to(ctx.out(), Derived::s_fmt, Derived::s_top); }
@@ -304,10 +301,11 @@ struct scope_or_memory_formatter
     return std::format_to(ctx.out(), Derived::s_fmt, format_bindings(x));
   }
 };
+}  // namespace
 
 template <class Memory, class CharT>
-  requires std::same_as<stanly::domains::memory, Memory> ||
-           std::same_as<with_handles<stanly::domains::memory>, Memory>
+  requires std::same_as<stanly::memory, Memory> ||
+           std::same_as<with_handles<stanly::memory>, Memory>
 struct std::formatter<Memory, CharT>
     : scope_or_memory_formatter<std::formatter<Memory, CharT>, CharT> {
   constexpr const static char* s_top = "{∀ addr. addr: object(top)}";
@@ -317,8 +315,7 @@ struct std::formatter<Memory, CharT>
 };
 
 template <class Scope, class CharT>
-  requires std::same_as<stanly::domains::scope, Scope> ||
-           std::same_as<with_handles<stanly::domains::scope>, Scope>
+  requires std::same_as<stanly::scope, Scope> || std::same_as<with_handles<stanly::scope>, Scope>
 struct std::formatter<Scope, CharT>
     : scope_or_memory_formatter<std::formatter<Scope, CharT>, CharT> {
   constexpr const static char* s_top = "{∀ var. var: addresses(top)}";
@@ -327,29 +324,27 @@ struct std::formatter<Scope, CharT>
   constexpr static const char* s_lines_fmt = "scope{:lines}";
 };
 
-inline std::tuple<const stanly::domains::scope&, const stanly::domains::memory&>
-get_scope_and_memory(const stanly::domains::state& state) {
+inline std::tuple<const stanly::scope&, const stanly::memory&>
+get_scope_and_memory(const stanly::state& state) {
   return {
-      state.get<stanly::domains::state::idx<stanly::domains::scope>>(),
-      state.get<stanly::domains::state::idx<stanly::domains::memory>>()};
+      state.get<stanly::state::idx<stanly::scope>>(),
+      state.get<stanly::state::idx<stanly::memory>>()};
 }
 
-inline std::tuple<with_handles<stanly::domains::scope>, with_handles<stanly::domains::memory>>
-get_scope_and_memory(with_handles<stanly::domains::state> wstate) {
+inline std::tuple<with_handles<stanly::scope>, with_handles<stanly::memory>>
+get_scope_and_memory(with_handles<stanly::state> wstate) {
   const auto [scp, mem] = get_scope_and_memory(wstate.t);
   return {
-      with_handles<stanly::domains::scope>{scp, wstate.handles_to_str},
-      with_handles<stanly::domains::memory>{mem, wstate.handles_to_str}};
+      with_handles<stanly::scope>{scp, wstate.handles_to_str},
+      with_handles<stanly::memory>{mem, wstate.handles_to_str}};
 }
 
 template <class State, class CharT>
-  requires std::same_as<stanly::domains::state, State> ||
-           std::same_as<with_handles<stanly::domains::state>, State>
+  requires std::same_as<stanly::state, State> || std::same_as<with_handles<stanly::state>, State>
 struct std::formatter<State, CharT>
-    : stanly::detail::lines_arg_parser<std::formatter<std::string_view, CharT>> {
+    : stanly::lines_arg_parser<std::formatter<std::string_view, CharT>> {
   auto
   format(const State& state, auto& ctx) const {
-    using namespace stanly::domains;
     const auto& [scp, mem] = get_scope_and_memory(state);
     if (this->lines_arg) {
       std::string scope_and_memory;

@@ -8,7 +8,6 @@
 #include "syntax.h"
 
 namespace stanly {
-using namespace syntax;
 
 TEST_CASE("parse basic blocks of python programs", "[parser]") {
   auto [program, nodes] =

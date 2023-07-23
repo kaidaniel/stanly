@@ -7,7 +7,7 @@
 #include "syntax.h"
 
 namespace stanly {
-using namespace syntax;
+
 TEST_CASE("format syntax nodes", "[format]") {
   SECTION("node") {
     auto [node, str] = GENERATE(from_range(std::vector<std::pair<ast_node, std::string>>{

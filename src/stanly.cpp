@@ -31,7 +31,7 @@ print(const T& t) {
 }
 template <>
 void
-print(const std::vector<syntax::ast_node>& t) {
+print(const std::vector<ast_node>& t) {
   for (const auto& n : t) { print(resolve_handles(n)); }
 }
 template <>

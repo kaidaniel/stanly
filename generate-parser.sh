@@ -48,8 +48,8 @@ cat << PROGRAM_HPP > src/program.hpp
 
 namespace stanly{
 struct program;
-void append_node(program&, syntax::ast_node&&);
-void append_basic_block(program&, syntax::basic_block&&);
+void append_node(program&, ast_node&&);
+void append_basic_block(program&, basic_block&&);
 }
 PROGRAM_HPP
 echo -e "\r"$(date +'%D %H:%M:%S') done generating src/program.hpp
