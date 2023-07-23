@@ -28,65 +28,77 @@ namespace stanly {
 // bindings: field -> [address]    partition
 // type: dict, dataframe, closure, int, top, ...vw
 // var, address, field: int
-using namespace sparta;
-template <class T>
-concept abstract_domain = std::derived_from<T, AbstractDomain<T>>;
-enum class RowVarEls { Closed, Open };
-std::ostream& operator<<(std::ostream& os, RowVarEls rve);
-using enum RowVarEls;
-using row_var_l = BitVectorLattice<RowVarEls, 2>;
-static row_var_l l_({Closed, Open}, {{Closed, Open}});
-using field_repr = handle;
-using address_repr = handle;
-using var_repr = handle;
-using constant_repr = handle;
-using type_repr = handle;
-using row_var = FiniteAbstractDomain<RowVarEls, row_var_l, row_var_l::Encoding, &l_>;
-using addresses = HashedSetAbstractDomain<address_repr>;
-using constant = ConstantAbstractDomain<constant_repr>;
-using defined = HashedAbstractPartition<field_repr, addresses>;
-using used = HashedSetAbstractDomain<field_repr>;
-struct record : DirectProductAbstractDomain<record, row_var, defined, used> {
-  using DirectProductAbstractDomain<record, row_var, defined, used>::DirectProductAbstractDomain;
-  template <class T>
-    requires std::same_as<T, row_var> || std::same_as<T, defined> || std::same_as<T, used>
-  constexpr static int idx = std::same_as<T, row_var>   ? 0
-                             : std::same_as<T, defined> ? 1
-                                                        : 2;
-};
-struct data : DirectProductAbstractDomain<data, record, constant> {
-  using DirectProductAbstractDomain<data, record, constant>::DirectProductAbstractDomain;
-  template <class T>
-    requires std::same_as<T, record> || std::same_as<T, constant>
-  constexpr static int idx = std::same_as<T, record> ? 0 : 1;
-};
-using type = ConstantAbstractDomain<type_repr>;
-struct object : DirectProductAbstractDomain<object, type, data> {
-  using DirectProductAbstractDomain<object, type, data>::DirectProductAbstractDomain;
-  template <class T>
-    requires std::same_as<T, type> || std::same_as<T, data>
-  constexpr static int idx = std::same_as<T, type> ? 0 : 1;
-};
 
-using scope = sparta::HashedAbstractEnvironment<var_repr, addresses>;
-using memory = HashedAbstractPartition<address_repr, object>;
-struct state : DirectProductAbstractDomain<state, scope, memory> {
-  using DirectProductAbstractDomain<state, scope, memory>::DirectProductAbstractDomain;
-  using dp = DirectProductAbstractDomain<state, scope, memory>;
+namespace {
+template <class... Args>
+inline constexpr bool fail_if = std::false_type::value;
+
+template <class type, class Tuple, std::size_t i = 0>
+inline constexpr std::size_t idx = []() {
+  if constexpr (std::same_as<type, std::tuple_element_t<i, Tuple>>) {
+    return i;
+  } else if constexpr (std::tuple_size_v<Tuple> > i + 1) {
+    return idx<type, Tuple, i + 1>;
+  } else {
+    struct not_in {};
+    static_assert(fail_if<type, not_in, Tuple>, "type not in tuple");
+    return -1;
+  }
+}();
+enum class RowVarEls { Closed, Open };
+using row_var_l = sparta::BitVectorLattice<RowVarEls, 2>;
+static row_var_l l_({RowVarEls::Closed, RowVarEls::Open}, {{RowVarEls::Closed, RowVarEls::Open}});
+template <class Derived, class... Args>
+struct product : sparta::DirectProductAbstractDomain<Derived, Args...> {
+  using dp = sparta::DirectProductAbstractDomain<Derived, Args...>;
+  using dp::DirectProductAbstractDomain;
+  using tpl = std::tuple<Args...>;
   template <class T>
-    requires std::same_as<T, memory> || std::same_as<T, scope>
-  constexpr static int idx = std::same_as<T, memory> ? 1 : 0;
-  template <class Target>
+  [[nodiscard]] const T&
+  get() const {
+    return dp::template get<idx<T, tpl>>();
+  }
+  template <class F, std::size_t i = 0>
   void
-  set_key(
-      const std::conditional_t<std::same_as<Target, memory>, address_repr, var_repr>& index,
-      const std::conditional_t<std::same_as<Target, memory>, object, addresses>& value) {
-    dp::template apply<idx<Target>>([&](Target* t) { t->set(index, value); });
+  operator()(F&& f) {
+    if constexpr (requires(std::tuple_element_t<i, tpl>* arg) { f(arg); }) {
+      return dp::template apply<stanly::idx<std::tuple_element_t<i, tpl>, tpl>>(std::forward<F>(f));
+    } else {
+      return this->operator()<F, i + 1>(std::forward<F>(f));
+    }
   }
 };
-static_assert(std::derived_from<state, AbstractDomain<state>>);
-static_assert(std::derived_from<scope, AbstractDomain<scope>>);
-static_assert(std::derived_from<memory, AbstractDomain<memory>>);
+
+}  // namespace
+
+using row_var = sparta::FiniteAbstractDomain<RowVarEls, row_var_l, row_var_l::Encoding, &l_>;
+using addresses = sparta::HashedSetAbstractDomain<handle>;
+using constant = sparta::ConstantAbstractDomain<handle>;
+using defined = sparta::HashedAbstractPartition<handle, addresses>;
+using used = sparta::HashedSetAbstractDomain<handle>;
+
+struct record : product<record, row_var, defined, used> {
+  using product::product;
+};
+struct data : product<data, record, constant> {
+  using product::product;
+};
+using type = sparta::ConstantAbstractDomain<handle>;
+
+struct object : product<object, type, data> {
+  using product::product;
+};
+
+using scope = sparta::HashedAbstractEnvironment<handle, addresses>;
+using memory = sparta::HashedAbstractPartition<handle, object>;
+
+struct state : product<state, scope, memory> {
+  using product::product;
+};
+
+static_assert(std::derived_from<state, sparta::AbstractDomain<state>>);
+static_assert(std::derived_from<scope, sparta::AbstractDomain<scope>>);
+static_assert(std::derived_from<memory, sparta::AbstractDomain<memory>>);
 }  // namespace stanly
 
 template <class T>
@@ -96,6 +108,7 @@ struct with_handles {
       stanly::global_string_index.handles();
 };
 
+namespace {
 template <class T>
 const T&
 ref_to_t(const with_handles<T>& x) {
@@ -106,6 +119,7 @@ const T&
 ref_to_t(const T& x) {
   return x;
 }
+}  // namespace
 
 template <class T, class Any>
 with_handles(const T&, const Any&) -> with_handles<T>;
@@ -184,9 +198,8 @@ struct std::formatter<Record, CharT> : std::formatter<std::string_view, CharT> {
     using namespace stanly;
     return std::format_to(
         ctx.out(), "({}defined{}, used{})",
-        (record.template get<record::idx<row_var>>().element() == RowVarEls::Open) ? "* " : "",
-        record.template get<record::idx<defined>>().bindings(),
-        record.template get<record::idx<used>>());
+        (record.template get<row_var>().element() == RowVarEls::Open) ? "* " : "",
+        record.template get<defined>().bindings(), record.template get<used>());
   }
 };
 
@@ -196,14 +209,12 @@ struct std::formatter<with_handles<stanly::record>, CharT>
   auto
   format(const with_handles<stanly::record>& record, auto& ctx) const {
     using namespace stanly;
-    std::string s_used = std::format(
-        "{}",
-        with_handles<used>{record.t.template get<record::idx<used>>(), record.handles_to_str});
+    std::string s_used =
+        std::format("{}", with_handles<used>{record.t.template get<used>(), record.handles_to_str});
     return std::format_to(
         ctx.out(), "({}defined{}, used{})",
-        (record.t.template get<record::idx<row_var>>().element() == RowVarEls::Open) ? "* " : "",
-        format_bindings(
-            with_handles{record.t.template get<record::idx<defined>>(), record.handles_to_str}),
+        (record.t.template get<row_var>().element() == RowVarEls::Open) ? "* " : "",
+        format_bindings(with_handles{record.t.template get<defined>(), record.handles_to_str}),
         // with_handles<used>{record.t.template get<record::idx<used>>(), record.handles_to_str});
         s_used);
   }
@@ -255,12 +266,15 @@ struct std::formatter<Data, CharT> : std::formatter<std::string_view, CharT> {
   auto
   format(const Data& dt, auto& ctx) const {
     if constexpr (std::same_as<stanly::data, Data>) {
-      return std::format_to(ctx.out(), "({} {})", dt.template get<0>(), dt.template get<1>());
+      return std::format_to(
+          ctx.out(), "({} {})", dt.template get<stanly::record>(),
+          dt.template get<stanly::constant>());
     }
     if constexpr (std::same_as<with_handles<stanly::data>, Data>) {
       return std::format_to(
-          ctx.out(), "({} {})", with_handles{dt.t.template get<0>(), dt.handles_to_str},
-          with_handles{dt.t.template get<1>(), dt.handles_to_str});
+          ctx.out(), "({} {})",
+          with_handles{dt.t.template get<stanly::record>(), dt.handles_to_str},
+          with_handles{dt.t.template get<stanly::constant>(), dt.handles_to_str});
     }
   }
 };
@@ -272,12 +286,14 @@ struct std::formatter<Object, CharT> : std::formatter<std::string_view, CharT> {
   auto
   format(const Object& obj, auto& ctx) const {
     if constexpr (std::same_as<stanly::object, Object>) {
-      return std::format_to(ctx.out(), "({} {})", obj.template get<0>(), obj.template get<1>());
+      return std::format_to(
+          ctx.out(), "({} {})", obj.template get<stanly::type>(), obj.template get<stanly::data>());
     }
     if constexpr (std::same_as<with_handles<stanly::object>, Object>) {
       return std::format_to(
-          ctx.out(), "({} {})", with_handles{obj.t.template get<0>(), obj.handles_to_str},
-          with_handles{obj.t.template get<1>(), obj.handles_to_str});
+          ctx.out(), "({} {})",
+          with_handles{obj.t.template get<stanly::type>(), obj.handles_to_str},
+          with_handles{obj.t.template get<stanly::data>(), obj.handles_to_str});
     }
   }
 };
@@ -323,17 +339,14 @@ struct std::formatter<Scope, CharT>
 
 inline std::tuple<const stanly::scope&, const stanly::memory&>
 get_scope_and_memory(const stanly::state& state) {
-  return {
-      state.get<stanly::state::idx<stanly::scope>>(),
-      state.get<stanly::state::idx<stanly::memory>>()};
+  return {state.get<stanly::scope>(), state.get<stanly::memory>()};
 }
 
 inline std::tuple<with_handles<stanly::scope>, with_handles<stanly::memory>>
 get_scope_and_memory(with_handles<stanly::state> wstate) {
-  const auto [scp, mem] = get_scope_and_memory(wstate.t);
   return {
-      with_handles<stanly::scope>{scp, wstate.handles_to_str},
-      with_handles<stanly::memory>{mem, wstate.handles_to_str}};
+      with_handles<stanly::scope>{wstate.t.get<stanly::scope>(), wstate.handles_to_str},
+      with_handles<stanly::memory>{wstate.t.get<stanly::memory>(), wstate.handles_to_str}};
 }
 
 template <class State, class CharT>

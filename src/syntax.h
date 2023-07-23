@@ -22,7 +22,10 @@ struct load   { handle var; handle src;   handle field; };
 struct merge  { handle var; handle old;   handle niu;   };
 struct dcall  { handle var; handle fn;    handle arg;   };
 // clang-format on
-using node = std::variant<alloc, top, lit, ref, copy, update, append, load, merge, dcall>;
+static_assert(__cpp_lib_variant >= 202102L);
+struct node : std::variant<alloc, top, lit, ref, copy, update, append, load, merge, dcall> {
+  using variant::variant;
+};
 static_assert(sizeof(std::declval<node>()) == 8);
 static_assert(requires(node n) { std::visit([](auto inj) { return inj.var; }, n); });
 
@@ -36,13 +39,7 @@ struct basic_block {
   std::vector<node> nodes;
 };
 
-template <class T>
-concept ast_cons = contains<node, std::decay_t<T>>;
-
-template <class T>
-concept basic_block_cons = contains<basic_block::jump_targets, std::decay_t<T>>;
-
-template <ast_cons X, ast_cons Y>
+template <arg_of<node::variant> X, arg_of<node::variant> Y>
 bool
 operator==(X &&x, Y &&y) {
   if constexpr (std::same_as<X, Y>) {
@@ -51,19 +48,24 @@ operator==(X &&x, Y &&y) {
   return false;
 };
 template <class T>
-  requires stanly::ast_cons<T> || std::same_as<stanly::node, std::decay_t<T>>
+  requires arg_of<T, node::variant> || std::same_as<node, std::decay_t<T>>
 auto &
 operator<<(auto &s, const T &x) {
   return s << std::format("{}", x);
 }
 }  // namespace stanly
 
-template <stanly::ast_cons T, class CharT>
-struct std::formatter<T, CharT> : std::formatter<std::string_view, CharT> {
+namespace std {
+template <stanly::arg_of<stanly::node::variant> T, class CharT>
+struct formatter<T, CharT> : formatter<string_view, CharT> {
   auto
   format(const T x, auto &ctx) const {
-    std::formatter<std::string_view, CharT>::format(stanly::type_name<T>, ctx);
-    using tpl_type = std::decay_t<decltype(to_tpl(x))>;
-    return static_cast<std::formatter<tpl_type>>(*this).format(to_tpl(x), ctx);
+    formatter<string_view, CharT>::format(stanly::type_name<T>, ctx);
+    using tpl_type = decay_t<decltype(to_tpl(x))>;
+    return static_cast<formatter<tpl_type>>(*this).format(to_tpl(x), ctx);
   }
 };
+
+template <class CharT>
+struct formatter<stanly::node, CharT> : formatter<stanly::node::variant, CharT> {};
+}  // namespace std

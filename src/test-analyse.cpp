@@ -26,8 +26,8 @@ add_node(node&& n) {
 }
 template <class Target>
 void
-set_key(auto&&... args) {
-  results.back().state.set_key<Target>(args...);
+set_key(const handle& key, const auto& val) {
+  results.back().state([&](Target* t) { t->set(key, val); });
 }
 
 TEST_CASE("analyse a basic block node-by-node", "[node][analyse]") {
@@ -77,9 +77,11 @@ TEST_CASE("analyse a basic block node-by-node", "[node][analyse]") {
 
   add_node(alloc{"alloc1"_h, "dict"_h});
   set_key<scope>("alloc1"_h, addresses{"alloc1"_h});
-  set_key<memory>(
-      "alloc1"_h,
-      object{{type{"dict"_h}, data{{record{{row_var{Closed}, defined{}, used{}}}, constant{}}}}});
+  results.back().state([&](memory* m) {
+    m->set(
+        "alloc1"_h,
+        object{{type{"dict"_h}, data{{record{{row_var{Closed}, defined{}, used{}}}, constant{}}}}});
+  });
 
   add_node(ref{"ref1"_h, "alloc1"_h});
   set_key<scope>("ref1"_h, addresses{"alloc1"_h});
@@ -88,7 +90,7 @@ TEST_CASE("analyse a basic block node-by-node", "[node][analyse]") {
   // row var is closed: no valid execution where load1 has a value (bottom).
   // if row_var was open, load1 could be anything (top).
   set_key<scope>("load1"_h, addresses::bottom());
-  results.back().state.apply<state::idx<memory>>([&](memory* m) { m->set_to_top(); });
+  results.back().state([&](memory* m) { m->set_to_top(); });
 
   add_node(alloc{"alloc2"_h, "unknown"_h});  // has no effect because state is invalid already.
   add_node(ref{"ref2"_h, "alloc1"_h});       // has no effect because state is invalid already.

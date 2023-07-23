@@ -8,10 +8,13 @@
 #include <unordered_map>
 
 namespace stanly {
-template <class T, class x>
-constexpr bool contains = false;
-template <class x, class... xs>
-constexpr bool contains<std::variant<xs...>, x> = std::disjunction_v<std::is_same<x, xs>...>;
+template <class x, class T>
+constexpr bool arg_of_v = false;
+template <class x, template <class...> class T, class... xs>
+constexpr bool arg_of_v<x, T<xs...>> = std::disjunction_v<std::is_same<std::decay_t<x>, xs>...>;
+
+template <class x, class T>
+concept arg_of = arg_of_v<x, T>;
 
 template <class T>
 constexpr std::string_view type_name = []<class S = T> {
