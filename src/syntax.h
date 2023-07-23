@@ -22,9 +22,9 @@ struct load   { handle var; handle src;   handle field; };
 struct merge  { handle var; handle old;   handle niu;   };
 struct dcall  { handle var; handle fn;    handle arg;   };
 // clang-format on
-using ast_node = std::variant<alloc, top, lit, ref, copy, update, append, load, merge, dcall>;
-static_assert(sizeof(std::declval<ast_node>()) == 8);
-static_assert(requires(ast_node n) { std::visit([](auto inj) { return inj.var; }, n); });
+using node = std::variant<alloc, top, lit, ref, copy, update, append, load, merge, dcall>;
+static_assert(sizeof(std::declval<node>()) == 8);
+static_assert(requires(node n) { std::visit([](auto inj) { return inj.var; }, n); });
 
 // clang-format off
 struct branch { handle if_true; handle if_false; };
@@ -33,11 +33,11 @@ struct loop   { handle body; handle afterwards; };
 struct basic_block {
   using jump_targets = std::variant<branch, loop>;
   jump_targets next;
-  std::vector<ast_node> ast_nodes;
+  std::vector<node> nodes;
 };
 
 template <class T>
-concept ast_cons = contains<ast_node, std::decay_t<T>>;
+concept ast_cons = contains<node, std::decay_t<T>>;
 
 template <class T>
 concept basic_block_cons = contains<basic_block::jump_targets, std::decay_t<T>>;
@@ -51,7 +51,7 @@ operator==(X &&x, Y &&y) {
   return false;
 };
 template <class T>
-  requires stanly::ast_cons<T> || std::same_as<stanly::ast_node, std::decay_t<T>>
+  requires stanly::ast_cons<T> || std::same_as<stanly::node, std::decay_t<T>>
 auto &
 operator<<(auto &s, const T &x) {
   return s << std::format("{}", x);

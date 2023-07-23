@@ -98,15 +98,15 @@ class cursor {
   }
 };
 
-using ast_node_args = std::tuple<ast_node, std::vector<std::string_view>>;
-struct ast_node_cursor : public cursor {
+using node_args = std::tuple<node, std::vector<std::string_view>>;
+struct node_cursor : public cursor {
   using cursor::cursor;
-  std::vector<ast_node_args>
+  std::vector<node_args>
   parse_module(std::string_view tgt) {
     assert_at_symbol(symbols::module);
     goto_child();
-    std::vector<ast_node_args> out{};
-    auto simple_or_compound_statement = [&]() -> std::vector<ast_node_args> {
+    std::vector<node_args> out{};
+    auto simple_or_compound_statement = [&]() -> std::vector<node_args> {
       switch (static_cast<_simple_statement>(symbol())) {
         using enum _simple_statement;
         case assert_statement:
@@ -144,17 +144,17 @@ struct ast_node_cursor : public cursor {
     } while (goto_sibling());
     return out;
   }
-  std::vector<ast_node_args>
+  std::vector<node_args>
   parse_dictionary(std::string_view tgt) {
     // dictionary("{" commaSep1(pair | dictionary_splat)? ","? "}")
     assert_at_symbol(symbols::dictionary);  // <dictionary(...)>
-    std::vector<ast_node_args> dict{{alloc{}, {tgt, "dict"}}};
+    std::vector<node_args> dict{{alloc{}, {tgt, "dict"}}};
     goto_child();                              // dictionary(<'{'> pair(...) ...)
     while (goto_sibling() && text() != "}") {  // dictionary(... <pair(...)> ...)
       // pair(key:expression ":" value:expression)
       assert_at_symbol(symbols::pair);
       dict.emplace_back(
-          ast_node{update{}}, std::vector{tgt, text(fields::key), text(fields::value)});
+          stanly::node{update{}}, std::vector{tgt, text(fields::key), text(fields::value)});
       goto_sibling();  // dictionary(... <','> ...)
     }
     goto_parent();  // <dictionary(...)>
@@ -172,7 +172,7 @@ struct ast_node_cursor : public cursor {
     return {variable, text()};
   };
 
-  std::vector<ast_node_args>
+  std::vector<node_args>
   parse_statement() {
     switch (static_cast<_simple_statement>(symbol())) {
       case _simple_statement::expression_statement: return parse_expression_statement();
@@ -180,7 +180,7 @@ struct ast_node_cursor : public cursor {
     }
   }
 
-  std::vector<ast_node_args>
+  std::vector<node_args>
   parse_expression(std::string_view var) {
     switch (static_cast<expression>(symbol())) {
       using enum expression;
@@ -210,7 +210,7 @@ struct ast_node_cursor : public cursor {
     }  // didn't return, so must be primary_expression.
     return parse_primary_expression(var);
   }
-  std::vector<ast_node_args>
+  std::vector<node_args>
   parse_primary_expression(std::string_view var) {
     std::string_view sv = text();
     switch (static_cast<primary_expression>(symbol())) {
@@ -245,7 +245,7 @@ struct ast_node_cursor : public cursor {
     unreachable("should have been either an expression or a primary_expression");
   }
 
-  inline std::vector<ast_node_args>
+  inline std::vector<node_args>
   parse_expression_statement() {
     assert_at_symbol(symbols::expression_statement);
     goto_child();
@@ -281,9 +281,9 @@ struct ast_node_cursor : public cursor {
     unreachable();
   }
 
-  std::vector<ast_node_args>
+  std::vector<node_args>
   parse_basic_block() {
-    std::vector<ast_node_args> node_args{};
+    std::vector<node_args> node_args{};
     while (true) {
       auto sibling = next_sibling();
       std::ranges::move(parse_statement(), std::back_inserter(node_args));
@@ -293,28 +293,28 @@ struct ast_node_cursor : public cursor {
     return node_args;
   }
 
-  std::vector<ast_node_args>
+  std::vector<node_args>
   parse_module() {
     goto_child();
     return parse_basic_block();
   }
 };
 
-std::vector<ast_node>
+std::vector<node>
 parse(std::string&& program, string_index& idx) {
-  auto cursor = ast_node_cursor{idx.add_string_to_index(std::move(program))};
-  std::vector<ast_node> out{};
+  auto cursor = node_cursor{idx.add_string_to_index(std::move(program))};
+  std::vector<node> out{};
   for (auto&& [n, args] : cursor.parse_module()) { out.push_back(idx.set_handles(n, args)); }
   return out;
 }
-std::vector<ast_node>
+std::vector<node>
 parse(std::string&& program) {
   return parse(std::move(program), global_string_index);
 }
 
 std::string
 show_surface_syntax(std::string_view program) {
-  return ast_node_cursor{program}.parse_tree();
+  return node_cursor{program}.parse_tree();
 }
 
 }  // namespace stanly

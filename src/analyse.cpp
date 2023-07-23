@@ -124,7 +124,7 @@ analyse(const T&, state*) {
 }
 
 state
-analyse(const std::vector<ast_node>& graph) {
+analyse(const std::vector<node>& graph) {
   state state{};
   for (const auto& node : graph) {
     std::visit([&](const auto& n) { analyse(n, &state); }, node);

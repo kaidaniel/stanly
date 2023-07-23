@@ -48,7 +48,7 @@ cat << PROGRAM_HPP > src/program.hpp
 
 namespace stanly{
 struct program;
-void append_node(program&, ast_node&&);
+void append_node(program&, node&&);
 void append_basic_block(program&, basic_block&&);
 }
 PROGRAM_HPP

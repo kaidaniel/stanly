@@ -5,7 +5,7 @@
 
 namespace stanly {
     struct program {
-        std::vector<ast_node> nodes;
+        std::vector<node> nodes;
         std::vector<basic_block> basic_blocks;
         string_index* idx;
     };

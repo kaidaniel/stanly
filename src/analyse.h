@@ -7,5 +7,5 @@
 
 namespace stanly {
 
-state analyse(const std::vector<ast_node>&);
+state analyse(const std::vector<node>&);
 }  // namespace stanly

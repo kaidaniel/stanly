@@ -31,8 +31,8 @@ string_index::add_string_to_index(std::string&& string) {
   return {*strings_.begin()};
 };
 
-ast_node
-string_index::set_handles(ast_node& node, const std::vector<std::string_view>& args) {
+node
+string_index::set_handles(node& node, const std::vector<std::string_view>& args) {
   std::visit(
       [&]<class T>(T& n) {
         // clang-format off
@@ -74,7 +74,7 @@ map_tpl(auto&& f, std::tuple<Ts...> tpl) {
 }
 
 std::string
-resolve_handles(const ast_node& node, const string_index& idx) {
+resolve_handles(const node& node, const string_index& idx) {
   return std::visit(
       [&]<class T>(const T& n) {
         auto elements_tpl = map_tpl([&](const handle& h) { return idx.get_sv(h); }, to_tpl(n));
@@ -83,32 +83,31 @@ resolve_handles(const ast_node& node, const string_index& idx) {
       node);
 }
 std::string
-resolve_handles(const ast_node& node) {
+resolve_handles(const node& node) {
   return resolve_handles(node, global_string_index);
 }
 
 std::vector<std::string>
-resolve_handles(const std::vector<ast_node>& nodes, const string_index& idx) {
+resolve_handles(const std::vector<node>& nodes, const string_index& idx) {
   std::vector<std::string> out;
   out.reserve(nodes.size());
   for (const auto& node : nodes) { out.push_back(resolve_handles(node, idx)); }
   return out;
 }
 std::vector<std::string>
-resolve_handles(const std::vector<ast_node>& nodes) {
+resolve_handles(const std::vector<node>& nodes) {
   return resolve_handles(nodes, global_string_index);
 }
 
 std::map<std::string, std::string>
-resolve_handles(
-    const std::unordered_map<std::string_view, ast_node>& map, const string_index& idx) {
+resolve_handles(const std::unordered_map<std::string_view, node>& map, const string_index& idx) {
   std::map<std::string, std::string> out;
   // out.reserve(map.size());
   for (const auto& [key, value] : map) { out[std::string{key}] = resolve_handles(value, idx); }
   return out;
 }
 std::map<std::string, std::string>
-resolve_handles(const std::unordered_map<std::string_view, ast_node>& map) {
+resolve_handles(const std::unordered_map<std::string_view, node>& map) {
   return resolve_handles(map, global_string_index);
 }
 

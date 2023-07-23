@@ -15,12 +15,12 @@ namespace stanly {
 using enum RowVarEls;
 
 struct result {
-  std::vector<ast_node> nodes{};
+  std::vector<node> nodes{};
   state state{};
 };
 std::vector<result> results{result{{}, {}}};
 void
-add_node(ast_node&& n) {
+add_node(node&& n) {
   results.push_back(results.back());
   results.back().nodes.push_back(n);
 }
@@ -30,7 +30,7 @@ set_key(auto&&... args) {
   results.back().state.set_key<Target>(args...);
 }
 
-TEST_CASE("analyse a basic block node-by-node", "[ast_node][analyse]") {
+TEST_CASE("analyse a basic block node-by-node", "[node][analyse]") {
   add_node(alloc{"alloc1"_h, "unknown"_h});
   set_key<scope>("alloc1"_h, addresses{"alloc1"_h});
   set_key<memory>(
