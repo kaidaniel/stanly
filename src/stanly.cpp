@@ -36,7 +36,7 @@ print(const std::vector<ast_node>& t) {
 }
 template <>
 void
-print(const domain& t) {
+print(const state& t) {
   print(with_handles{t});
 }
 

@@ -10,7 +10,6 @@
 #include "HashedSetAbstractDomain.h"
 // import order is important for operator<< lookup.
 // clang-format off
-#include "DisjointUnionAbstractDomain.h"
 #include "DirectProductAbstractDomain.h"
 // clang-format on
 
@@ -61,7 +60,6 @@ struct data : DirectProductAbstractDomain<data, record, constant> {
     requires std::same_as<T, record> || std::same_as<T, constant>
   constexpr static int idx = std::same_as<T, record> ? 0 : 1;
 };
-// using data = DisjointUnionAbstractDomain<record, constant>;
 using type = ConstantAbstractDomain<type_repr>;
 struct object : DirectProductAbstractDomain<object, type, data> {
   using DirectProductAbstractDomain<object, type, data>::DirectProductAbstractDomain;
@@ -89,7 +87,6 @@ struct state : DirectProductAbstractDomain<state, scope, memory> {
 static_assert(std::derived_from<state, AbstractDomain<state>>);
 static_assert(std::derived_from<scope, AbstractDomain<scope>>);
 static_assert(std::derived_from<memory, AbstractDomain<memory>>);
-using domain = state;
 }  // namespace stanly
 
 template <class T>
