@@ -14,16 +14,25 @@
                 "CMAKE_BUILD_TYPE": "Debug"
             }
         },
-        {"name": "default", "inherits": ["base"], "toolchainFile": ".toolchain.cmake"}
+        {"name": "default", "inherits": ["base"], "toolchainFile": ".toolchain.cmake", "environment": {"CMAKE_BUILD_TYPE": "Debug"}},
+        {"name": "RelWithDebInfo", "inherits": ["base"], "toolchainFile": ".toolchain.cmake", "environment": {"CMAKE_BUILD_TYPE": "RelWithDebInfo"}}
     ],
-    "buildPresets": [{"name": "default",  "jobs": 14, "configurePreset": "default"}],
+    "buildPresets": [
+        {"name": "default",  "jobs": 14, "configurePreset": "default"},
+        {"name": "RelWithDebInfo", "jobs": 14, "configurePreset": "RelWithDebInfo"}
+    ],
     "testPresets": [
         {"name": "default", "configurePreset": "default", "output": {"outputOnFailure": true}},
-        {"name": "summary", "inherits": ["default"], "output": {"outputOnFailure": false}}
+        {"name": "summary", "inherits": ["default"], "output": {"outputOnFailure": false}},
+        {"name": "RelWithDebInfo", "configurePreset": "RelWithDebInfo", "output": {"outputOnFailure": true}}
     ],
     "workflowPresets": [{"name": "default", "steps": [
         {"type": "configure", "name": "default"}, 
         {"type": "build", "name": "default"}, 
         {"type": "test", "name": "default"}
+    ]},{"name": "RelWithDebInfo", "steps": [
+        {"type": "configure", "name": "RelWithDebInfo"},
+        {"type": "build", "name": "RelWithDebInfo"},
+        {"type": "test", "name": "RelWithDebInfo"}
     ]}]
 }

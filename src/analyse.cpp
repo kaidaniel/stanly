@@ -36,57 +36,39 @@ void
 analyse(const load& load, state* d) {
   using enum sparta::AbstractValueKind;
   using enum RowVarEls;
-  const auto& scp = d->get<scope>();
-  const addresses& sources = scp.get(load.src);
-  const addresses& fields = scp.get(load.field);
-  const auto& elements = fields.is_value() ? fields.elements() : std::unordered_set<handle>{};
   bool invalid_state = false;
-
-  auto set_invalid_state = [&]() {
-    (*d)([&](memory* m) { m->set_to_top(); });
-    (*d)([&](scope* s) { s->set_to_bottom(); });
-  };
-
-  auto set_load_var = [&](addresses&& x) { (*d)([&](scope* s) { s->set(load.var, x); }); };
-  switch (sources.kind()) {
-    case Top: set_load_var(addresses::top()); return;
-    case Bottom: set_invalid_state(); return;
-    case Value: set_load_var(addresses{}); break;
-  }
-
-  for (const handle source : sources.elements()) {
-    (*d)([&](memory* m) {
-      m->update(source, [&](object* o) {
-        (*o)([&](data* dt) {
-          (*dt)([&](record* r) {
-            (*r)([&](used* u) { u->join_with(fields); });
-            (*r)([&](defined* def) {
-              (*d)([&](scope* scope) {
-                scope->update(load.var, [&](addresses* addrs) {
-                  if (fields.is_top()) { addrs->set_to_top(); }
-                  for (const handle field : elements) {
-                    def->update(field, [&](addresses* field_addrs) {
-                      if (field_addrs->is_bottom()) {  // no binding recorded
-                        switch (r->get<row_var>().element()) {
+  // clang-format off
+  (*d)([&](memory* mem){
+  (*d)([&](scope* scp){
+  scp->update(load.var,  [&](addresses* var){
+  const addresses& field = scp->get(load.field);
+  const addresses& src = scp->get(load.src);
+    switch(src.kind()){
+      case Top: var->set_to_top(); return;
+      case Bottom: invalid_state = true; return;
+      case Value:
+        for(const handle source : src.elements()){
+          mem->update(source, [&](object* obj){(*obj)([&](data* dt){(*dt)([&](record* src_record){
+            (*src_record)([&](used* u){ u->join_with(field);});
+            switch(field.kind()){
+              case Top: var->set_to_top(); return;
+              case Bottom: return;
+              case Value:
+                var->set_to_bottom();
+                for(const handle fld : field.elements()){
+                  const addresses& field_obj_addrs = src_record->get<defined>().get(fld);
+                    switch(field_obj_addrs.kind()){
+                      case Bottom:
+                        switch(src_record->get<row_var>().element()){
                           case Closed: invalid_state = true; return;  // no binding exists
-                          case Open: addrs->set_to_top(); return;     // any binding could exist
-                        }
-                      }
-                      addrs->join_with(*field_addrs);
-                    });
-                  };
-                });
-              });
-            });
-          });
-        });
-      });
-    });
-    if (invalid_state) {
-      set_invalid_state();
-      break;
-    }
-  }
+                          case Open: var->set_to_top(); return;}  // any binding could exist
+                      default: var->join_with(field_obj_addrs); break; }
+                  if(invalid_state){ return; } }}});});});
+          if (invalid_state){ return; }}}});
+  if (invalid_state){
+    mem->set_to_top();
+    scp->set_to_bottom(); }});});
+  // clang-format on
 }
 
 void

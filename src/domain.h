@@ -77,22 +77,22 @@ using constant = sparta::ConstantAbstractDomain<handle>;
 using defined = sparta::HashedAbstractPartition<handle, addresses>;
 using used = sparta::HashedSetAbstractDomain<handle>;
 
-struct record : product<record, row_var, defined, used> {
+struct record final : product<record, row_var, defined, used> {
   using product::product;
 };
-struct data : product<data, record, constant> {
+struct data final : product<data, record, constant> {
   using product::product;
 };
 using type = sparta::ConstantAbstractDomain<handle>;
 
-struct object : product<object, type, data> {
+struct object final : product<object, type, data> {
   using product::product;
 };
 
 using scope = sparta::HashedAbstractEnvironment<handle, addresses>;
 using memory = sparta::HashedAbstractPartition<handle, object>;
 
-struct state : product<state, scope, memory> {
+struct state final : product<state, scope, memory> {
   using product::product;
 };
 
