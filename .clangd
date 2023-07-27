@@ -1,8 +1,16 @@
-#CompileFlags:
-#    CompilationDatabase: "build-vscode"
 Diagnostics:
     UnusedIncludes: Strict
+    MissingIncludes: Strict
 Hover:
     ShowAKA: Yes
 Index:
     StandardLibrary: Yes
+
+---
+
+If:
+    PathMatch: "tree-sitter*"
+Diagnostics:
+    Suppress: "*"
+    UnusedIncludes: None
+    MissingIncludes: None
