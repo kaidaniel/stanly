@@ -1,6 +1,18 @@
 #include "string-index.h"
 
+#include <cstddef>
+#include <map>
+#include <string>
+#include <string_view>
+#include <tuple>
+#include <unordered_map>
+#include <utility>
 #include <variant>
+#include <vector>
+
+#include "handle.h"
+#include "stanly-assert.h"
+#include "syntax.h"
 
 namespace stanly {
 string_index::string_index(const std::map<std::string_view, handle>& m) {
@@ -60,7 +72,7 @@ string_index::set_handles(node& node, const std::vector<std::string_view>& args)
   return node;
 }
 
-string_index global_string_index{};
+string_index global_string_index{};  // NOLINT
 
 handle
 operator""_h(const char* str, std::size_t size) {

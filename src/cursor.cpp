@@ -1,5 +1,8 @@
 #include "cursor.h"
 
+#include <cstdint>
+#include <functional>
+#include <optional>
 #include <string_view>
 
 #include "tree_sitter/api.h"

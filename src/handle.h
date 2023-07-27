@@ -4,7 +4,10 @@
 #include <cstddef>
 #include <cstdint>
 #include <format>
+#include <functional>
+#include <limits>
 #include <ostream>
+#include <string_view>
 
 #include "stanly-assert.h"
 

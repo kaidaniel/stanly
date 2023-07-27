@@ -1,8 +1,16 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators_range.hpp>
+#include <format>
+#include <iostream>
 #include <string>
+#include <string_view>
+#include <unordered_map>
+#include <utility>
 #include <vector>
 
+#include "catch2/generators/catch_generators.hpp"
+#include "handle.h"
+#include "stanly-utils.h"
 #include "string-index.h"
 #include "syntax.h"
 

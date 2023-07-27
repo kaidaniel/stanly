@@ -1,8 +1,11 @@
 #pragma once
 
+#include <cstddef>
 #include <forward_list>
 #include <map>
+#include <string>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 
 #include "handle.h"
@@ -35,7 +38,7 @@ class string_index {
     requires(std::tuple_size_v<decltype(to_tpl(std::declval<T>()))> == sizeof...(Args))
   T
   make(Args&&... args) {
-    return {insert(args)...};
+    return {insert(std::forward<Args>(args))...};
   }
 };
 extern string_index global_string_index;

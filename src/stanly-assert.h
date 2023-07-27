@@ -1,5 +1,8 @@
 #pragma once
 
+#include <__iterator/advance.h>
+
+#include <cstdlib>
 #include <format>
 #include <iostream>
 #include <source_location>
@@ -15,7 +18,7 @@ stanly_assert(
   if (!condition) {
     constexpr std::string_view fmt = "{}:{}: {}: Assertion failed. {}\n";
     std::cerr << std::format(fmt, sl.file_name(), sl.line(), sl.function_name(), msg);
-    std::abort();
+    std::exit(1);
   }
 }
 #endif

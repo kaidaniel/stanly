@@ -1,7 +1,8 @@
 #include <iostream>
 #include <map>
-#include <set>
 #include <string>
+#include <string_view>
+#include <utility>
 
 #include "tree_sitter/api.h"
 
@@ -11,7 +12,7 @@ TSLanguage* tree_sitter_python(void);
 const auto* const py = tree_sitter_python();
 
 int
-main(int argc, const char* argv[]) {
+main(const int argc, const char* argv[]) {
   std::map<int, std::string> names;
   std::string line;
   while (std::getline(std::cin, line)) {

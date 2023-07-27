@@ -9,7 +9,7 @@ Index:
 ---
 
 If:
-    PathMatch: "tree-sitter*"
+    PathMatch: [".*build-default/.*"]
 Diagnostics:
     Suppress: "*"
     UnusedIncludes: None

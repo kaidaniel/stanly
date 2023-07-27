@@ -2,11 +2,13 @@
 
 #include <AbstractDomain.h>
 
+#include <unordered_set>
 #include <variant>
 #include <vector>
 
 #include "domain.h"
 #include "handle.h"
+#include "stanly-utils.h"
 #include "syntax.h"
 
 namespace stanly {

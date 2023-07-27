@@ -1,12 +1,19 @@
+#include <__format/format_functions.h>
+
+#include <cstdlib>
 #include <cxxopts.hpp>
 #include <format>
 #include <fstream>
 #include <iostream>
-#include <ranges>
+#include <iterator>
 #include <string>
+#include <vector>
 
 #include "analyse.h"
+#include "domain.h"
 #include "parse.h"
+#include "string-index.h"
+#include "syntax.h"
 
 using namespace stanly;
 
@@ -15,7 +22,7 @@ read_file(const std::string& filename) {
   std::ifstream file{filename};
   if (file) { return {std::istreambuf_iterator<char>{file}, std::istreambuf_iterator<char>{}}; }
   std::cerr << "Error opening file: " << filename << "\n";
-  exit(1);
+  std::exit(1);
 }
 
 template <class T>
@@ -54,14 +61,14 @@ main(int argc, char* argv[]) {
   // clang-format on
   options.parse_positional({"program"});
   auto result = options.parse(argc, argv);
-  if (result.count("help")) {
+  if (result.count("help") != 0U) {
     std::cout << options.help() << "\n";
     return 1;
   }
 
   const auto& program = result["program"].as<std::string>();
-  auto ast = parse(result.count("c") ? std::string{program} : read_file(program));
-  result.count("p") ? print(ast) : print(analyse(ast));
+  auto ast = parse(result.count("c") != 0U ? std::string{program} : read_file(program));
+  result.count("p") != 0U ? print(ast) : print(analyse(ast));
 
   return 0;
 }

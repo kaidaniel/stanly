@@ -2,11 +2,13 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators_range.hpp>
 #include <format>
-#include <map>
 #include <vector>
 
 #include "analyse.h"
+#include "catch2/catch_message.hpp"
+#include "catch2/generators/catch_generators.hpp"
 #include "domain.h"
+#include "handle.h"
 #include "string-index.h"
 #include "syntax.h"
 

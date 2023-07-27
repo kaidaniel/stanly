@@ -2,7 +2,11 @@
 
 #include <format>
 #include <string_view>
+#include <type_traits>
+#include <utility>
 #include <variant>
+#include <vector>
+#include <version>
 
 #include "handle.h"
 #include "stanly-utils.h"

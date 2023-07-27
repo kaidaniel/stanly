@@ -1,12 +1,19 @@
+#include <array>
+#include <cstddef>
+#include <format>
+#include <string>
 #include <string_view>
+#include <type_traits>
+#include <utility>
+#include <variant>
+#include <vector>
 
 #include "parser-symbols.h"
 #include "stanly-assert.h"
-#include "stanly-concepts.h"
+#include "stanly-concepts.h"  // IWYU pragma: keep (clangd bug with concepts: https://github.com/llvm/llvm-project/issues/60702)
 #include "stanly-utils.h"
 
 namespace stanly {
-
 #define JUMP_TABLE_MAX_SIZE 250
 
 struct field_ref {
@@ -97,9 +104,9 @@ recursively_descend(Parser& parser) {
 }
 
 template <parser_c Parser>
-std::decay_t<decltype(Parser::program)>
-parse(std::string_view source) {
-  Parser parser{source};
+decltype(Parser::program)
+parse(std::string&& source) {
+  Parser parser{std::move(source)};
   recursively_descend(parser);
   return parser.program;
 };

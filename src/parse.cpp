@@ -102,7 +102,7 @@ using node_args = std::tuple<node, std::vector<std::string_view>>;
 struct node_cursor : public cursor {
   using cursor::cursor;
   std::vector<node_args>
-  parse_module(std::string_view tgt) {
+  parse_module(std::string_view tgt) {  // NOLINT
     assert_at_symbol(symbols::module);
     goto_child();
     std::vector<node_args> out{};

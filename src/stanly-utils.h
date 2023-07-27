@@ -1,11 +1,17 @@
 #pragma once
 
+#include <__iterator/advance.h>
+
+#include <cstdlib>
 #include <format>
 #include <iostream>
-#include <map>
-#include <source_location>
 #include <string_view>
-#include <unordered_map>
+#include <tuple>
+#include <type_traits>
+#include <variant>
+#include <vector>
+
+#include "map"  // IWYU pragma: keep (used in template)
 
 namespace stanly {
 template <class x, class T>
@@ -27,7 +33,7 @@ constexpr std::string_view type_name = []<class S = T> {
 unreachable(std::string_view msg = "") {
 #ifndef NDEBUG
   std::cerr << std::format("Unreachable. {}\n", msg);
-  std::abort();
+  std::exit(1);
 #else
   [&]() { return msg; }();
   __builtin_unreachable();

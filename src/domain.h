@@ -1,6 +1,14 @@
 #pragma once
 
-#include <concepts>
+#include <cstddef>
+#include <format>
+#include <map>
+#include <sstream>
+#include <string>
+#include <string_view>
+#include <tuple>
+#include <type_traits>
+#include <unordered_map>
 
 #include "AbstractDomain.h"
 #include "ConstantAbstractDomain.h"
@@ -35,7 +43,7 @@ inline constexpr bool fail_if = std::false_type::value;
 
 template <class type, class Tuple, std::size_t i = 0>
 inline constexpr std::size_t idx = []() {
-  if constexpr (std::same_as<type, std::tuple_element_t<i, Tuple>>) {
+  if constexpr (std::same_as<type, std::tuple_element_t<i, Tuple>>) {  // NOLINT
     return i;
   } else if constexpr (std::tuple_size_v<Tuple> > i + 1) {
     return idx<type, Tuple, i + 1>;
@@ -46,8 +54,8 @@ inline constexpr std::size_t idx = []() {
   }
 }();
 enum class RowVarEls { Closed, Open };
-using row_var_l = sparta::BitVectorLattice<RowVarEls, 2>;
-static row_var_l l_({RowVarEls::Closed, RowVarEls::Open}, {{RowVarEls::Closed, RowVarEls::Open}});
+using row_var_l = const sparta::BitVectorLattice<RowVarEls, 2>;
+const row_var_l l_({RowVarEls::Closed, RowVarEls::Open}, {{RowVarEls::Closed, RowVarEls::Open}});
 template <class Derived, class... Args>
 struct product : sparta::DirectProductAbstractDomain<Derived, Args...> {
   using dp = sparta::DirectProductAbstractDomain<Derived, Args...>;
