@@ -31,10 +31,10 @@ class string_index {
   [[nodiscard]] std::string_view get_sv(handle) const;
   std::string_view add_string_to_index(std::string&&);
   node set_handles(node& node, const std::vector<std::string_view>& args);
-  template <class T, std::same_as<std::string_view>... Args>
+  template <class T, std::convertible_to<std::string_view>... Args>
     requires(std::tuple_size_v<decltype(to_tpl(std::declval<T>()))> == sizeof...(Args))
   T
-  make(Args... args) {
+  make(Args&&... args) {
     return {insert(args)...};
   }
 };

@@ -29,6 +29,7 @@ unreachable(std::string_view msg = "") {
   std::cerr << std::format("Unreachable. {}\n", msg);
   std::abort();
 #else
+  [&]() { return msg; }();
   __builtin_unreachable();
 #endif
 }

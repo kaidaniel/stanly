@@ -1,4 +1,4 @@
-#include "cursor.hpp"
+#include "cursor.h"
 
 #include <string_view>
 
@@ -18,8 +18,8 @@ struct cursor {
   ~cursor();
 
   friend std::string_view current_text(cursor&);
-  friend symbol current_symbol(cursor&);
-  friend std::optional<field> current_field(cursor&);
+  friend uint16_t current_symbol(cursor&);
+  friend std::optional<uint16_t> current_field(cursor&);
   friend bool goto_child(cursor&);
   friend bool goto_sibling(cursor&);
   friend void goto_parent(cursor&);
@@ -50,15 +50,15 @@ current_text(cursor& c) {
   const auto end = ts_node_end_byte(node);
   return (c.program.substr(start, end - start));
 };
-symbol
+uint16_t
 current_symbol(cursor& c) {
-  return static_cast<symbol>(ts_node_symbol(ts_tree_cursor_current_node(&c.ts_cursor)));
+  return static_cast<uint16_t>(ts_node_symbol(ts_tree_cursor_current_node(&c.ts_cursor)));
 };
-std::optional<field>
+std::optional<uint16_t>
 current_field(cursor& c) {
   auto field_id = ts_tree_cursor_current_field_id(&c.ts_cursor);
   if (field_id != 0) { return std::nullopt; }
-  return static_cast<field>(field_id);
+  return static_cast<uint16_t>(field_id);
 };
 
 bool
@@ -81,5 +81,4 @@ void
 goto_parent(cursor& c) {
   ts_tree_cursor_goto_parent(&c.ts_cursor);
 }
-
 }  // namespace stanly
