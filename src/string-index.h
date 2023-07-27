@@ -41,7 +41,7 @@ class string_index {
     return {insert(std::forward<Args>(args))...};
   }
 };
-extern string_index global_string_index;
+extern string_index global_string_index;  // NOLINT
 handle operator""_h(const char* str, std::size_t);
 
 std::string resolve_handles(const node&);
