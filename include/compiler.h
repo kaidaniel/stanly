@@ -91,26 +91,24 @@ template <tree_c Tree, class Pre, class Post>
 void
 traverse_tree(Tree& tree, Pre&& cc_pre_order, Post&& cc_post_order) {
   while (true) {
-    cc_pre_order(value(tree));
+    std::forward<Pre>(cc_pre_order)(value(tree));
     if (goto_child(tree)) { continue; }  // '
     while (true) {
-      cc_post_order(value(tree));
+      std::forward<Post>(cc_post_order)(value(tree));
       if (goto_sibling(tree)) { break; }   // *
       if (!goto_parent(tree)) { return; }  // ^
     }
   }
 }
 
-template <compiler_c Compiler>
-decltype(Compiler::assembler)
-parse(std::string&& source) {
-  using tree_node = typename Compiler::tree_node;
-  using fns = visit_tree_node_functions<tree_node, decltype(Compiler::assembler)>;
-  Compiler compiler{std::move(source)};
+void
+compile(tree_c auto& parse_tree, assembler_c auto& assembler) {
+  using tree_node = typename std::decay_t<decltype(parse_tree)>::tree_node;
+  using fns = visit_tree_node_functions<tree_node, std::decay_t<decltype(assembler)>>;
   std::vector<tree_node> children = {};
   std::vector<std::size_t> n_children = {0};
   traverse_tree(
-      compiler.tree,
+      parse_tree,
       [&](tree_node&& v) {  // called in pre-order
         children.push_back(std::move(v));
         n_children.back() += 1;
@@ -126,10 +124,9 @@ parse(std::string&& source) {
                 children.size()));
         std::span<tree_node> args = {children.end() - n_args, children.end()};
         auto symbol = node_kind(std::move(v));
-        jump_table<JUMP_TABLE_MAX_SIZE, fns>(symbol)(compiler.assembler, args.data() - 1, args);
+        jump_table<JUMP_TABLE_MAX_SIZE, fns>(symbol)(assembler, args.data() - 1, args);
         children.erase(children.end() - n_args, children.end());
       });
-  return compiler.assembler;
 };
 
 }  // namespace stanly

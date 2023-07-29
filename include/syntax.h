@@ -38,8 +38,7 @@ struct branch { handle if_true; handle if_false; };
 struct loop   { handle body; handle afterwards; };
 // clang-format on
 struct basic_block {
-  using jump_targets = std::variant<branch, loop>;
-  jump_targets next;
+  std::variant<branch, loop> next;
   std::vector<node> nodes;
 };
 

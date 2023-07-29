@@ -30,6 +30,8 @@ class string_index {
   }
   string_index(const std::map<std::string_view, handle>&);
   string_index();
+  string_index(const string_index&) = delete;
+  string_index& operator=(const string_index&) = delete;
   handle insert(std::string_view);
   [[nodiscard]] std::string_view get_sv(handle) const;
   std::string_view add_string_to_index(std::string&&);

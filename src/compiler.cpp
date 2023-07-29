@@ -2,6 +2,7 @@
 #include "compiler.h"  // IWYU pragma: keep
 
 #include <functional>
+#include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -112,12 +113,7 @@ add_string_to_index(cfg& c, std::string&& str) {
 struct python_ast : public tree_sitter_ast {
   python_ast(std::string_view sv) : tree_sitter_ast(sv, tree_sitter_python()) {}
 };
-struct cfg_compiler {
-  cfg_compiler(std::string&& s);
-  using tree_node = tree_sitter_ast_node;
-  cfg assembler;
-  python_ast tree;
-};
+
 inline auto
 node_kind(const tree_sitter_ast_node& n) {
   return n.symbol;
@@ -125,10 +121,12 @@ node_kind(const tree_sitter_ast_node& n) {
 
 static_assert(assembler_c<cfg>);
 static_assert(tree_c<python_ast>);
-static_assert(compiler_c<cfg_compiler>);
-cfg
-parse(std::string&& source) {
-  return parse<cfg_compiler>(std::move(source));
+std::unique_ptr<cfg>
+parse_python(std::string&& source) {
+  auto assembler = std::make_unique<cfg>();
+  auto parse_tree = python_ast(add_string_to_index(*assembler, std::move(source)));
+  compile(parse_tree, *assembler);
+  return assembler;
 }
 
 }  // namespace stanly
