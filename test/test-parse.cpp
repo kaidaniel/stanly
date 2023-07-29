@@ -6,7 +6,7 @@
 #include <vector>
 
 #include "catch2/generators/catch_generators.hpp"
-#include "parse.h"
+#include "parse2.h"
 #include "string-index.h"
 #include "syntax.h"
 

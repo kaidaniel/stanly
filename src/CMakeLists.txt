@@ -1,10 +1,10 @@
 
+add_library(parse2 parse2.cpp string-index.cpp)
+target_link_libraries(parse2 PRIVATE tree-sitter tree-sitter-python)
+
 add_library(parse parse.cpp string-index.cpp)
 target_link_libraries(parse PRIVATE tree-sitter tree-sitter-python)
-
-add_library(compiler compiler.cpp string-index.cpp)
-target_link_libraries(compiler PRIVATE tree-sitter tree-sitter-python)
-target_compile_definitions(compiler PRIVATE JUMP_TABLE_MAX_SIZE=250)
+target_compile_definitions(parse PRIVATE JUMP_TABLE_MAX_SIZE=250)
 
 add_library(analyse analyse.cpp)
 target_link_libraries(analyse PUBLIC sparta)
@@ -30,4 +30,4 @@ foreach(tgt ${tgts})
 endforeach()
 
 add_library(stanly INTERFACE)
-target_link_libraries(stanly INTERFACE parse analyse)
+target_link_libraries(stanly INTERFACE parse2 analyse)

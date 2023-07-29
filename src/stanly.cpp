@@ -11,7 +11,7 @@
 
 #include "analyse.h"
 #include "domain.h"
-#include "parse.h"
+#include "parse2.h"
 #include "string-index.h"
 #include "syntax.h"
 
