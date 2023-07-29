@@ -1,0 +1,5 @@
+foreach(test test-parse test-format test-analyse)
+    add_executable(${test} ${test}.cpp)
+    target_link_libraries(${test} PRIVATE Catch2::Catch2WithMain parse analyse)
+    catch_discover_tests(${test} EXTRA_ARGS --colour-mode ansi)
+endforeach()

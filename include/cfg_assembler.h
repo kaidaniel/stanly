@@ -7,6 +7,7 @@
 #include <variant>
 #include <vector>
 
+#include "stanly-concepts.h"  // IWYU pragma: keep
 #include "string-index.h"
 #include "syntax.h"
 
@@ -42,4 +43,6 @@ inline std::string_view
 add_string_to_index(program& p, std::string&& str) {
   return p.idx.add_string_to_index(std::move(str));
 }
+
+static_assert(assembler<program>);
 }  // namespace stanly

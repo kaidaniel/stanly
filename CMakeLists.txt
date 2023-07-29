@@ -8,5 +8,12 @@ find_package(Catch2 REQUIRED)  # defines target 'Catch2::Catch2WithMain'
 find_package(tree-sitter REQUIRED)  # defines target 'tree-sitter' and 'tree-sitter-python'
 find_package(cxxopts REQUIRED)
 
+include(Catch)
+
+set_target_properties(sparta tree-sitter tree-sitter-python Catch2
+    PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
 enable_testing()
 add_subdirectory(src)
+add_subdirectory(test)
+
