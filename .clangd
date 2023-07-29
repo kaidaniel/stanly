@@ -5,6 +5,8 @@ Hover:
     ShowAKA: Yes
 Index:
     StandardLibrary: Yes
+CompileFlags:
+    Add: [-xc++, -std=c++20, -stdlib=libc++,-fexperimental-library]
 
 ---
 

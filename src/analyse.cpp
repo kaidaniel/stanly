@@ -109,4 +109,5 @@ analyse(const std::vector<node>& graph) {
   }
   return state;
 }
+
 }  // namespace stanly
