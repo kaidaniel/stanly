@@ -8,6 +8,7 @@
 
 #include "domain.h"
 #include "handle.h"
+#include "stanly-assert.h"
 #include "stanly-utils.h"
 #include "syntax.h"
 
@@ -102,12 +103,18 @@ analyse(const T&, state*) {
 }
 
 state
-analyse(const std::vector<node>& graph) {
+analyse(const std::vector<node>& basic_block) {
   state state{};
-  for (const auto& node : graph) {
+  for (const auto& node : basic_block) {
     std::visit([&](const auto& n) { analyse(n, &state); }, node);
   }
   return state;
+}
+
+state
+analyse(const std::vector<basic_block>& graph) {
+  stanly_assert(graph.size() == 1);
+  return analyse(graph.back().nodes);
 }
 
 }  // namespace stanly
