@@ -1,6 +1,7 @@
 
 #include "parse.h"
 
+#include <cstddef>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -10,9 +11,10 @@
 #include <variant>
 #include <vector>
 
-#include "assemble.h"
 #include "string-index.h"
 #include "syntax.h"
+#include "to_tpl.h"
+#include "tree.h"
 #include "tree_sitter/api.h"
 
 extern "C" {
@@ -22,8 +24,8 @@ TSLanguage* tree_sitter_python(void);
 namespace stanly {
 
 struct tree_sitter_ast_node {
-  std::optional<int> field;
-  int symbol;
+  std::optional<std::size_t> field;
+  std::size_t symbol;
   std::string_view text;
 };
 
@@ -109,6 +111,15 @@ node_kind(const tree_sitter_ast_node& n) {
   return n.symbol;
 }
 
+template <class T>
+// clang-format off
+concept assembler_c = std::default_initializable<T> && requires(std::string source, T t) {
+      std::visit([]<class IrNode>(IrNode n) {std::apply([](auto... args) {
+          T t; construct<IrNode>(t, ((void)args, std::string_view{})...);},to_tpl(n));}, t.basic_blocks[0].next);
+      { add_string_to_index(t, std::move(source)) } -> std::same_as<std::string_view>;
+};
+// clang-format on
+
 static_assert(assembler_c<cfg>);
 static_assert(tree_c<python_ast>);
 
@@ -116,8 +127,14 @@ std::unique_ptr<cfg>
 parse(std::string&& source, lang_tag<lang::python>) {
   auto assembler = std::make_unique<cfg>();
   auto parse_tree = python_ast(add_string_to_index(*assembler, std::move(source)));
-  assemble(parse_tree, *assembler);
+  visit_tree_nodes<cfg>(parse_tree, *assembler);
   return assembler;
+}
+
+std::vector<node>
+parse(std::string&& source) {
+  // TODO remove this after removing the old parser
+  return parse(std::move(source), lang_tag<lang::python>{})->basic_blocks.back().nodes;
 }
 
 }  // namespace stanly

@@ -7,8 +7,7 @@
 #include <string_view>
 #include <type_traits>
 #include <utility>
-
-#include "stanly-assert.h"
+#include <vector>
 
 namespace stanly {
 template <class T>
@@ -50,33 +49,64 @@ traverse_tree(Tree& tree, Pre&& cc_pre_order, Post&& cc_post_order) {
   }
 }
 
+template <std::size_t N = JUMP_TABLE_MAX_SIZE, class Values>
+  requires requires(Values values) { values.template operator()<0>(); }
+constexpr auto
+make_array(Values values) {
+  using array = std::array<std::decay_t<decltype(values.template operator()<0>())>, N>;
+  return [&]<std::size_t... Is>(std::index_sequence<Is...>) -> array {
+    array arr{};
+    ((arr[Is] = values.template operator()<Is>()), ...);
+    return arr;
+  }(std::make_index_sequence<N>{});
+}
+
 template <std::size_t N>
 struct tag {};
 
-template <class T, class TreeNode>
-struct visit_tree_node_functions {
-  template <std::size_t N>
-  static void
-  function(T& t, TreeNode* node, std::span<TreeNode> children) {
-    if constexpr (requires { visit_tree_node(t, node, children, tag<N>{}); }) {
-      visit_tree_node(t, node, children, tag<N>{});
-    } else if constexpr (requires { visit_tree_node(t, node, tag<N>{}); }) {
-      visit_tree_node(t, node, tag<N>{});
-    }
-  }
+template <class State>
+constexpr State&
+visit_tree_nodes(tree_c auto& parse_tree, State& state) {
+  using tree_node = typename std::decay_t<decltype(parse_tree)>::tree_node;
+  std::vector<tree_node> children = {};
+  std::vector<std::size_t> n_children = {0};
+  traverse_tree(
+      parse_tree,
+      [&](tree_node&& v) {  // called in pre-order
+        children.push_back(std::move(v));
+        n_children.back() += 1;
+        n_children.push_back(0);
+      },
+      [&](tree_node&& v) {  // called in post-order
+        std::size_t n_args = n_children.back();
+        n_children.pop_back();
+        stanly_assert(
+            children.size() >= (n_args + 1),
+            std::format(
+                "not enough children to visit node: expected {}, but got only {}", n_args + 1,
+                children.size()));
+        std::span<tree_node> args = {children.end() - n_args, children.end()};
+        auto symbol = node_kind(std::move(v));
+
+        constexpr static std::array jump_table = make_array([]<std::size_t N> {
+          return +[](State& state, tree_node* node, std::span<tree_node> children) {
+            if constexpr (requires { visit_tree_node(state, node, children, tag<N>{}); }) {
+              visit_tree_node(state, node, children, tag<N>{});
+            } else if constexpr (requires { visit_tree_node(state, node, tag<N>{}); }) {
+              visit_tree_node(state, node, tag<N>{});
+            }
+          };
+        });
+        stanly_assert(
+            symbol <= jump_table.size(),
+            std::format("jump_table index out of bounds: {} > {}", symbol, jump_table.size()));
+        stanly_assert(
+            symbol >= 0,
+            std::format("jump table index negative: {} (len: {})", symbol, jump_table.size()));
+        jump_table[symbol](state, args.data() - 1, args);
+        children.erase(children.end() - n_args, children.end());
+      });
+  return state;
 };
 
-template <std::size_t N, class FunctionPointers>
-constexpr auto jump_table = [] {
-  return [&]<std::size_t... Is>(std::index_sequence<Is...>) {
-    FunctionPointers f{};
-    std::array<std::decay_t<decltype(f.template function<0>)>, N> arr{};
-    ((arr[Is] = &f.template function<Is>), ...);
-    return [=](std::size_t idx) {
-      stanly_assert(idx <= N, std::format("jump_table index out of bounds: {} > {}", idx, N));
-      stanly_assert(idx >= 0, std::format("jump table index negative: {} (len: {})", idx, N));
-      return arr[idx];
-    };
-  }(std::make_index_sequence<N>{});
-}();
 }  // namespace stanly
