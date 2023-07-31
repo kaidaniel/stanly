@@ -90,10 +90,10 @@ visit_tree_nodes(tree_c auto& parse_tree, State& state) {
 
         constexpr static std::array jump_table = make_array([]<std::size_t N> {
           return +[](State& state, tree_node* node, std::span<tree_node> children) {
-            if constexpr (requires { visit_tree_node(state, node, children, tag<N>{}); }) {
-              visit_tree_node(state, node, children, tag<N>{});
-            } else if constexpr (requires { visit_tree_node(state, node, tag<N>{}); }) {
-              visit_tree_node(state, node, tag<N>{});
+            if constexpr (requires { visit_tree_node(tag<N>{}, state, node, children); }) {
+              visit_tree_node(tag<N>{}, state, node, children);
+            } else if constexpr (requires { visit_tree_node(tag<N>{}, state, node); }) {
+              visit_tree_node(tag<N>{}, state, node);
             }
           };
         });

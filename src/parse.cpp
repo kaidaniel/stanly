@@ -1,16 +1,22 @@
 
 #include "parse.h"
 
+#include <__ranges/filter_view.h>
+
+#include <algorithm>
 #include <cstddef>
 #include <functional>
 #include <memory>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <utility>
 #include <variant>
 #include <vector>
 
+#include "parser-symbols.h"
+#include "stanly-assert.h"
 #include "string-index.h"
 #include "syntax.h"
 #include "to_tpl.h"
@@ -22,6 +28,7 @@ TSLanguage* tree_sitter_python(void);
 }
 
 namespace stanly {
+namespace rg = std::ranges;
 
 struct tree_sitter_ast_node {
   std::optional<std::size_t> field;
@@ -122,6 +129,61 @@ concept assembler_c = std::default_initializable<T> && requires(std::string sour
 
 static_assert(assembler_c<cfg>);
 static_assert(tree_c<python_ast>);
+
+template <symbol s>
+using stag = tag<static_cast<std::size_t>(s)>;
+
+using enum symbol;
+
+struct node_tag {};
+
+auto
+find(node_tag, std::span<python_ast::tree_node> children, field fld) {
+  auto ret = rg::find(
+      children, std::optional{static_cast<std::size_t>(fld)}, &python_ast::tree_node::field);
+  stanly_assert(ret != children.end());
+  return *ret;
+}
+
+std::string_view
+find(std::span<python_ast::tree_node> children, field fld) {
+  return find(node_tag{}, children, fld).text;
+}
+
+void
+visit_tree_node(
+    stag<sym_assignment>, assembler_c auto& a, python_ast::tree_node* arg,
+    std::span<python_ast::tree_node> c) {
+  // TODO switch((symbol)find(node_tag{}, c, field::fld_left).symbol){
+  //   case sym_identifier: break;
+  //   case sym_attribute: break;
+  //   case sym_subscript: ...
+  // };
+  construct<ref>(a, find(c, field::fld_left), find(c, field::fld_right));
+}
+
+void
+visit_tree_node(
+    stag<sym_augmented_assignment>, assembler_c auto& a, python_ast::tree_node* arg,
+    std::span<python_ast::tree_node> c) {
+  construct<alloc>(a, arg->text, "args");
+  construct<append>(a, arg->text, find(c, field::fld_left));
+  construct<append>(a, arg->text, find(c, field::fld_right));
+  construct<dcall>(a, find(c, field::fld_left), find(c, field::fld_operator), arg->text);
+  construct<ref>(a, find(c, field::fld_left), find(c, field::fld_right));
+}
+
+void
+visit_tree_node(
+    stag<sym_attribute>, assembler_c auto& a, python_ast::tree_node* arg,
+    std::span<python_ast::tree_node> c) {
+  construct<load>(a, arg->text, find(c, field::fld_object), find(c, field::fld_attribute));
+}
+
+void
+visit_tree_node(
+    stag<sym_subscript>, assembler_c auto& a, python_ast::tree_node* arg,
+    std::span<python_ast::tree_node> c) {}
 
 std::unique_ptr<cfg>
 parse(std::string&& source, lang_tag<lang::python>) {

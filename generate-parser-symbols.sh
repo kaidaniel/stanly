@@ -32,12 +32,12 @@ struct $name {
     enum class children {
         $( while read f; do \
         [[ "$(jq -r -c ".[] | select(.type == \"$f\") | select(.subtypes == null)" < $nodes_json)" ]] && \
-        echo "sym_$f = static_cast<int>(symbol::sym_$f)," || ( 
+        echo "sym_$f = static_cast<int>(symbol::sym_$f)," || $( 
             for child in $(jq -r ".[] | select(.type == \"$f\").subtypes[].type" < $nodes_json); do
                 [[ "$(jq -r -c ".[] | select(.type == \"$f\") | select(.subtypes == null)" < $nodes_json)" ]] && \
                 echo -n "sym_$child = static_cast<int>(symbol::sym_$f), "
             done);
-        done <<< ${children//,/$'\n'})};
+        done <<< ${children//,/$'\n'}) };
 CHILDREN_ENUM
 )
     $( [[ $all_fields ]] && cat << FIELDS_ENUM
