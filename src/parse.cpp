@@ -134,8 +134,6 @@ static_assert(tree_c<python_ast>);
 template <symbol s>
 using stag = tag<static_cast<std::size_t>(s)>;
 
-using enum symbol;
-
 struct node_tag {};
 
 auto
@@ -153,14 +151,14 @@ find(std::span<python_ast::tree_node> children, field fld) {
 
 void
 visit_tree_node(
-    stag<sym_assignment>, assembler_c auto& a, python_ast::tree_node*,
+    stag<symbol::sym_assignment>, assembler_c auto& a, python_ast::tree_node*,
     std::span<python_ast::tree_node> c) {
   construct<ref>(a, find(c, field::fld_left), find(c, field::fld_right));
 }
 
 void
 visit_tree_node(
-    stag<sym_augmented_assignment>, assembler_c auto& a, python_ast::tree_node* arg,
+    stag<symbol::sym_augmented_assignment>, assembler_c auto& a, python_ast::tree_node* arg,
     std::span<python_ast::tree_node> children) {
   std::string_view left, right, operator_;
   for (const auto& c : children) {
@@ -181,7 +179,7 @@ visit_tree_node(
 
 void
 visit_tree_node(
-    stag<sym_attribute>, assembler_c auto& a, python_ast::tree_node* arg,
+    stag<symbol::sym_attribute>, assembler_c auto& a, python_ast::tree_node* arg,
     std::span<python_ast::tree_node> c) {
   construct<load>(
       a, arg->text, find(c, field::fld_object),
@@ -191,7 +189,7 @@ visit_tree_node(
 
 void
 visit_tree_node(
-    stag<sym_subscript>, assembler_c auto& a, python_ast::tree_node* arg,
+    stag<symbol::sym_subscript>, assembler_c auto& a, python_ast::tree_node* arg,
     std::span<python_ast::tree_node> c) {
   construct<load>(
       a, arg->text, find(c, field::fld_value),
