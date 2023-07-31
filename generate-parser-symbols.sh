@@ -7,12 +7,10 @@ set -e
 
 symbols=$(jq -r -c '.[] | select(.named) | select(.subtypes == null)' < "$nodes_json")
 name=$(jq -r '"sym_" + .type' <<< "$symbols") 
-optional_fields=$(jq -r -c '.fields // {} | map_values(select(.required == false)) | keys' <<< "$symbols")
-required_fields=$(jq -r -c '.fields // {} | map_values(select(.required)) | keys' <<< "$symbols")
-children=$(jq -r -c '.children.types // [] | [.[].type]' <<< "$symbols")
+children=$(jq -r -c '. as $s | [.fields[]?.types[], $s.children.types[]?] | map(select(.named)) | [.[].type] | unique' <<< "$symbols")
 all_fields=$(jq -r -c '.fields // {} | keys' <<< "$symbols")
 n_symbols=$(wc -l <<< "$symbols")
-norca_vars=$(paste -d "^" <(echo "$name") <(echo "$optional_fields") <(echo "$required_fields") <(echo "$children") <(echo "$all_fields") | awk '{ gsub("\[\]", ""); print  }' | tr -d "[]\"")
+norca_vars=$(paste -d "^" <(echo "$name") <(echo "$children") <(echo "$all_fields") | awk '{ gsub("\[\]", ""); print  }' | tr -d "[]\"")
 n=0
 
 
@@ -26,7 +24,7 @@ enum class symbol { $(jq -r '.type' <<< "$symbols" | $lookup_symbols | awk '{ pr
 enum class field { $(jq -r ".[].fields | keys? | .[]" < "$nodes_json" | $lookup_symbols fields | awk '{ print "fld_" $0 ","; }') };
 
 
-$( while IFS="^" read -r name optional_fields required_fields children all_fields; do
+$( while IFS="^" read -r name children all_fields; do
         n=$((n + 1))
         echo -ne "\r\033[K$n/$n_symbols ($name) generating src/parser-symbols.h" > /dev/tty
 cat << EOF
@@ -37,8 +35,10 @@ struct $name {
         [[ "$(jq -r -c ".[] | select(.type == \"$f\") | select(.subtypes == null)" < $nodes_json)" ]] && \
         echo "sym_$f = static_cast<int>(symbol::sym_$f)," || 
            for child in $(jq -r ".[] | select(.type == \"$f\").subtypes[].type" < $nodes_json); do
-                [[ "$(jq -r -c ".[] | select(.type == \"$child\") | select(.subtypes == null)" < $nodes_json)" ]] && \
-                echo -n "sym_$child = static_cast<int>(symbol::sym_$child), "
+                if [[ "$(jq -r -c ".[] | select(.type == \"$child\") | select(.subtypes == null)" < $nodes_json)" ]]; then
+                    [[ " ${children[*]//,/ } " =~ " $child " ]] || echo -n "sym_$child = static_cast<int>(symbol::sym_$child), "
+                fi
+                
             done;
         done <<< ${children//,/$'\n'}) };
 CHILDREN_ENUM

@@ -153,6 +153,7 @@ void
 visit_tree_node(
     stag<symbol::sym_assignment>, assembler_c auto& a, python_ast::tree_node*,
     std::span<python_ast::tree_node> c) {
+      
   construct<ref>(a, find(c, field::fld_left), find(c, field::fld_right));
 }
 

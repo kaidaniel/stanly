@@ -143,6 +143,10 @@ enum class field {
 };
 
 struct sym_aliased_import {
+  enum class children {
+    sym_dotted_name = static_cast<int>(symbol::sym_dotted_name),
+    sym_identifier = static_cast<int>(symbol::sym_identifier),
+  };
   enum class fields {
     fld_alias = static_cast<int>(field::fld_alias),
     fld_name = static_cast<int>(field::fld_name),
@@ -192,6 +196,28 @@ struct sym_assert_statement {
   };
 };
 struct sym_assignment {
+  enum class children {
+    sym_assignment = static_cast<int>(symbol::sym_assignment),
+    sym_augmented_assignment = static_cast<int>(symbol::sym_augmented_assignment),
+    sym_as_pattern = static_cast<int>(symbol::sym_as_pattern),
+    sym_await = static_cast<int>(symbol::sym_await),
+    sym_boolean_operator = static_cast<int>(symbol::sym_boolean_operator),
+    sym_comparison_operator = static_cast<int>(symbol::sym_comparison_operator),
+    sym_conditional_expression = static_cast<int>(symbol::sym_conditional_expression),
+    sym_lambda = static_cast<int>(symbol::sym_lambda),
+    sym_named_expression = static_cast<int>(symbol::sym_named_expression),
+    sym_not_operator = static_cast<int>(symbol::sym_not_operator),
+    sym_expression_list = static_cast<int>(symbol::sym_expression_list),
+    sym_attribute = static_cast<int>(symbol::sym_attribute),
+    sym_identifier = static_cast<int>(symbol::sym_identifier),
+    sym_list_pattern = static_cast<int>(symbol::sym_list_pattern),
+    sym_list_splat_pattern = static_cast<int>(symbol::sym_list_splat_pattern),
+    sym_subscript = static_cast<int>(symbol::sym_subscript),
+    sym_tuple_pattern = static_cast<int>(symbol::sym_tuple_pattern),
+    sym_pattern_list = static_cast<int>(symbol::sym_pattern_list),
+    sym_type = static_cast<int>(symbol::sym_type),
+    sym_yield = static_cast<int>(symbol::sym_yield),
+  };
   enum class fields {
     fld_left = static_cast<int>(field::fld_left),
     fld_right = static_cast<int>(field::fld_right),
@@ -199,12 +225,58 @@ struct sym_assignment {
   };
 };
 struct sym_attribute {
+  enum class children {
+    sym_identifier = static_cast<int>(symbol::sym_identifier),
+    sym_attribute = static_cast<int>(symbol::sym_attribute),
+    sym_binary_operator = static_cast<int>(symbol::sym_binary_operator),
+    sym_call = static_cast<int>(symbol::sym_call),
+    sym_concatenated_string = static_cast<int>(symbol::sym_concatenated_string),
+    sym_dictionary = static_cast<int>(symbol::sym_dictionary),
+    sym_dictionary_comprehension = static_cast<int>(symbol::sym_dictionary_comprehension),
+    sym_ellipsis = static_cast<int>(symbol::sym_ellipsis),
+    sym_false = static_cast<int>(symbol::sym_false),
+    sym_float = static_cast<int>(symbol::sym_float),
+    sym_generator_expression = static_cast<int>(symbol::sym_generator_expression),
+    sym_integer = static_cast<int>(symbol::sym_integer),
+    sym_list = static_cast<int>(symbol::sym_list),
+    sym_list_comprehension = static_cast<int>(symbol::sym_list_comprehension),
+    sym_none = static_cast<int>(symbol::sym_none),
+    sym_parenthesized_expression = static_cast<int>(symbol::sym_parenthesized_expression),
+    sym_set = static_cast<int>(symbol::sym_set),
+    sym_set_comprehension = static_cast<int>(symbol::sym_set_comprehension),
+    sym_string = static_cast<int>(symbol::sym_string),
+    sym_subscript = static_cast<int>(symbol::sym_subscript),
+    sym_true = static_cast<int>(symbol::sym_true),
+    sym_tuple = static_cast<int>(symbol::sym_tuple),
+    sym_unary_operator = static_cast<int>(symbol::sym_unary_operator),
+  };
   enum class fields {
     fld_attribute = static_cast<int>(field::fld_attribute),
     fld_object = static_cast<int>(field::fld_object),
   };
 };
 struct sym_augmented_assignment {
+  enum class children {
+    sym_assignment = static_cast<int>(symbol::sym_assignment),
+    sym_augmented_assignment = static_cast<int>(symbol::sym_augmented_assignment),
+    sym_as_pattern = static_cast<int>(symbol::sym_as_pattern),
+    sym_await = static_cast<int>(symbol::sym_await),
+    sym_boolean_operator = static_cast<int>(symbol::sym_boolean_operator),
+    sym_comparison_operator = static_cast<int>(symbol::sym_comparison_operator),
+    sym_conditional_expression = static_cast<int>(symbol::sym_conditional_expression),
+    sym_lambda = static_cast<int>(symbol::sym_lambda),
+    sym_named_expression = static_cast<int>(symbol::sym_named_expression),
+    sym_not_operator = static_cast<int>(symbol::sym_not_operator),
+    sym_expression_list = static_cast<int>(symbol::sym_expression_list),
+    sym_attribute = static_cast<int>(symbol::sym_attribute),
+    sym_identifier = static_cast<int>(symbol::sym_identifier),
+    sym_list_pattern = static_cast<int>(symbol::sym_list_pattern),
+    sym_list_splat_pattern = static_cast<int>(symbol::sym_list_splat_pattern),
+    sym_subscript = static_cast<int>(symbol::sym_subscript),
+    sym_tuple_pattern = static_cast<int>(symbol::sym_tuple_pattern),
+    sym_pattern_list = static_cast<int>(symbol::sym_pattern_list),
+    sym_yield = static_cast<int>(symbol::sym_yield),
+  };
   enum class fields {
     fld_left = static_cast<int>(field::fld_left),
     fld_operator = static_cast<int>(field::fld_operator),
@@ -224,6 +296,31 @@ struct sym_await {
   };
 };
 struct sym_binary_operator {
+  enum class children {
+    sym_attribute = static_cast<int>(symbol::sym_attribute),
+    sym_binary_operator = static_cast<int>(symbol::sym_binary_operator),
+    sym_call = static_cast<int>(symbol::sym_call),
+    sym_concatenated_string = static_cast<int>(symbol::sym_concatenated_string),
+    sym_dictionary = static_cast<int>(symbol::sym_dictionary),
+    sym_dictionary_comprehension = static_cast<int>(symbol::sym_dictionary_comprehension),
+    sym_ellipsis = static_cast<int>(symbol::sym_ellipsis),
+    sym_false = static_cast<int>(symbol::sym_false),
+    sym_float = static_cast<int>(symbol::sym_float),
+    sym_generator_expression = static_cast<int>(symbol::sym_generator_expression),
+    sym_identifier = static_cast<int>(symbol::sym_identifier),
+    sym_integer = static_cast<int>(symbol::sym_integer),
+    sym_list = static_cast<int>(symbol::sym_list),
+    sym_list_comprehension = static_cast<int>(symbol::sym_list_comprehension),
+    sym_none = static_cast<int>(symbol::sym_none),
+    sym_parenthesized_expression = static_cast<int>(symbol::sym_parenthesized_expression),
+    sym_set = static_cast<int>(symbol::sym_set),
+    sym_set_comprehension = static_cast<int>(symbol::sym_set_comprehension),
+    sym_string = static_cast<int>(symbol::sym_string),
+    sym_subscript = static_cast<int>(symbol::sym_subscript),
+    sym_true = static_cast<int>(symbol::sym_true),
+    sym_tuple = static_cast<int>(symbol::sym_tuple),
+    sym_unary_operator = static_cast<int>(symbol::sym_unary_operator),
+  };
   enum class fields {
     fld_left = static_cast<int>(field::fld_left),
     fld_operator = static_cast<int>(field::fld_operator),
@@ -259,6 +356,16 @@ struct sym_block {
   };
 };
 struct sym_boolean_operator {
+  enum class children {
+    sym_as_pattern = static_cast<int>(symbol::sym_as_pattern),
+    sym_await = static_cast<int>(symbol::sym_await),
+    sym_boolean_operator = static_cast<int>(symbol::sym_boolean_operator),
+    sym_comparison_operator = static_cast<int>(symbol::sym_comparison_operator),
+    sym_conditional_expression = static_cast<int>(symbol::sym_conditional_expression),
+    sym_lambda = static_cast<int>(symbol::sym_lambda),
+    sym_named_expression = static_cast<int>(symbol::sym_named_expression),
+    sym_not_operator = static_cast<int>(symbol::sym_not_operator),
+  };
   enum class fields {
     fld_left = static_cast<int>(field::fld_left),
     fld_operator = static_cast<int>(field::fld_operator),
@@ -267,12 +374,43 @@ struct sym_boolean_operator {
 };
 struct sym_break_statement {};
 struct sym_call {
+  enum class children {
+    sym_argument_list = static_cast<int>(symbol::sym_argument_list),
+    sym_generator_expression = static_cast<int>(symbol::sym_generator_expression),
+    sym_attribute = static_cast<int>(symbol::sym_attribute),
+    sym_binary_operator = static_cast<int>(symbol::sym_binary_operator),
+    sym_call = static_cast<int>(symbol::sym_call),
+    sym_concatenated_string = static_cast<int>(symbol::sym_concatenated_string),
+    sym_dictionary = static_cast<int>(symbol::sym_dictionary),
+    sym_dictionary_comprehension = static_cast<int>(symbol::sym_dictionary_comprehension),
+    sym_ellipsis = static_cast<int>(symbol::sym_ellipsis),
+    sym_false = static_cast<int>(symbol::sym_false),
+    sym_float = static_cast<int>(symbol::sym_float),
+    sym_identifier = static_cast<int>(symbol::sym_identifier),
+    sym_integer = static_cast<int>(symbol::sym_integer),
+    sym_list = static_cast<int>(symbol::sym_list),
+    sym_list_comprehension = static_cast<int>(symbol::sym_list_comprehension),
+    sym_none = static_cast<int>(symbol::sym_none),
+    sym_parenthesized_expression = static_cast<int>(symbol::sym_parenthesized_expression),
+    sym_set = static_cast<int>(symbol::sym_set),
+    sym_set_comprehension = static_cast<int>(symbol::sym_set_comprehension),
+    sym_string = static_cast<int>(symbol::sym_string),
+    sym_subscript = static_cast<int>(symbol::sym_subscript),
+    sym_true = static_cast<int>(symbol::sym_true),
+    sym_tuple = static_cast<int>(symbol::sym_tuple),
+    sym_unary_operator = static_cast<int>(symbol::sym_unary_operator),
+  };
   enum class fields {
     fld_arguments = static_cast<int>(field::fld_arguments),
     fld_function = static_cast<int>(field::fld_function),
   };
 };
 struct sym_case_clause {
+  enum class children {
+    sym_block = static_cast<int>(symbol::sym_block),
+    sym_case_pattern = static_cast<int>(symbol::sym_case_pattern),
+    sym_if_clause = static_cast<int>(symbol::sym_if_clause),
+  };
   enum class fields {
     fld_consequence = static_cast<int>(field::fld_consequence),
     fld_guard = static_cast<int>(field::fld_guard),
@@ -299,6 +437,11 @@ struct sym_chevron {
   };
 };
 struct sym_class_definition {
+  enum class children {
+    sym_argument_list = static_cast<int>(symbol::sym_argument_list),
+    sym_block = static_cast<int>(symbol::sym_block),
+    sym_identifier = static_cast<int>(symbol::sym_identifier),
+  };
   enum class fields {
     fld_body = static_cast<int>(field::fld_body),
     fld_name = static_cast<int>(field::fld_name),
@@ -355,7 +498,9 @@ struct sym_conditional_expression {
 struct sym_continue_statement {};
 struct sym_decorated_definition {
   enum class children {
+    sym_class_definition = static_cast<int>(symbol::sym_class_definition),
     sym_decorator = static_cast<int>(symbol::sym_decorator),
+    sym_function_definition = static_cast<int>(symbol::sym_function_definition),
   };
   enum class fields {
     fld_definition = static_cast<int>(field::fld_definition),
@@ -389,6 +534,17 @@ struct sym_decorator {
   };
 };
 struct sym_default_parameter {
+  enum class children {
+    sym_as_pattern = static_cast<int>(symbol::sym_as_pattern),
+    sym_await = static_cast<int>(symbol::sym_await),
+    sym_boolean_operator = static_cast<int>(symbol::sym_boolean_operator),
+    sym_comparison_operator = static_cast<int>(symbol::sym_comparison_operator),
+    sym_conditional_expression = static_cast<int>(symbol::sym_conditional_expression),
+    sym_lambda = static_cast<int>(symbol::sym_lambda),
+    sym_named_expression = static_cast<int>(symbol::sym_named_expression),
+    sym_not_operator = static_cast<int>(symbol::sym_not_operator),
+    sym_identifier = static_cast<int>(symbol::sym_identifier),
+  };
   enum class fields {
     fld_name = static_cast<int>(field::fld_name),
     fld_value = static_cast<int>(field::fld_value),
@@ -417,6 +573,7 @@ struct sym_dictionary_comprehension {
   enum class children {
     sym_for_in_clause = static_cast<int>(symbol::sym_for_in_clause),
     sym_if_clause = static_cast<int>(symbol::sym_if_clause),
+    sym_pair = static_cast<int>(symbol::sym_pair),
   };
   enum class fields {
     fld_body = static_cast<int>(field::fld_body),
@@ -447,12 +604,26 @@ struct sym_dotted_name {
   };
 };
 struct sym_elif_clause {
+  enum class children {
+    sym_block = static_cast<int>(symbol::sym_block),
+    sym_as_pattern = static_cast<int>(symbol::sym_as_pattern),
+    sym_await = static_cast<int>(symbol::sym_await),
+    sym_boolean_operator = static_cast<int>(symbol::sym_boolean_operator),
+    sym_comparison_operator = static_cast<int>(symbol::sym_comparison_operator),
+    sym_conditional_expression = static_cast<int>(symbol::sym_conditional_expression),
+    sym_lambda = static_cast<int>(symbol::sym_lambda),
+    sym_named_expression = static_cast<int>(symbol::sym_named_expression),
+    sym_not_operator = static_cast<int>(symbol::sym_not_operator),
+  };
   enum class fields {
     fld_condition = static_cast<int>(field::fld_condition),
     fld_consequence = static_cast<int>(field::fld_consequence),
   };
 };
 struct sym_else_clause {
+  enum class children {
+    sym_block = static_cast<int>(symbol::sym_block),
+  };
   enum class fields {
     fld_body = static_cast<int>(field::fld_body),
   };
@@ -480,6 +651,7 @@ struct sym_exec_statement {
     sym_lambda = static_cast<int>(symbol::sym_lambda),
     sym_named_expression = static_cast<int>(symbol::sym_named_expression),
     sym_not_operator = static_cast<int>(symbol::sym_not_operator),
+    sym_string = static_cast<int>(symbol::sym_string),
   };
   enum class fields {
     fld_code = static_cast<int>(field::fld_code),
@@ -518,12 +690,49 @@ struct sym_finally_clause {
   };
 };
 struct sym_for_in_clause {
+  enum class children {
+    sym_as_pattern = static_cast<int>(symbol::sym_as_pattern),
+    sym_await = static_cast<int>(symbol::sym_await),
+    sym_boolean_operator = static_cast<int>(symbol::sym_boolean_operator),
+    sym_comparison_operator = static_cast<int>(symbol::sym_comparison_operator),
+    sym_conditional_expression = static_cast<int>(symbol::sym_conditional_expression),
+    sym_lambda = static_cast<int>(symbol::sym_lambda),
+    sym_named_expression = static_cast<int>(symbol::sym_named_expression),
+    sym_not_operator = static_cast<int>(symbol::sym_not_operator),
+    sym_attribute = static_cast<int>(symbol::sym_attribute),
+    sym_identifier = static_cast<int>(symbol::sym_identifier),
+    sym_list_pattern = static_cast<int>(symbol::sym_list_pattern),
+    sym_list_splat_pattern = static_cast<int>(symbol::sym_list_splat_pattern),
+    sym_subscript = static_cast<int>(symbol::sym_subscript),
+    sym_tuple_pattern = static_cast<int>(symbol::sym_tuple_pattern),
+    sym_pattern_list = static_cast<int>(symbol::sym_pattern_list),
+  };
   enum class fields {
     fld_left = static_cast<int>(field::fld_left),
     fld_right = static_cast<int>(field::fld_right),
   };
 };
 struct sym_for_statement {
+  enum class children {
+    sym_block = static_cast<int>(symbol::sym_block),
+    sym_else_clause = static_cast<int>(symbol::sym_else_clause),
+    sym_as_pattern = static_cast<int>(symbol::sym_as_pattern),
+    sym_await = static_cast<int>(symbol::sym_await),
+    sym_boolean_operator = static_cast<int>(symbol::sym_boolean_operator),
+    sym_comparison_operator = static_cast<int>(symbol::sym_comparison_operator),
+    sym_conditional_expression = static_cast<int>(symbol::sym_conditional_expression),
+    sym_lambda = static_cast<int>(symbol::sym_lambda),
+    sym_named_expression = static_cast<int>(symbol::sym_named_expression),
+    sym_not_operator = static_cast<int>(symbol::sym_not_operator),
+    sym_expression_list = static_cast<int>(symbol::sym_expression_list),
+    sym_attribute = static_cast<int>(symbol::sym_attribute),
+    sym_identifier = static_cast<int>(symbol::sym_identifier),
+    sym_list_pattern = static_cast<int>(symbol::sym_list_pattern),
+    sym_list_splat_pattern = static_cast<int>(symbol::sym_list_splat_pattern),
+    sym_subscript = static_cast<int>(symbol::sym_subscript),
+    sym_tuple_pattern = static_cast<int>(symbol::sym_tuple_pattern),
+    sym_pattern_list = static_cast<int>(symbol::sym_pattern_list),
+  };
   enum class fields {
     fld_alternative = static_cast<int>(field::fld_alternative),
     fld_body = static_cast<int>(field::fld_body),
@@ -549,6 +758,12 @@ struct sym_format_specifier {
   };
 };
 struct sym_function_definition {
+  enum class children {
+    sym_block = static_cast<int>(symbol::sym_block),
+    sym_identifier = static_cast<int>(symbol::sym_identifier),
+    sym_parameters = static_cast<int>(symbol::sym_parameters),
+    sym_type = static_cast<int>(symbol::sym_type),
+  };
   enum class fields {
     fld_body = static_cast<int>(field::fld_body),
     fld_name = static_cast<int>(field::fld_name),
@@ -557,12 +772,24 @@ struct sym_function_definition {
   };
 };
 struct sym_future_import_statement {
+  enum class children {
+    sym_aliased_import = static_cast<int>(symbol::sym_aliased_import),
+    sym_dotted_name = static_cast<int>(symbol::sym_dotted_name),
+  };
   enum class fields {
     fld_name = static_cast<int>(field::fld_name),
   };
 };
 struct sym_generator_expression {
   enum class children {
+    sym_as_pattern = static_cast<int>(symbol::sym_as_pattern),
+    sym_await = static_cast<int>(symbol::sym_await),
+    sym_boolean_operator = static_cast<int>(symbol::sym_boolean_operator),
+    sym_comparison_operator = static_cast<int>(symbol::sym_comparison_operator),
+    sym_conditional_expression = static_cast<int>(symbol::sym_conditional_expression),
+    sym_lambda = static_cast<int>(symbol::sym_lambda),
+    sym_named_expression = static_cast<int>(symbol::sym_named_expression),
+    sym_not_operator = static_cast<int>(symbol::sym_not_operator),
     sym_for_in_clause = static_cast<int>(symbol::sym_for_in_clause),
     sym_if_clause = static_cast<int>(symbol::sym_if_clause),
   };
@@ -588,6 +815,19 @@ struct sym_if_clause {
   };
 };
 struct sym_if_statement {
+  enum class children {
+    sym_block = static_cast<int>(symbol::sym_block),
+    sym_elif_clause = static_cast<int>(symbol::sym_elif_clause),
+    sym_else_clause = static_cast<int>(symbol::sym_else_clause),
+    sym_as_pattern = static_cast<int>(symbol::sym_as_pattern),
+    sym_await = static_cast<int>(symbol::sym_await),
+    sym_boolean_operator = static_cast<int>(symbol::sym_boolean_operator),
+    sym_comparison_operator = static_cast<int>(symbol::sym_comparison_operator),
+    sym_conditional_expression = static_cast<int>(symbol::sym_conditional_expression),
+    sym_lambda = static_cast<int>(symbol::sym_lambda),
+    sym_named_expression = static_cast<int>(symbol::sym_named_expression),
+    sym_not_operator = static_cast<int>(symbol::sym_not_operator),
+  };
   enum class fields {
     fld_alternative = static_cast<int>(field::fld_alternative),
     fld_condition = static_cast<int>(field::fld_condition),
@@ -596,6 +836,9 @@ struct sym_if_statement {
 };
 struct sym_import_from_statement {
   enum class children {
+    sym_aliased_import = static_cast<int>(symbol::sym_aliased_import),
+    sym_dotted_name = static_cast<int>(symbol::sym_dotted_name),
+    sym_relative_import = static_cast<int>(symbol::sym_relative_import),
     sym_wildcard_import = static_cast<int>(symbol::sym_wildcard_import),
   };
   enum class fields {
@@ -605,6 +848,10 @@ struct sym_import_from_statement {
 };
 struct sym_import_prefix {};
 struct sym_import_statement {
+  enum class children {
+    sym_aliased_import = static_cast<int>(symbol::sym_aliased_import),
+    sym_dotted_name = static_cast<int>(symbol::sym_dotted_name),
+  };
   enum class fields {
     fld_name = static_cast<int>(field::fld_name),
   };
@@ -624,6 +871,17 @@ struct sym_interpolation {
   };
 };
 struct sym_keyword_argument {
+  enum class children {
+    sym_as_pattern = static_cast<int>(symbol::sym_as_pattern),
+    sym_await = static_cast<int>(symbol::sym_await),
+    sym_boolean_operator = static_cast<int>(symbol::sym_boolean_operator),
+    sym_comparison_operator = static_cast<int>(symbol::sym_comparison_operator),
+    sym_conditional_expression = static_cast<int>(symbol::sym_conditional_expression),
+    sym_lambda = static_cast<int>(symbol::sym_lambda),
+    sym_named_expression = static_cast<int>(symbol::sym_named_expression),
+    sym_not_operator = static_cast<int>(symbol::sym_not_operator),
+    sym_identifier = static_cast<int>(symbol::sym_identifier),
+  };
   enum class fields {
     fld_name = static_cast<int>(field::fld_name),
     fld_value = static_cast<int>(field::fld_value),
@@ -631,6 +889,17 @@ struct sym_keyword_argument {
 };
 struct sym_keyword_separator {};
 struct sym_lambda {
+  enum class children {
+    sym_as_pattern = static_cast<int>(symbol::sym_as_pattern),
+    sym_await = static_cast<int>(symbol::sym_await),
+    sym_boolean_operator = static_cast<int>(symbol::sym_boolean_operator),
+    sym_comparison_operator = static_cast<int>(symbol::sym_comparison_operator),
+    sym_conditional_expression = static_cast<int>(symbol::sym_conditional_expression),
+    sym_lambda = static_cast<int>(symbol::sym_lambda),
+    sym_named_expression = static_cast<int>(symbol::sym_named_expression),
+    sym_not_operator = static_cast<int>(symbol::sym_not_operator),
+    sym_lambda_parameters = static_cast<int>(symbol::sym_lambda_parameters),
+  };
   enum class fields {
     fld_body = static_cast<int>(field::fld_body),
     fld_parameters = static_cast<int>(field::fld_parameters),
@@ -666,6 +935,14 @@ struct sym_list {
 };
 struct sym_list_comprehension {
   enum class children {
+    sym_as_pattern = static_cast<int>(symbol::sym_as_pattern),
+    sym_await = static_cast<int>(symbol::sym_await),
+    sym_boolean_operator = static_cast<int>(symbol::sym_boolean_operator),
+    sym_comparison_operator = static_cast<int>(symbol::sym_comparison_operator),
+    sym_conditional_expression = static_cast<int>(symbol::sym_conditional_expression),
+    sym_lambda = static_cast<int>(symbol::sym_lambda),
+    sym_named_expression = static_cast<int>(symbol::sym_named_expression),
+    sym_not_operator = static_cast<int>(symbol::sym_not_operator),
     sym_for_in_clause = static_cast<int>(symbol::sym_for_in_clause),
     sym_if_clause = static_cast<int>(symbol::sym_if_clause),
   };
@@ -703,6 +980,17 @@ struct sym_list_splat_pattern {
   };
 };
 struct sym_match_statement {
+  enum class children {
+    sym_case_clause = static_cast<int>(symbol::sym_case_clause),
+    sym_as_pattern = static_cast<int>(symbol::sym_as_pattern),
+    sym_await = static_cast<int>(symbol::sym_await),
+    sym_boolean_operator = static_cast<int>(symbol::sym_boolean_operator),
+    sym_comparison_operator = static_cast<int>(symbol::sym_comparison_operator),
+    sym_conditional_expression = static_cast<int>(symbol::sym_conditional_expression),
+    sym_lambda = static_cast<int>(symbol::sym_lambda),
+    sym_named_expression = static_cast<int>(symbol::sym_named_expression),
+    sym_not_operator = static_cast<int>(symbol::sym_not_operator),
+  };
   enum class fields {
     fld_alternative = static_cast<int>(field::fld_alternative),
     fld_subject = static_cast<int>(field::fld_subject),
@@ -737,6 +1025,17 @@ struct sym_module {
   };
 };
 struct sym_named_expression {
+  enum class children {
+    sym_as_pattern = static_cast<int>(symbol::sym_as_pattern),
+    sym_await = static_cast<int>(symbol::sym_await),
+    sym_boolean_operator = static_cast<int>(symbol::sym_boolean_operator),
+    sym_comparison_operator = static_cast<int>(symbol::sym_comparison_operator),
+    sym_conditional_expression = static_cast<int>(symbol::sym_conditional_expression),
+    sym_lambda = static_cast<int>(symbol::sym_lambda),
+    sym_named_expression = static_cast<int>(symbol::sym_named_expression),
+    sym_not_operator = static_cast<int>(symbol::sym_not_operator),
+    sym_identifier = static_cast<int>(symbol::sym_identifier),
+  };
   enum class fields {
     fld_name = static_cast<int>(field::fld_name),
     fld_value = static_cast<int>(field::fld_value),
@@ -748,11 +1047,31 @@ struct sym_nonlocal_statement {
   };
 };
 struct sym_not_operator {
+  enum class children {
+    sym_as_pattern = static_cast<int>(symbol::sym_as_pattern),
+    sym_await = static_cast<int>(symbol::sym_await),
+    sym_boolean_operator = static_cast<int>(symbol::sym_boolean_operator),
+    sym_comparison_operator = static_cast<int>(symbol::sym_comparison_operator),
+    sym_conditional_expression = static_cast<int>(symbol::sym_conditional_expression),
+    sym_lambda = static_cast<int>(symbol::sym_lambda),
+    sym_named_expression = static_cast<int>(symbol::sym_named_expression),
+    sym_not_operator = static_cast<int>(symbol::sym_not_operator),
+  };
   enum class fields {
     fld_argument = static_cast<int>(field::fld_argument),
   };
 };
 struct sym_pair {
+  enum class children {
+    sym_as_pattern = static_cast<int>(symbol::sym_as_pattern),
+    sym_await = static_cast<int>(symbol::sym_await),
+    sym_boolean_operator = static_cast<int>(symbol::sym_boolean_operator),
+    sym_comparison_operator = static_cast<int>(symbol::sym_comparison_operator),
+    sym_conditional_expression = static_cast<int>(symbol::sym_conditional_expression),
+    sym_lambda = static_cast<int>(symbol::sym_lambda),
+    sym_named_expression = static_cast<int>(symbol::sym_named_expression),
+    sym_not_operator = static_cast<int>(symbol::sym_not_operator),
+  };
   enum class fields {
     fld_key = static_cast<int>(field::fld_key),
     fld_value = static_cast<int>(field::fld_value),
@@ -807,6 +1126,14 @@ struct sym_positional_separator {};
 struct sym_print_statement {
   enum class children {
     sym_chevron = static_cast<int>(symbol::sym_chevron),
+    sym_as_pattern = static_cast<int>(symbol::sym_as_pattern),
+    sym_await = static_cast<int>(symbol::sym_await),
+    sym_boolean_operator = static_cast<int>(symbol::sym_boolean_operator),
+    sym_comparison_operator = static_cast<int>(symbol::sym_comparison_operator),
+    sym_conditional_expression = static_cast<int>(symbol::sym_conditional_expression),
+    sym_lambda = static_cast<int>(symbol::sym_lambda),
+    sym_named_expression = static_cast<int>(symbol::sym_named_expression),
+    sym_not_operator = static_cast<int>(symbol::sym_not_operator),
   };
   enum class fields {
     fld_argument = static_cast<int>(field::fld_argument),
@@ -864,6 +1191,14 @@ struct sym_set {
 };
 struct sym_set_comprehension {
   enum class children {
+    sym_as_pattern = static_cast<int>(symbol::sym_as_pattern),
+    sym_await = static_cast<int>(symbol::sym_await),
+    sym_boolean_operator = static_cast<int>(symbol::sym_boolean_operator),
+    sym_comparison_operator = static_cast<int>(symbol::sym_comparison_operator),
+    sym_conditional_expression = static_cast<int>(symbol::sym_conditional_expression),
+    sym_lambda = static_cast<int>(symbol::sym_lambda),
+    sym_named_expression = static_cast<int>(symbol::sym_named_expression),
+    sym_not_operator = static_cast<int>(symbol::sym_not_operator),
     sym_for_in_clause = static_cast<int>(symbol::sym_for_in_clause),
     sym_if_clause = static_cast<int>(symbol::sym_if_clause),
   };
@@ -890,6 +1225,40 @@ struct sym_string {
   };
 };
 struct sym_subscript {
+  enum class children {
+    sym_as_pattern = static_cast<int>(symbol::sym_as_pattern),
+    sym_await = static_cast<int>(symbol::sym_await),
+    sym_boolean_operator = static_cast<int>(symbol::sym_boolean_operator),
+    sym_comparison_operator = static_cast<int>(symbol::sym_comparison_operator),
+    sym_conditional_expression = static_cast<int>(symbol::sym_conditional_expression),
+    sym_lambda = static_cast<int>(symbol::sym_lambda),
+    sym_named_expression = static_cast<int>(symbol::sym_named_expression),
+    sym_not_operator = static_cast<int>(symbol::sym_not_operator),
+    sym_attribute = static_cast<int>(symbol::sym_attribute),
+    sym_binary_operator = static_cast<int>(symbol::sym_binary_operator),
+    sym_call = static_cast<int>(symbol::sym_call),
+    sym_concatenated_string = static_cast<int>(symbol::sym_concatenated_string),
+    sym_dictionary = static_cast<int>(symbol::sym_dictionary),
+    sym_dictionary_comprehension = static_cast<int>(symbol::sym_dictionary_comprehension),
+    sym_ellipsis = static_cast<int>(symbol::sym_ellipsis),
+    sym_false = static_cast<int>(symbol::sym_false),
+    sym_float = static_cast<int>(symbol::sym_float),
+    sym_generator_expression = static_cast<int>(symbol::sym_generator_expression),
+    sym_identifier = static_cast<int>(symbol::sym_identifier),
+    sym_integer = static_cast<int>(symbol::sym_integer),
+    sym_list = static_cast<int>(symbol::sym_list),
+    sym_list_comprehension = static_cast<int>(symbol::sym_list_comprehension),
+    sym_none = static_cast<int>(symbol::sym_none),
+    sym_parenthesized_expression = static_cast<int>(symbol::sym_parenthesized_expression),
+    sym_set = static_cast<int>(symbol::sym_set),
+    sym_set_comprehension = static_cast<int>(symbol::sym_set_comprehension),
+    sym_string = static_cast<int>(symbol::sym_string),
+    sym_subscript = static_cast<int>(symbol::sym_subscript),
+    sym_true = static_cast<int>(symbol::sym_true),
+    sym_tuple = static_cast<int>(symbol::sym_tuple),
+    sym_unary_operator = static_cast<int>(symbol::sym_unary_operator),
+    sym_slice = static_cast<int>(symbol::sym_slice),
+  };
   enum class fields {
     fld_subscript = static_cast<int>(field::fld_subscript),
     fld_value = static_cast<int>(field::fld_value),
@@ -897,6 +1266,7 @@ struct sym_subscript {
 };
 struct sym_try_statement {
   enum class children {
+    sym_block = static_cast<int>(symbol::sym_block),
     sym_else_clause = static_cast<int>(symbol::sym_else_clause),
     sym_except_clause = static_cast<int>(symbol::sym_except_clause),
     sym_finally_clause = static_cast<int>(symbol::sym_finally_clause),
@@ -943,6 +1313,18 @@ struct sym_type {
   };
 };
 struct sym_typed_default_parameter {
+  enum class children {
+    sym_as_pattern = static_cast<int>(symbol::sym_as_pattern),
+    sym_await = static_cast<int>(symbol::sym_await),
+    sym_boolean_operator = static_cast<int>(symbol::sym_boolean_operator),
+    sym_comparison_operator = static_cast<int>(symbol::sym_comparison_operator),
+    sym_conditional_expression = static_cast<int>(symbol::sym_conditional_expression),
+    sym_lambda = static_cast<int>(symbol::sym_lambda),
+    sym_named_expression = static_cast<int>(symbol::sym_named_expression),
+    sym_not_operator = static_cast<int>(symbol::sym_not_operator),
+    sym_identifier = static_cast<int>(symbol::sym_identifier),
+    sym_type = static_cast<int>(symbol::sym_type),
+  };
   enum class fields {
     fld_name = static_cast<int>(field::fld_name),
     fld_type = static_cast<int>(field::fld_type),
@@ -954,18 +1336,56 @@ struct sym_typed_parameter {
     sym_dictionary_splat_pattern = static_cast<int>(symbol::sym_dictionary_splat_pattern),
     sym_identifier = static_cast<int>(symbol::sym_identifier),
     sym_list_splat_pattern = static_cast<int>(symbol::sym_list_splat_pattern),
+    sym_type = static_cast<int>(symbol::sym_type),
   };
   enum class fields {
     fld_type = static_cast<int>(field::fld_type),
   };
 };
 struct sym_unary_operator {
+  enum class children {
+    sym_attribute = static_cast<int>(symbol::sym_attribute),
+    sym_binary_operator = static_cast<int>(symbol::sym_binary_operator),
+    sym_call = static_cast<int>(symbol::sym_call),
+    sym_concatenated_string = static_cast<int>(symbol::sym_concatenated_string),
+    sym_dictionary = static_cast<int>(symbol::sym_dictionary),
+    sym_dictionary_comprehension = static_cast<int>(symbol::sym_dictionary_comprehension),
+    sym_ellipsis = static_cast<int>(symbol::sym_ellipsis),
+    sym_false = static_cast<int>(symbol::sym_false),
+    sym_float = static_cast<int>(symbol::sym_float),
+    sym_generator_expression = static_cast<int>(symbol::sym_generator_expression),
+    sym_identifier = static_cast<int>(symbol::sym_identifier),
+    sym_integer = static_cast<int>(symbol::sym_integer),
+    sym_list = static_cast<int>(symbol::sym_list),
+    sym_list_comprehension = static_cast<int>(symbol::sym_list_comprehension),
+    sym_none = static_cast<int>(symbol::sym_none),
+    sym_parenthesized_expression = static_cast<int>(symbol::sym_parenthesized_expression),
+    sym_set = static_cast<int>(symbol::sym_set),
+    sym_set_comprehension = static_cast<int>(symbol::sym_set_comprehension),
+    sym_string = static_cast<int>(symbol::sym_string),
+    sym_subscript = static_cast<int>(symbol::sym_subscript),
+    sym_true = static_cast<int>(symbol::sym_true),
+    sym_tuple = static_cast<int>(symbol::sym_tuple),
+    sym_unary_operator = static_cast<int>(symbol::sym_unary_operator),
+  };
   enum class fields {
     fld_argument = static_cast<int>(field::fld_argument),
     fld_operator = static_cast<int>(field::fld_operator),
   };
 };
 struct sym_while_statement {
+  enum class children {
+    sym_block = static_cast<int>(symbol::sym_block),
+    sym_else_clause = static_cast<int>(symbol::sym_else_clause),
+    sym_as_pattern = static_cast<int>(symbol::sym_as_pattern),
+    sym_await = static_cast<int>(symbol::sym_await),
+    sym_boolean_operator = static_cast<int>(symbol::sym_boolean_operator),
+    sym_comparison_operator = static_cast<int>(symbol::sym_comparison_operator),
+    sym_conditional_expression = static_cast<int>(symbol::sym_conditional_expression),
+    sym_lambda = static_cast<int>(symbol::sym_lambda),
+    sym_named_expression = static_cast<int>(symbol::sym_named_expression),
+    sym_not_operator = static_cast<int>(symbol::sym_not_operator),
+  };
   enum class fields {
     fld_alternative = static_cast<int>(field::fld_alternative),
     fld_body = static_cast<int>(field::fld_body),
@@ -979,12 +1399,23 @@ struct sym_with_clause {
   };
 };
 struct sym_with_item {
+  enum class children {
+    sym_as_pattern = static_cast<int>(symbol::sym_as_pattern),
+    sym_await = static_cast<int>(symbol::sym_await),
+    sym_boolean_operator = static_cast<int>(symbol::sym_boolean_operator),
+    sym_comparison_operator = static_cast<int>(symbol::sym_comparison_operator),
+    sym_conditional_expression = static_cast<int>(symbol::sym_conditional_expression),
+    sym_lambda = static_cast<int>(symbol::sym_lambda),
+    sym_named_expression = static_cast<int>(symbol::sym_named_expression),
+    sym_not_operator = static_cast<int>(symbol::sym_not_operator),
+  };
   enum class fields {
     fld_value = static_cast<int>(field::fld_value),
   };
 };
 struct sym_with_statement {
   enum class children {
+    sym_block = static_cast<int>(symbol::sym_block),
     sym_with_clause = static_cast<int>(symbol::sym_with_clause),
   };
   enum class fields {
