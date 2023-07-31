@@ -17,6 +17,7 @@
 
 #include "parser-symbols.h"
 #include "stanly-assert.h"
+#include "stanly-utils.h"
 #include "string-index.h"
 #include "syntax.h"
 #include "to_tpl.h"
@@ -152,38 +153,51 @@ find(std::span<python_ast::tree_node> children, field fld) {
 
 void
 visit_tree_node(
-    stag<sym_assignment>, assembler_c auto& a, python_ast::tree_node* arg,
+    stag<sym_assignment>, assembler_c auto& a, python_ast::tree_node*,
     std::span<python_ast::tree_node> c) {
-  // TODO switch((symbol)find(node_tag{}, c, field::fld_left).symbol){
-  //   case sym_identifier: break;
-  //   case sym_attribute: break;
-  //   case sym_subscript: ...
-  // };
   construct<ref>(a, find(c, field::fld_left), find(c, field::fld_right));
 }
 
 void
 visit_tree_node(
     stag<sym_augmented_assignment>, assembler_c auto& a, python_ast::tree_node* arg,
-    std::span<python_ast::tree_node> c) {
+    std::span<python_ast::tree_node> children) {
+  std::string_view left, right, operator_;
+  for (const auto& c : children) {
+    if (!c.field) { continue; }
+    switch ((field)*c.field) {
+      case field::fld_left: left = c.text;
+      case field::fld_right: right = c.text;
+      case field::fld_operator: operator_ = c.text;
+      default: unreachable();
+    }
+  }
   construct<alloc>(a, arg->text, "args");
-  construct<append>(a, arg->text, find(c, field::fld_left));
-  construct<append>(a, arg->text, find(c, field::fld_right));
-  construct<dcall>(a, find(c, field::fld_left), find(c, field::fld_operator), arg->text);
-  construct<ref>(a, find(c, field::fld_left), find(c, field::fld_right));
+  construct<append>(a, arg->text, left);
+  construct<append>(a, arg->text, right);
+  construct<dcall>(a, left, operator_, arg->text);
+  construct<ref>(a, left, right);
 }
 
 void
 visit_tree_node(
     stag<sym_attribute>, assembler_c auto& a, python_ast::tree_node* arg,
     std::span<python_ast::tree_node> c) {
-  construct<load>(a, arg->text, find(c, field::fld_object), find(c, field::fld_attribute));
+  construct<load>(
+      a, arg->text, find(c, field::fld_object),
+      "@attributes");  // TODO: make sure this field is always present
+  construct<load>(a, arg->text, arg->text, find(c, field::fld_attribute));
 }
 
 void
 visit_tree_node(
     stag<sym_subscript>, assembler_c auto& a, python_ast::tree_node* arg,
-    std::span<python_ast::tree_node> c) {}
+    std::span<python_ast::tree_node> c) {
+  construct<load>(
+      a, arg->text, find(c, field::fld_value),
+      "@subscripts");  // TODO: make sure this field is always present
+  construct<load>(a, arg->text, arg->text, find(c, field::fld_subscript));
+}
 
 std::unique_ptr<cfg>
 parse(std::string&& source, lang_tag<lang::python>) {
