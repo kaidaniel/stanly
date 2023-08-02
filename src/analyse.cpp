@@ -31,10 +31,20 @@ analyse(const lit& lit, state* d) {
     m->set(lit.value, object{{type{lit.type}, data{{{}, constant{lit.value}}}}});
   });
 }
+// ref(.var .src)
+// .var = &.src
+//
+// scp[.var] := scp[.src]
 void
 analyse(const ref& ref, state* d) {
   (*d)([&](scope* s) { s->set(ref.var, addresses{ref.src}); });
 }
+// load(.var .src .field)
+// .var = .src[.field]
+//
+// scp[.var] := union { mem[s].defined[mem[f].const] : s in .src.addrs, f in .field.addrs }
+// forall s in .src.addrs, f in .field.addrs:
+//   mem[s].used &= mem[f].const;
 void
 analyse(const load& load, state* d) {
   using enum sparta::AbstractValueKind;
@@ -73,7 +83,15 @@ analyse(const load& load, state* d) {
     scp->set_to_bottom(); }});});
   // clang-format on
 }
-
+// update(.var .field .src)
+// .var[.field] = .src
+//
+// forall v in .var, f in .field:
+//   mem[v].defined[mem[f].const] = scp[.src]
+//
+// update(.var .src) => { mem[v] : v in scp[.var] } := mem[.src]
+// ref   (.var .src) => scp[.var] = scp[.src]
+//
 void
 analyse(const update& update, state* d) {
   const auto& scp = d->get<scope>();

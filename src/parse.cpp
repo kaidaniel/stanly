@@ -134,69 +134,104 @@ static_assert(tree_c<python_ast>);
 template <symbol s>
 using stag = tag<static_cast<std::size_t>(s)>;
 
-struct node_tag {};
+template <class T, assembler_c Assembler, class Node = load>
+struct make {
+  Assembler& assembler;
+  std::span<T> children;
+  T* arg;
+  Node node{};
+  make(Assembler& a, std::span<T> c, T* arg) : assembler{a}, children(c), arg(arg) {}
+  template <class N>
+  make(Assembler& a, std::span<T> c, T* arg, N node)
+      : assembler{a}, children(c), arg(arg), node(node) {}
 
-auto
-find(node_tag, std::span<python_ast::tree_node> children, field fld) {
-  auto ret = rg::find(
-      children, std::optional{static_cast<std::size_t>(fld)}, &python_ast::tree_node::field);
-  stanly_assert(ret != children.end());
-  return *ret;
-}
-
-std::string_view
-find(std::span<python_ast::tree_node> children, field fld) {
-  return find(node_tag{}, children, fld).text;
-}
-
-void
-visit_tree_node(
-    stag<symbol::sym_assignment>, assembler_c auto& a, python_ast::tree_node*,
-    std::span<python_ast::tree_node> c) {
-      
-  construct<ref>(a, find(c, field::fld_left), find(c, field::fld_right));
-}
-
-void
-visit_tree_node(
-    stag<symbol::sym_augmented_assignment>, assembler_c auto& a, python_ast::tree_node* arg,
-    std::span<python_ast::tree_node> children) {
-  std::string_view left, right, operator_;
-  for (const auto& c : children) {
-    if (!c.field) { continue; }
-    switch ((field)*c.field) {
-      case field::fld_left: left = c.text;
-      case field::fld_right: right = c.text;
-      case field::fld_operator: operator_ = c.text;
-      default: unreachable();
-    }
+  std::string_view
+  text(field f) {
+    return find(f);
   }
-  construct<alloc>(a, arg->text, "args");
-  construct<append>(a, arg->text, left);
-  construct<append>(a, arg->text, right);
-  construct<dcall>(a, left, operator_, arg->text);
-  construct<ref>(a, left, right);
+  std::string_view
+  text(symbol s) {
+    return find(s);
+  }
+  std::string_view
+  text(T* t) {
+    return t->text;
+  }
+  std::string_view
+  text(std::string_view sv) {
+    return sv;
+  }
+  struct node_tag {};
+
+  auto
+  find(node_tag, field fld) {
+    auto ret = rg::find(
+        children, std::optional{static_cast<std::size_t>(fld)}, &python_ast::tree_node::field);
+    stanly_assert(ret != children.end());
+    return *ret;
+  }
+
+  std::string_view
+  find(const field fld) {
+    return find(node_tag{}, fld).text;
+  }
+  template <class N>
+  make<T, Assembler, N>
+  operator()(N node) {
+    return make<T, Assembler, N>{assembler, children, arg, node};
+  }
+  template <class A, class B, class C>
+  make&
+  operator()(A a, B b, C c) {
+    construct<Node>(assembler, text(a), text(b), text(c));
+    return *this;
+  }
+  template <class A, class B>
+  make&
+  operator()(A a, B b) {
+    construct<Node>(assembler, text(a), text(b));
+    return *this;
+  }
+};
+using enum field;
+// clang-format off
+void
+visit_tree_node(stag<symbol::sym_assignment>, assembler_c auto& a, tree_sitter_ast_node* arg,std::span<tree_sitter_ast_node> children) { make{a, children, arg}
+  // for(int i = 0; const auto& child : children){
+  //   if ((field)child.field.value_or(0) == field::fld_left && (symbol)child.symbol == symbol::sym_subscript) {
+      
+  //     construct<update>(a, );
+  //     i++;
+  //   }
+  // }
+  // make<ref>(field::fld_left, field::fld_right);
+  (ref())(fld_left, fld_right);
 }
 
 void
-visit_tree_node(
-    stag<symbol::sym_attribute>, assembler_c auto& a, python_ast::tree_node* arg,
-    std::span<python_ast::tree_node> c) {
-  construct<load>(
-      a, arg->text, find(c, field::fld_object),
-      "@attributes");  // TODO: make sure this field is always present
-  construct<load>(a, arg->text, arg->text, find(c, field::fld_attribute));
+visit_tree_node(stag<symbol::sym_augmented_assignment>, assembler_c auto& a, python_ast::tree_node* arg, std::span<python_ast::tree_node> children) { make{a, children, arg}
+  (alloc()) (arg, "args")
+  (append())(arg, fld_left)
+  (append())(arg, fld_right)
+  (dcall()) (fld_left, fld_operator, arg)
+  (ref())   (fld_left, fld_right);
 }
 
+// TODO: make sure @attributes is always present
+// TODO: pass in pointer to parent node (to disambiguate loading from storing)arg
 void
-visit_tree_node(
-    stag<symbol::sym_subscript>, assembler_c auto& a, python_ast::tree_node* arg,
-    std::span<python_ast::tree_node> c) {
-  construct<load>(
-      a, arg->text, find(c, field::fld_value),
-      "@subscripts");  // TODO: make sure this field is always present
-  construct<load>(a, arg->text, arg->text, find(c, field::fld_subscript));
+visit_tree_node(stag<symbol::sym_attribute>, assembler_c auto& a, python_ast::tree_node* arg, std::span<python_ast::tree_node> c) { make{a, c, arg}
+  (load())(arg, fld_object, "@attributes")
+  (load())(arg, arg,        fld_attribute);
 }
+
+// TODO: make sure @subscripts is always present
+void
+visit_tree_node(stag<symbol::sym_subscript>, assembler_c auto& a, python_ast::tree_node* arg,std::span<python_ast::tree_node> c) { make{a, c, arg}
+  (load())(arg, fld_value, "@subscripts")
+  (load())(arg, arg,       fld_subscript);
+}
+// clang-format on
 
 std::unique_ptr<cfg>
 parse(std::string&& source, lang_tag<lang::python>) {

@@ -14,17 +14,18 @@
 
 namespace stanly {
 // clang-format off
-struct alloc  { handle var; handle type;                };
-struct top    { handle var; handle reason;              };
-struct lit    { handle var; handle type;  handle value; };
-struct ref    { handle var; handle src;                 };
-struct copy   { handle var; handle src;                 };
+struct alloc  { handle var; handle type;                };  // .var = new .type
+struct top    { handle var; handle reason;              };  // .var: Any
+struct lit    { handle var; handle type;  handle value; };  // .var = new .type(.value)
+struct ref    { handle var; handle src;                 };  // .var = .src
+struct copy   { handle var; handle src;                 };  // .var = clone(.src)
 
-struct update { handle var; handle field; handle src;   };
-struct append { handle var; handle src;                 };
-struct load   { handle var; handle src;   handle field; };
-struct merge  { handle var; handle old;   handle niu;   };
-struct dcall  { handle var; handle fn;    handle arg;   };
+struct update { handle var; handle field; handle src;   };  // .var[.field] = .src       => { mem[v].def[mem[f].const] : v in scp[.var], f in scp[.field] } := scp[.src]
+struct append { handle var; handle src;                 };  // .var.append(.src)
+struct load   { handle var; handle src;   handle field; };  // .var = .src[.field]       => scp[.var] := { mem[s].defined[mem[f].const] : s in scp[.src], f in scp[.field] }
+struct store  { handle var; handle src;                 };  // *.var = .src              => scp[.var] 
+struct merge  { handle var; handle old;   handle niu;   };  // .var = .old join .new
+struct dcall  { handle var; handle fn;    handle arg;   };  // .var = .fn(.arg)
 // clang-format on
 static_assert(__cpp_lib_variant >= 202102L);
 struct node : std::variant<alloc, top, lit, ref, copy, update, append, load, merge, dcall> {
