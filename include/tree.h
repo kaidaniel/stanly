@@ -89,7 +89,8 @@ visit_tree_nodes(tree_c auto& parse_tree, State& state) {
         auto symbol = node_kind(std::move(v));
 
         constexpr static std::array jump_table = make_array([]<std::size_t N> {
-          return +[](State& state, tree_node* node, tree_node* parent, std::span<tree_node> children) {
+          return +[](State& state, tree_node* node, tree_node* parent,
+                     std::span<tree_node> children) {
             if constexpr (requires { visit_tree_node(tag<N>{}, state, node, parent, children); }) {
               visit_tree_node(tag<N>{}, state, node, parent, children);
             }

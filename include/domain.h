@@ -88,12 +88,9 @@ using used = sparta::HashedSetAbstractDomain<handle>;
 struct record final : product<record, row_var, defined, used> {
   using product::product;
 };
-struct data final : product<data, record, constant> {
-  using product::product;
-};
 using type = sparta::ConstantAbstractDomain<handle>;
 
-struct object final : product<object, type, data> {
+struct object final : product<object, type, record, constant> {
   using product::product;
 };
 
@@ -256,37 +253,6 @@ struct std::formatter<Constant, CharT> : std::formatter<std::string_view, CharT>
   }
 };
 
-template <class Data, class CharT>
-  requires std::same_as<stanly::data, Data> || std::same_as<with_handles<stanly::data>, Data>
-struct std::formatter<Data, CharT> : std::formatter<std::string_view, CharT> {
-  struct data_visitor {
-    using result_type = std::string;
-    const std::map<stanly::handle, std::string_view>& handles_to_str;
-    result_type
-    operator()(auto&& x) const {
-      if constexpr (std::same_as<stanly::data, Data>) { return std::format("{}", x); }
-      if constexpr (std::same_as<with_handles<stanly::data>, Data>) {
-        return std::format("{}", with_handles{x, handles_to_str});
-        // return std::format("{}", x);
-      }
-    };
-  };
-  auto
-  format(const Data& dt, auto& ctx) const {
-    if constexpr (std::same_as<stanly::data, Data>) {
-      return std::format_to(
-          ctx.out(), "({} {})", dt.template get<stanly::record>(),
-          dt.template get<stanly::constant>());
-    }
-    if constexpr (std::same_as<with_handles<stanly::data>, Data>) {
-      return std::format_to(
-          ctx.out(), "({} {})",
-          with_handles{dt.t.template get<stanly::record>(), dt.handles_to_str},
-          with_handles{dt.t.template get<stanly::constant>(), dt.handles_to_str});
-    }
-  }
-};
-
 template <class Object, class CharT>
   requires std::same_as<stanly::object, Object> ||
            std::same_as<with_handles<stanly::object>, Object>
@@ -295,13 +261,15 @@ struct std::formatter<Object, CharT> : std::formatter<std::string_view, CharT> {
   format(const Object& obj, auto& ctx) const {
     if constexpr (std::same_as<stanly::object, Object>) {
       return std::format_to(
-          ctx.out(), "({} {})", obj.template get<stanly::type>(), obj.template get<stanly::data>());
+          ctx.out(), "({} {} {})", obj.template get<stanly::type>(),
+          obj.template get<stanly::record>(), obj.template get<stanly::constant>());
     }
     if constexpr (std::same_as<with_handles<stanly::object>, Object>) {
       return std::format_to(
-          ctx.out(), "({} {})",
+          ctx.out(), "({} {} {})",
           with_handles{obj.t.template get<stanly::type>(), obj.handles_to_str},
-          with_handles{obj.t.template get<stanly::data>(), obj.handles_to_str});
+          with_handles{obj.t.template get<stanly::record>(), obj.handles_to_str},
+          with_handles{obj.t.template get<stanly::constant>(), obj.handles_to_str});
     }
   }
 };

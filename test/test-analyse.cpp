@@ -44,25 +44,23 @@ TEST_CASE("analyse a basic block node-by-node", "[node][analyse]") {
   set_scope("alloc1"_h, addresses{"alloc1"_h});
   set_memory(
       "alloc1"_h,
-      object{
-          {type{"unknown"_h}, data{{record{{row_var{Closed}, defined{}, used{}}}, constant{}}}}});
+      object{{type{"unknown"_h}, record{{row_var{Closed}, defined{}, used{}}}, constant{}}});
 
   add_node(lit{"lit1"_h, "int"_h, "123"_h});
   set_scope("lit1"_h, addresses{"123"_h});
-  set_memory("123"_h, object{{type{"int"_h}, data{{record{}, constant{"123"_h}}}}});
+  set_memory("123"_h, object{{type{"int"_h}, record{}, constant{"123"_h}}});
 
   add_node(lit{"field1"_h, "str"_h, "field1_val"_h});
   set_scope("field1"_h, addresses{"field1_val"_h});
-  set_memory("field1_val"_h, object{{type{"str"_h}, data{{record{}, constant{"field1_val"_h}}}}});
+  set_memory("field1_val"_h, object{{type{"str"_h}, record{}, constant{"field1_val"_h}}});
 
   add_node(update{"alloc1"_h, "field1"_h, "lit1"_h});
   set_memory(
       "alloc1"_h,
       object{
           {type{"unknown"_h},
-           data{
-               {record{{row_var{Closed}, defined{{{"field1_val"_h, addresses{"123"_h}}}}, used{}}},
-                constant{}}}}});
+           record{{row_var{Closed}, defined{{{"field1_val"_h, addresses{"123"_h}}}}, used{}}},
+           constant{}}});
 
   add_node(ref{"ref1"_h, "alloc1"_h});
   set_scope("ref1"_h, addresses{"alloc1"_h});
@@ -72,22 +70,21 @@ TEST_CASE("analyse a basic block node-by-node", "[node][analyse]") {
   set_memory(
       "alloc1"_h, object{
                       {type{"unknown"_h},
-                       data{
-                           {record{
-                                {row_var{Closed}, defined{{{"field1_val"_h, addresses{"123"_h}}}},
-                                 used{"field1_val"_h}}},
-                            constant{}}}}});
+                       record{
+                           {row_var{Closed}, defined{{{"field1_val"_h, addresses{"123"_h}}}},
+                            used{"field1_val"_h}}},
+                       constant{}}});
 
   add_node(lit{"field2"_h, "str"_h, "field2_val"_h});
   set_scope("field2"_h, addresses{"field2_val"_h});
-  set_memory("field2_val"_h, object{{type{"str"_h}, data{{record{}, constant{"field2_val"_h}}}}});
+  set_memory("field2_val"_h, object{{type{"str"_h}, record{}, constant{"field2_val"_h}}});
 
   add_node(alloc{"alloc1"_h, "dict"_h});
   set_scope("alloc1"_h, addresses{"alloc1"_h});
   results.back().state([&](memory* m) {
     m->set(
         "alloc1"_h,
-        object{{type{"dict"_h}, data{{record{{row_var{Closed}, defined{}, used{}}}, constant{}}}}});
+        object{{type{"dict"_h}, record{{row_var{Closed}, defined{}, used{}}}, constant{}}});
   });
 
   add_node(ref{"ref1"_h, "alloc1"_h});

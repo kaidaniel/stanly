@@ -19,17 +19,14 @@ analyse(const alloc& alloc, state* d) {
   (*d)([&](scope* s) { s->set(alloc.var, addresses{alloc.var}); });
   (*d)([&](memory* m) {
     m->set(
-        alloc.var, object{
-                       {type{alloc.type},
-                        data{{record{{row_var{RowVarEls::Closed}, defined{}, used{}}}, {}}}}});
+        alloc.var,
+        object{{type{alloc.type}, record{{row_var{RowVarEls::Closed}, defined{}, used{}}}, {}}});
   });
 }
 void
 analyse(const lit& lit, state* d) {
   (*d)([&](scope* s) { s->set(lit.var, addresses{lit.value}); });
-  (*d)([&](memory* m) {
-    m->set(lit.value, object{{type{lit.type}, data{{{}, constant{lit.value}}}}});
-  });
+  (*d)([&](memory* m) { m->set(lit.value, object{{type{lit.type}, {}, constant{lit.value}}}); });
 }
 // ref(.var .src)
 // .var = &.src
@@ -54,14 +51,14 @@ analyse(const read& read, state* d) {
   (*d)([&](memory* mem){
   (*d)([&](scope* scp){
   scp->update(read.var,  [&](addresses* var){
-  const addresses& field = scp->get(read.name);
+  const addresses& field = scp->get(read.field);
   const addresses& src = scp->get(read.src);
     switch(src.kind()){
       case Top: var->set_to_top(); return;
       case Bottom: invalid_state = true; return;
       case Value:
         for(const handle source : src.elements()){
-          mem->update(source, [&](object* obj){(*obj)([&](data* dt){(*dt)([&](record* src_record){
+          mem->update(source, [&](object* obj){(*obj)([&](record* src_record){
             (*src_record)([&](used* u){ u->join_with(field);});
             switch(field.kind()){
               case Top: var->set_to_top(); return;
@@ -76,7 +73,7 @@ analyse(const read& read, state* d) {
                           case Closed: invalid_state = true; return;  // no binding exists
                           case Open: var->set_to_top(); return;}  // any binding could exist
                       default: var->join_with(field_obj_addrs); break; }
-                  if(invalid_state){ return; } }}});});});
+                  if(invalid_state){ return; } }}});});
           if (invalid_state){ return; }}}});
   if (invalid_state){
     mem->set_to_top();
@@ -103,12 +100,10 @@ analyse(const update& update, state* d) {
   (*d)([&](memory* m) {
     for (const handle target : scp.get(update.var).elements()) {
       m->update(target, [&](object* o) {
-        (*o)([&](data* dt) {
-          (*dt)([&](record* r) {
-            (*r)([&](defined* def) {
-              if (fields.is_top()) { def->set_to_top(); }
-              for (const handle field : elements) { def->set(field, scp.get(update.src)); }
-            });
+        (*o)([&](record* r) {
+          (*r)([&](defined* def) {
+            if (fields.is_top()) { def->set_to_top(); }
+            for (const handle field : elements) { def->set(field, scp.get(update.src)); }
           });
         });
       });

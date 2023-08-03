@@ -161,8 +161,7 @@ struct make {
 
   auto
   find(node_tag, field fld) {
-    auto ret = rg::find(
-        children, std::optional{static_cast<std::size_t>(fld)}, &ast_node::field);
+    auto ret = rg::find(children, std::optional{static_cast<std::size_t>(fld)}, &ast_node::field);
     stanly_assert(ret != children.end());
     return *ret;
   }
