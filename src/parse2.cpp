@@ -227,7 +227,7 @@ struct node_cursor : public cursor {
       case list: return {{{alloc{}, {var, "top"}}}};
       case subscript: {
         auto [variable, field_] = parse_variable_and_field_from_subscript();
-        return {{load{}, {var, variable, field_}}};
+        return {{read{}, {var, variable, field_}}};
       }
       case ellipsis: return {{lit{}, {var, "Ellipsis", "ellipsis"}}};
       case binary_operator: [[fallthrough]];

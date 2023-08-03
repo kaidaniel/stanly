@@ -39,23 +39,23 @@ void
 analyse(const ref& ref, state* d) {
   (*d)([&](scope* s) { s->set(ref.var, addresses{ref.src}); });
 }
-// load(.var .src .field)
+// field(.var .src .field)
 // .var = .src[.field]
 //
 // scp[.var] := union { mem[s].defined[mem[f].const] : s in .src.addrs, f in .field.addrs }
 // forall s in .src.addrs, f in .field.addrs:
 //   mem[s].used &= mem[f].const;
 void
-analyse(const load& load, state* d) {
+analyse(const read& read, state* d) {
   using enum sparta::AbstractValueKind;
   using enum RowVarEls;
   bool invalid_state = false;
   // clang-format off
   (*d)([&](memory* mem){
   (*d)([&](scope* scp){
-  scp->update(load.var,  [&](addresses* var){
-  const addresses& field = scp->get(load.field);
-  const addresses& src = scp->get(load.src);
+  scp->update(read.var,  [&](addresses* var){
+  const addresses& field = scp->get(read.name);
+  const addresses& src = scp->get(read.src);
     switch(src.kind()){
       case Top: var->set_to_top(); return;
       case Bottom: invalid_state = true; return;
@@ -85,6 +85,8 @@ analyse(const load& load, state* d) {
 }
 // update(.var .field .src)
 // .var[.field] = .src
+// *(var + field) = src  (var: T*; field: T::*; src: T)
+// equivalent to: *x = src  (x: )
 //
 // forall v in .var, f in .field:
 //   mem[v].defined[mem[f].const] = scp[.src]

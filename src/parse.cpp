@@ -17,7 +17,6 @@
 
 #include "parser-symbols.h"
 #include "stanly-assert.h"
-#include "stanly-utils.h"
 #include "string-index.h"
 #include "syntax.h"
 #include "to_tpl.h"
@@ -31,14 +30,14 @@ TSLanguage* tree_sitter_python(void);
 namespace stanly {
 namespace rg = std::ranges;
 
-struct tree_sitter_ast_node {
+struct ast_node {
   std::optional<std::size_t> field;
   std::size_t symbol;
   std::string_view text;
 };
 
 struct tree_sitter_ast {
-  tree_sitter_ast(std::string_view p, TSLanguage* lang) : program(p) {
+  tree_sitter_ast(std::string_view p, TSLanguage* lang = tree_sitter_python()) : program(p) {
     auto* parser = ts_parser_new();
     ts_parser_set_language(parser, lang);
     auto* tree = ts_parser_parse_string(parser, nullptr, program.begin(), program.size());
@@ -57,7 +56,7 @@ struct tree_sitter_ast {
 
   TSTreeCursor ts_cursor{};
   std::string_view program;
-  using tree_node = tree_sitter_ast_node;
+  using tree_node = ast_node;
 
  private:
   std::function<void()> destroy;
@@ -83,7 +82,7 @@ goto_parent(tree_sitter_ast& t) {
   return ts_tree_cursor_goto_parent(&t.ts_cursor);
 }
 
-tree_sitter_ast_node
+ast_node
 value(tree_sitter_ast& t) {
   const auto node = ts_tree_cursor_current_node(&t.ts_cursor);
   const auto start = ts_node_start_byte(node);
@@ -110,12 +109,8 @@ add_string_to_index(cfg& c, std::string&& str) {
   return c.idx.add_string_to_index(std::move(str));
 }
 
-struct python_ast : public tree_sitter_ast {
-  python_ast(std::string_view sv) : tree_sitter_ast(sv, tree_sitter_python()) {}
-};
-
 inline auto
-node_kind(const tree_sitter_ast_node& n) {
+node_kind(const ast_node& n) {
   return n.symbol;
 }
 
@@ -129,12 +124,13 @@ concept assembler_c = std::default_initializable<T> && requires(std::string sour
 // clang-format on
 
 static_assert(assembler_c<cfg>);
-static_assert(tree_c<python_ast>);
+static_assert(tree_c<tree_sitter_ast>);
 
+namespace {
 template <symbol s>
 using stag = tag<static_cast<std::size_t>(s)>;
 
-template <class T, assembler_c Assembler, class Node = load>
+template <class T, assembler_c Assembler, class Node = read>
 struct make {
   Assembler& assembler;
   std::span<T> children;
@@ -166,7 +162,7 @@ struct make {
   auto
   find(node_tag, field fld) {
     auto ret = rg::find(
-        children, std::optional{static_cast<std::size_t>(fld)}, &python_ast::tree_node::field);
+        children, std::optional{static_cast<std::size_t>(fld)}, &ast_node::field);
     stanly_assert(ret != children.end());
     return *ret;
   }
@@ -182,21 +178,24 @@ struct make {
   }
   template <class A, class B, class C>
   make&
-  operator()(A a, B b, C c) {
+  operator()(const A& a, const B& b, const C& c) {
     construct<Node>(assembler, text(a), text(b), text(c));
     return *this;
   }
   template <class A, class B>
   make&
-  operator()(A a, B b) {
+  operator()(const A& a, const B& b) {
     construct<Node>(assembler, text(a), text(b));
     return *this;
   }
 };
 using enum field;
+using enum symbol;
+}  // namespace
+
 // clang-format off
 void
-visit_tree_node(stag<symbol::sym_assignment>, assembler_c auto& a, tree_sitter_ast_node* arg,std::span<tree_sitter_ast_node> children) { make{a, children, arg}
+visit_tree_node(stag<symbol::sym_assignment>, assembler_c auto& a, ast_node* node, ast_node*, std::span<ast_node> children) { make{a, children, node}
   // for(int i = 0; const auto& child : children){
   //   if ((field)child.field.value_or(0) == field::fld_left && (symbol)child.symbol == symbol::sym_subscript) {
       
@@ -209,34 +208,33 @@ visit_tree_node(stag<symbol::sym_assignment>, assembler_c auto& a, tree_sitter_a
 }
 
 void
-visit_tree_node(stag<symbol::sym_augmented_assignment>, assembler_c auto& a, python_ast::tree_node* arg, std::span<python_ast::tree_node> children) { make{a, children, arg}
-  (alloc()) (arg, "args")
-  (append())(arg, fld_left)
-  (append())(arg, fld_right)
-  (dcall()) (fld_left, fld_operator, arg)
+visit_tree_node(stag<symbol::sym_augmented_assignment>, assembler_c auto& a, ast_node* node, ast_node*, std::span<ast_node> children) { make{a, children, node}
+  (alloc()) (node, "args")
+  (append())(node, fld_left)
+  (append())(node, fld_right)
+  (dcall()) (fld_left, fld_operator, node)
   (ref())   (fld_left, fld_right);
 }
 
 // TODO: make sure @attributes is always present
-// TODO: pass in pointer to parent node (to disambiguate loading from storing)arg
+// TODO: pass in pointer to parent node (to disambiguate fielding from storing)node
 void
-visit_tree_node(stag<symbol::sym_attribute>, assembler_c auto& a, python_ast::tree_node* arg, std::span<python_ast::tree_node> c) { make{a, c, arg}
-  (load())(arg, fld_object, "@attributes")
-  (load())(arg, arg,        fld_attribute);
+visit_tree_node(stag<symbol::sym_attribute>, assembler_c auto& a, ast_node* node, ast_node*, std::span<ast_node> c) { make{a, c, node}
+  (read())(node, fld_object, "@attributes")
+  (read())(node, node,        fld_attribute);
 }
-
 // TODO: make sure @subscripts is always present
 void
-visit_tree_node(stag<symbol::sym_subscript>, assembler_c auto& a, python_ast::tree_node* arg,std::span<python_ast::tree_node> c) { make{a, c, arg}
-  (load())(arg, fld_value, "@subscripts")
-  (load())(arg, arg,       fld_subscript);
+visit_tree_node(stag<symbol::sym_subscript>, assembler_c auto& a, ast_node* node, ast_node*, std::span<ast_node> c) { make{a, c, node}
+  (read())(node, fld_value, "@subscripts")
+  (read())(node, node,       fld_subscript);
 }
 // clang-format on
 
 std::unique_ptr<cfg>
 parse(std::string&& source, lang_tag<lang::python>) {
   auto assembler = std::make_unique<cfg>();
-  auto parse_tree = python_ast(add_string_to_index(*assembler, std::move(source)));
+  auto parse_tree = tree_sitter_ast(add_string_to_index(*assembler, std::move(source)));
   visit_tree_nodes<cfg>(parse_tree, *assembler);
   return assembler;
 }

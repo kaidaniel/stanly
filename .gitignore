@@ -1,9 +1,6 @@
 /.cache/
 /.idea/
 /.vscode/
-/build-default/
-/build-vscode/
 /.scratch/
 .bash
-build-clion/
 build-*

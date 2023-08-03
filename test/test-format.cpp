@@ -19,7 +19,7 @@ namespace stanly {
 TEST_CASE("format syntax nodes", "[format]") {
   SECTION("node") {
     auto [n, str] = GENERATE(from_range(std::vector<std::pair<node, std::string>>{
-        {load{"a"_h, "b"_h, "c"_h}, std::format("{}(a b c)", type_name<load>)},
+        {read{"a"_h, "b"_h, "c"_h}, std::format("{}(a b c)", type_name<read>)},
         {update{"a"_h, "b"_h, "c"_h}, std::format("{}(a b c)", type_name<update>)},
         {lit{"a"_h, "integer"_h, "b"_h}, std::format("{}(a integer b)", type_name<lit>)},
         {alloc{"a"_h, "dict"_h}, std::format("{}(a dict)", type_name<alloc>)},
@@ -28,7 +28,7 @@ TEST_CASE("format syntax nodes", "[format]") {
   }
   SECTION("handle node") {
     auto [n, str] = GENERATE(from_range(std::vector<std::pair<node, std::string>>{
-        {{load{0_i, 1_i, 2_i}, std::format("{}(0 1 2)", type_name<load>)},
+        {{read{0_i, 1_i, 2_i}, std::format("{}(0 1 2)", type_name<read>)},
          {update{3_i, 4_i, 5_i}, std::format("{}(3 4 5)", type_name<update>)},
          {lit{6_i, 1_i, 7_i}, std::format("{}(6 1 7)", type_name<lit>)},
          {alloc{8_i, 9_i}, std::format("{}(8 9)", type_name<alloc>)},
@@ -37,8 +37,8 @@ TEST_CASE("format syntax nodes", "[format]") {
   }
   SECTION("std::vector<node>") {
     auto [n, str] = GENERATE(from_range(std::vector<std::pair<std::vector<node>, std::string>>{
-        {{load{"a"_h, "b"_h, "c"_h}, lit{"a"_h, "s"_h, "b"_h}},
-         std::format("[{}(a b c), {}(a s b)]", type_name<load>, type_name<lit>)},
+        {{read{"a"_h, "b"_h, "c"_h}, lit{"a"_h, "s"_h, "b"_h}},
+         std::format("[{}(a b c), {}(a s b)]", type_name<read>, type_name<lit>)},
         {{ref{"a"_h, "b"_h}, alloc{"a"_h, "top"_h}},
          std::format("[{}(a b), {}(a top)]", type_name<ref>, type_name<alloc>)},
         {{}, "[]"}}));

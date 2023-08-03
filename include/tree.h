@@ -89,11 +89,9 @@ visit_tree_nodes(tree_c auto& parse_tree, State& state) {
         auto symbol = node_kind(std::move(v));
 
         constexpr static std::array jump_table = make_array([]<std::size_t N> {
-          return +[](State& state, tree_node* node, std::span<tree_node> children) {
-            if constexpr (requires { visit_tree_node(tag<N>{}, state, node, children); }) {
-              visit_tree_node(tag<N>{}, state, node, children);
-            } else if constexpr (requires { visit_tree_node(tag<N>{}, state, node); }) {
-              visit_tree_node(tag<N>{}, state, node);
+          return +[](State& state, tree_node* node, tree_node* parent, std::span<tree_node> children) {
+            if constexpr (requires { visit_tree_node(tag<N>{}, state, node, parent, children); }) {
+              visit_tree_node(tag<N>{}, state, node, parent, children);
             }
           };
         });
@@ -103,7 +101,7 @@ visit_tree_nodes(tree_c auto& parse_tree, State& state) {
         stanly_assert(
             symbol >= 0,
             std::format("jump table index negative: {} (len: {})", symbol, jump_table.size()));
-        jump_table[symbol](state, args.data() - 1, args);
+        jump_table[symbol](state, args.data() - 1, args.data() - 2, args);
         children.erase(children.end() - n_args, children.end());
       });
   return state;

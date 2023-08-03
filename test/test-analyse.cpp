@@ -67,8 +67,8 @@ TEST_CASE("analyse a basic block node-by-node", "[node][analyse]") {
   add_node(ref{"ref1"_h, "alloc1"_h});
   set_scope("ref1"_h, addresses{"alloc1"_h});
 
-  add_node(load{"load1"_h, "alloc1"_h, "field1"_h});
-  set_scope("load1"_h, addresses{"123"_h});
+  add_node(read{"read1"_h, "alloc1"_h, "field1"_h});
+  set_scope("read1"_h, addresses{"123"_h});
   set_memory(
       "alloc1"_h, object{
                       {type{"unknown"_h},
@@ -93,10 +93,10 @@ TEST_CASE("analyse a basic block node-by-node", "[node][analyse]") {
   add_node(ref{"ref1"_h, "alloc1"_h});
   set_scope("ref1"_h, addresses{"alloc1"_h});
 
-  add_node(load{"load1"_h, "alloc1"_h, "field2"_h});
-  // row var is closed: no valid execution where load1 has a value (bottom).
-  // if row_var was open, load1 could be anything (top).
-  set_scope("load1"_h, addresses::bottom());
+  add_node(read{"read1"_h, "alloc1"_h, "field2"_h});
+  // row var is closed: no valid execution where read1 has a value (bottom).
+  // if row_var was open, read1 could be anything (top).
+  set_scope("read1"_h, addresses::bottom());
   results.back().state([&](memory* m) { m->set_to_top(); });
 
   add_node(alloc{"alloc2"_h, "unknown"_h});  // has no effect because state is invalid already.

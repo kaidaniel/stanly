@@ -29,6 +29,9 @@ constexpr std::string_view type_name = []<class S = T> {
 }
 ();
 
+// template<class T>
+// constexpr std::string_view type_repr = type_name<T>;
+
 [[noreturn]] inline void
 unreachable(std::string_view msg = "") {
 #ifndef NDEBUG
