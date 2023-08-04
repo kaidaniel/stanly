@@ -111,26 +111,6 @@ struct state final : product<state, scope, memory> {
   using product<state, scope, memory>::product;
 };
 
-template <class F, class... Args>
-struct expr {
-  F fn;
-  std::tuple<const Args&...> tpl;
-  expr(F fn, Args&&... args) : fn(fn), tpl(args...) {}
-  auto
-  evaluate(const auto& src) {
-    return std::apply([&](auto&&... args) { return fn(do_evaluate(args, src)...); }, tpl);
-  }
-};
-
-auto
-do_evaluate(const auto& arg, const auto& src) {
-  if constexpr (requires { arg.evaluate(src); }) {
-    return arg.evaluate(src);
-  } else {
-    return arg;
-  }
-}
-
 static_assert(std::derived_from<state, sparta::AbstractDomain<state>>);
 static_assert(std::derived_from<scope, sparta::AbstractDomain<scope>>);
 static_assert(std::derived_from<memory, sparta::AbstractDomain<memory>>);
