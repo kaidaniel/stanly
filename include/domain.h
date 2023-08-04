@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <format>
 #include <map>
+#include <ostream>
 #include <sstream>
 #include <string>
 #include <string_view>
@@ -85,12 +86,21 @@ using constant = sparta::ConstantAbstractDomain<handle>;
 using defined = sparta::HashedAbstractPartition<handle, addresses>;
 using used = sparta::HashedSetAbstractDomain<handle>;
 
-struct record final : product<record, row_var, defined, used> {
-  using product::product;
+struct type final
+    : sparta::AbstractDomainScaffolding<sparta::acd_impl::ConstantAbstractValue<handle>, type> {
+  explicit type(handle h) { this->set_to_value(sparta::acd_impl::ConstantAbstractValue(h)); }
+  using AbstractDomainScaffolding::AbstractDomainScaffolding;
+  [[nodiscard]] const stanly::handle&
+  get() const {
+    return this->get_value()->get_constant();
+  }
+  friend constexpr std::ostream&
+  operator<<(std::ostream& os, const stanly::type& h) {
+    return os << h.get();
+  };
 };
-using type = sparta::ConstantAbstractDomain<handle>;
 
-struct object final : product<object, type, record, constant> {
+struct object final : product<object, type, constant, row_var, defined, used> {
   using product::product;
 };
 
@@ -98,14 +108,33 @@ using scope = sparta::HashedAbstractEnvironment<handle, addresses>;
 using memory = sparta::HashedAbstractPartition<handle, object>;
 
 struct state final : product<state, scope, memory> {
-  using product::product;
+  using product<state, scope, memory>::product;
 };
+
+template <class F, class... Args>
+struct expr {
+  F fn;
+  std::tuple<const Args&...> tpl;
+  expr(F fn, Args&&... args) : fn(fn), tpl(args...) {}
+  auto
+  evaluate(const auto& src) {
+    return std::apply([&](auto&&... args) { return fn(do_evaluate(args, src)...); }, tpl);
+  }
+};
+
+auto
+do_evaluate(const auto& arg, const auto& src) {
+  if constexpr (requires { arg.evaluate(src); }) {
+    return arg.evaluate(src);
+  } else {
+    return arg;
+  }
+}
 
 static_assert(std::derived_from<state, sparta::AbstractDomain<state>>);
 static_assert(std::derived_from<scope, sparta::AbstractDomain<scope>>);
 static_assert(std::derived_from<memory, sparta::AbstractDomain<memory>>);
 }  // namespace stanly
-
 template <class T>
 struct with_handles {
   const T& t;
@@ -195,36 +224,6 @@ format_bindings(const T& x) {
   return out;
 }
 
-template <class Record, class CharT>
-  requires std::same_as<stanly::record, Record>
-struct std::formatter<Record, CharT> : std::formatter<std::string_view, CharT> {
-  auto
-  format(const Record& record, auto& ctx) const {
-    using namespace stanly;
-    return std::format_to(
-        ctx.out(), "({}defined{}, used{})",
-        (record.template get<row_var>().element() == RowVarEls::Open) ? "* " : "",
-        record.template get<defined>().bindings(), record.template get<used>());
-  }
-};
-
-template <class CharT>
-struct std::formatter<with_handles<stanly::record>, CharT>
-    : std::formatter<std::string_view, CharT> {
-  auto
-  format(const with_handles<stanly::record>& record, auto& ctx) const {
-    using namespace stanly;
-    std::string s_used =
-        std::format("{}", with_handles<used>{record.t.template get<used>(), record.handles_to_str});
-    return std::format_to(
-        ctx.out(), "({}defined{}, used{})",
-        (record.t.template get<row_var>().element() == RowVarEls::Open) ? "* " : "",
-        format_bindings(with_handles{record.t.template get<defined>(), record.handles_to_str}),
-        // with_handles<used>{record.t.template get<record::idx<used>>(), record.handles_to_str});
-        s_used);
-  }
-};
-
 template <class Constant, class CharT>
   requires std::same_as<stanly::constant, Constant> ||
            std::same_as<with_handles<stanly::constant>, Constant>
@@ -253,6 +252,33 @@ struct std::formatter<Constant, CharT> : std::formatter<std::string_view, CharT>
   }
 };
 
+template <class Type, class CharT>
+  requires std::same_as<stanly::type, Type> || std::same_as<with_handles<stanly::type>, Type>
+struct std::formatter<Type, CharT> : std::formatter<std::string_view, CharT> {
+  auto
+  format(const Type& cnst, auto& ctx) const {
+    using namespace stanly;
+    std::ostringstream oss{};
+    if constexpr (std::same_as<type, Type>) { oss << cnst; }
+    if constexpr (std::same_as<with_handles<type>, Type>) {
+      switch (cnst.t.kind()) {
+        case sparta::AbstractValueKind::Top: {
+          [[fallthrough]];
+        }
+        case sparta::AbstractValueKind::Bottom: {
+          oss << cnst.t;
+          break;
+        }
+        case sparta::AbstractValueKind::Value: {
+          oss << cnst.handles_to_str.at(cnst.t.get());
+          break;
+        }
+      }
+    }
+    return std::format_to(ctx.out(), "{}", oss.str());
+  }
+};
+
 template <class Object, class CharT>
   requires std::same_as<stanly::object, Object> ||
            std::same_as<with_handles<stanly::object>, Object>
@@ -261,15 +287,21 @@ struct std::formatter<Object, CharT> : std::formatter<std::string_view, CharT> {
   format(const Object& obj, auto& ctx) const {
     if constexpr (std::same_as<stanly::object, Object>) {
       return std::format_to(
-          ctx.out(), "({} {} {})", obj.template get<stanly::type>(),
-          obj.template get<stanly::record>(), obj.template get<stanly::constant>());
+                 ctx.out(), "({} {} {} defined{} used{})", obj.template get<stanly::type>(),
+                 obj.template get<stanly::constant>(),
+                 obj.template get<stanly::row_var>().element() == stanly::RowVarEls::Open)
+                 ? "* "
+                 : "",
+             obj.template get<stanly::defined>().bindings(), obj.template get<stanly::used>();
     }
     if constexpr (std::same_as<with_handles<stanly::object>, Object>) {
       return std::format_to(
-          ctx.out(), "({} {} {})",
+          ctx.out(), "({} {} {} defined{} used{})",
           with_handles{obj.t.template get<stanly::type>(), obj.handles_to_str},
-          with_handles{obj.t.template get<stanly::record>(), obj.handles_to_str},
-          with_handles{obj.t.template get<stanly::constant>(), obj.handles_to_str});
+          with_handles{obj.t.template get<stanly::constant>(), obj.handles_to_str},
+          (obj.t.template get<stanly::row_var>().element() == stanly::RowVarEls::Open) ? "* " : "",
+          format_bindings(with_handles{obj.t.template get<stanly::defined>(), obj.handles_to_str}),
+          with_handles{obj.t.template get<stanly::used>(), obj.handles_to_str});
     }
   }
 };
