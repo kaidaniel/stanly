@@ -13,24 +13,19 @@
 #include "syntax.h"
 
 namespace stanly {
-
+using enum RowVarEls;
 void
 analyse(const alloc& alloc, state* d) {
-  (*d)([&](scope* s) { s->set(alloc.var, addresses{alloc.var}); });
+  (*d)([&](scope* s) { s->set(alloc.var, pointer{{addresses{alloc.var}, {}}}); });
   (*d)([&](memory* m) {
-    m->set(
-        alloc.var,
-        object{{type{alloc.type}, constant{}, row_var{RowVarEls::Closed}, defined{}, used{}}});
+    m->set(alloc.var, object{{type{alloc.type}, {}, row_var{Closed}, {}, {}}});
   });
 }
 void
 analyse(const lit& lit, state* d) {
-  (*d)([&](scope* s) { s->set(lit.var, addresses{lit.value}); });
+  (*d)([&](scope* s) { s->set(lit.var, pointer{{addresses{lit.value}, {}}}); });
   (*d)([&](memory* m) {
-    m->set(
-        lit.value,
-        object{
-            {type{lit.type}, constant{lit.value}, row_var{RowVarEls::Closed}, defined{}, used{}}});
+    m->set(lit.value, object{{type{lit.type}, constant{lit.value}, row_var{Closed}, {}, {}}});
   });
 }
 // ref(.var .src)
@@ -39,7 +34,7 @@ analyse(const lit& lit, state* d) {
 // scp[.var] := scp[.src]
 void
 analyse(const ref& ref, state* d) {
-  (*d)([&](scope* s) { s->set(ref.var, addresses{ref.src}); });
+  (*d)([&](scope* s) { s->set(ref.var, pointer{{addresses{ref.src}, {}}}); });
 }
 // field(.var .src .field)
 // .var = .src[.field]
@@ -55,9 +50,9 @@ analyse(const read& read, state* d) {
   // clang-format off
   (*d)([&](memory* mem){
   (*d)([&](scope* scp){
-  scp->update(read.var,  [&](addresses* var){
-  const addresses& field = scp->get(read.field);
-  const addresses& src = scp->get(read.src);
+  scp->update(read.var,  [&](pointer* var){
+  const addresses& field = scp->get(read.field).dereference(*mem);
+  const addresses& src = scp->get(read.src).dereference(*mem);
     switch(src.kind()){
       case Top: var->set_to_top(); return;
       case Bottom: invalid_state = true; return;
@@ -77,7 +72,7 @@ analyse(const read& read, state* d) {
                         switch(obj->get<row_var>().element()){
                           case Closed: invalid_state = true; return;  // no binding exists
                           case Open: var->set_to_top(); return;}  // any binding could exist
-                      default: var->join_with(field_obj_addrs); break; }
+                      default: var->join_with(pointer{{field_obj_addrs, {}}}); break; }
                   if(invalid_state){ return; } }}});
           if (invalid_state){ return; }}}});
   if (invalid_state){
@@ -99,15 +94,19 @@ analyse(const read& read, state* d) {
 void
 analyse(const update& update, state* d) {
   const auto& scp = d->get<scope>();
-  const addresses& fields = scp.get(update.field);
+  const auto& mem = d->get<memory>();
+  const addresses& fields = scp.get(update.field).dereference(mem);
   const auto& elements = fields.is_value() ? fields.elements() : std::unordered_set<handle>{};
-  if (!scp.get(update.var).is_value()) { return; }
+  auto var = scp.get(update.var).dereference(mem);
+  if (!var.is_value()) { return; }
   (*d)([&](memory* m) {
-    for (const handle target : scp.get(update.var).elements()) {
+    for (const handle target : var.elements()) {
       m->update(target, ([&](object* o) {
                   (*o)([&](defined* def) {
                     if (fields.is_top()) { def->set_to_top(); }
-                    for (const handle field : elements) { def->set(field, scp.get(update.src)); }
+                    for (const handle field : elements) {
+                      def->set(field, scp.get(update.src).dereference(mem));
+                    }
                   });
                 }));
     }

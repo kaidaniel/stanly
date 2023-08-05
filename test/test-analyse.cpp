@@ -41,17 +41,17 @@ TEST_CASE("analyse a basic block node-by-node", "[node][analyse]") {
   auto set_scope = set_key_struct<scope>(results);
   auto set_memory = set_key_struct<memory>(results);
   add_node(alloc{"alloc1"_h, "unknown"_h});
-  set_scope("alloc1"_h, addresses{"alloc1"_h});
+  set_scope("alloc1"_h, pointer{{addresses{"alloc1"_h}, {}}});
   set_memory(
       "alloc1"_h, object{{type{"unknown"_h}, constant{}, row_var{Closed}, defined{}, used{}}});
 
   add_node(lit{"lit1"_h, "int"_h, "123"_h});
-  set_scope("lit1"_h, addresses{"123"_h});
+  set_scope("lit1"_h, pointer{{addresses{"123"_h}, {}}});
   set_memory(
       "123"_h, object{{type{"int"_h}, constant{"123"_h}, row_var{Closed}, defined{}, used{}}});
 
   add_node(lit{"field1"_h, "str"_h, "field1_val"_h});
-  set_scope("field1"_h, addresses{"field1_val"_h});
+  set_scope("field1"_h, pointer{{addresses{"field1_val"_h}, {}}});
   set_memory(
       "field1_val"_h,
       object{{type{"str"_h}, constant{"field1_val"_h}, row_var{Closed}, defined{}, used{}}});
@@ -63,34 +63,34 @@ TEST_CASE("analyse a basic block node-by-node", "[node][analyse]") {
                        defined{{{"field1_val"_h, addresses{"123"_h}}}}, used{}}});
 
   add_node(ref{"ref1"_h, "alloc1"_h});
-  set_scope("ref1"_h, addresses{"alloc1"_h});
+  set_scope("ref1"_h, pointer{{addresses{"alloc1"_h}, {}}});
 
   add_node(read{"read1"_h, "alloc1"_h, "field1"_h});
-  set_scope("read1"_h, addresses{"123"_h});
+  set_scope("read1"_h, pointer{{addresses{"123"_h}, {}}});
   set_memory(
       "alloc1"_h, object{
                       {type{"unknown"_h}, constant{}, row_var{Closed},
                        defined{{{"field1_val"_h, addresses{"123"_h}}}}, used{"field1_val"_h}}});
 
   add_node(lit{"field2"_h, "str"_h, "field2_val"_h});
-  set_scope("field2"_h, addresses{"field2_val"_h});
+  set_scope("field2"_h, pointer{{addresses{"field2_val"_h}, {}}});
   set_memory(
       "field2_val"_h,
       object{{type{"str"_h}, constant{"field2_val"_h}, row_var{Closed}, defined{}, used{}}});
 
   add_node(alloc{"alloc1"_h, "dict"_h});
-  set_scope("alloc1"_h, addresses{"alloc1"_h});
+  set_scope("alloc1"_h, pointer{{addresses{"alloc1"_h}, {}}});
   results.back().state([&](memory* m) {
     m->set("alloc1"_h, object{{type{"dict"_h}, constant{}, row_var{Closed}, defined{}, used{}}});
   });
 
   add_node(ref{"ref1"_h, "alloc1"_h});
-  set_scope("ref1"_h, addresses{"alloc1"_h});
+  set_scope("ref1"_h, pointer{{addresses{"alloc1"_h}, {}}});
 
   add_node(read{"read1"_h, "alloc1"_h, "field2"_h});
   // row var is closed: no valid execution where read1 has a value (bottom).
   // if row_var was open, read1 could be anything (top).
-  set_scope("read1"_h, addresses::bottom());
+  set_scope("read1"_h, pointer::bottom());
   results.back().state([&](memory* m) { m->set_to_top(); });
 
   add_node(alloc{"alloc2"_h, "unknown"_h});  // has no effect because state is invalid already.

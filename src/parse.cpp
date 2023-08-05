@@ -216,7 +216,7 @@ visit_tree_node(stag<symbol::sym_augmented_assignment>, assembler_c auto& a, ast
 }
 
 // TODO: make sure @attributes is always present
-// TODO: pass in pointer to parent node (to disambiguate fielding from storing)node
+// TODO: remove parent pointer from signature, since it can't be used to disambiguate left from right child anyways.
 void
 visit_tree_node(stag<symbol::sym_attribute>, assembler_c auto& a, ast_node* node, ast_node*, std::span<ast_node> c) { make{a, c, node}
   (read())(node, fld_object, "@attributes")

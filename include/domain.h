@@ -10,6 +10,7 @@
 #include <tuple>
 #include <type_traits>
 #include <unordered_map>
+#include <utility>
 
 #include "AbstractDomain.h"
 #include "ConstantAbstractDomain.h"
@@ -104,8 +105,124 @@ struct object final : product<object, type, constant, row_var, defined, used> {
   using product::product;
 };
 
-using scope = sparta::HashedAbstractEnvironment<handle, addresses>;
+
+
 using memory = sparta::HashedAbstractPartition<handle, object>;
+struct pointer final : product<pointer, addresses, constant> {
+  using product::product;
+  [[nodiscard]] addresses
+  dereference(const memory& m) const {
+    const auto& pointer_base = get<addresses>();
+    if (!get<constant>().is_value() || !pointer_base.is_value()) { return pointer_base; }
+    auto pointer_field_offset = *get<constant>().get_constant();
+    addresses out{};
+    for (const handle h : pointer_base.elements()) {
+      out.join_with(m.get(h).get<defined>().get(pointer_field_offset));
+    }
+    return out;
+  }
+};
+using scope = sparta::HashedAbstractEnvironment<handle, pointer>;
+
+
+template<class T, class CC>
+concept continues = requires(T t, CC cc){ fix_eval_cc(cc, t.eval, t.args);};
+template<class T, class Cont, class Result>
+concept continues_as = continues<T, Cont> && requires(T t, Cont cc){ { fix_eval_cc(cc, t.eval, t.args) } -> std::same_as<Result>;};
+template<class T>
+concept abstract_domain = std::derived_from<T, sparta::AbstractDomain<T>>;
+struct nothing{
+  std::tuple<> args;
+  static void eval(memory*){ }
+};
+
+template<class T, class CC>
+auto eval_cc(CC cc, const T& t){ 
+  if constexpr(continues<T, CC>){
+    if constexpr(requires{ {fix_eval_cc(cc, t.eval, t.args)} -> std::same_as<void>;} ){
+      fix_eval_cc(cc, t.eval, t.args);
+      return nothing();
+    } else { return fix_eval_cc(cc, t.eval, t.args); }
+  } else { return t;}
+}
+template<class CC, class... Args>
+auto fix_eval_cc(CC cc, auto eval, const std::tuple<const Args&...>& tpl){
+  return std::apply([&](auto&&... args){ return eval(cc, eval_cc(cc, args)...);}, tpl);
+}
+
+
+template<class T>
+concept object_kind = abstract_domain<T> && arg_of<T, object::product> && (!std::same_as<T, object>);
+
+template<class T, class CC=memory*>
+struct lift {
+  std::tuple<const T&> args;
+  static auto eval(CC, const T& x){return x;} 
+};
+// template<auto F, class... Args>
+// struct suspended{
+//   std::tuple<const Args&...> args;
+//   decltype(F) eval = F;
+// };
+// template<class T, class CC=memory*>
+// struct lift : suspended<[](CC, const T& x){return x;}, T>{};
+
+static_assert(continues<nothing, memory*>);
+static_assert(continues<lift<defined>, memory*>);
+static_assert(continues<lift<used>, memory*>);
+static_assert(continues<lift<addresses>, memory*>);
+static_assert(continues_as<lift<addresses>, memory*, addresses>);
+static_assert(!continues_as<lift<addresses>, memory*, defined>);
+static_assert(!continues_as<lift<addresses>, memory*, void>);
+
+template<class T, class CC=memory*>
+requires continues<T, CC>
+using eval_type = std::decay_t<decltype(eval_cc(std::declval<CC>(), std::declval<T>()))>;
+
+template<continues_as<memory*, addresses> AddressesCont, continues<memory*> ObjectKindCont>
+requires object_kind<eval_type<ObjectKindCont>>
+struct memory_update {
+  std::tuple<const AddressesCont&, const ObjectKindCont&> args;
+  static void eval(memory* m, const addresses& lhs, const eval_type<ObjectKindCont>& rhs){ 
+    auto update = [&](auto&& f){ return [&](handle h) { m->update(h, [&](object* o){ (*o)(f); }); }; };
+    auto weak_update = update([&](eval_type<ObjectKindCont>* x){ x->join_with(rhs); });
+    auto strong_update = update([&](eval_type<ObjectKindCont>* x){ *x=rhs; });
+    if (m->is_top() || lhs.is_bottom()) { return; }
+    if (lhs.is_top()) { for(const auto& [h, _] : m->bindings()){ weak_update(h); }; return; }
+    if (lhs.size() == 1) { strong_update(*lhs.elements().begin()); return; }
+    for(const handle h : lhs.elements()){ weak_update(h); }
+  }
+};
+
+
+
+static_assert(continues<memory_update<lift<addresses>, lift<defined>>, memory*>);
+static_assert(continues_as<memory_update<lift<addresses>, lift<defined>>, memory*, void>);
+static_assert(!continues_as<memory_update<lift<addresses>, lift<defined>>, memory*, defined>);
+
+template<object_kind T>
+memory_update<lift<addresses>, lift<T>> operator*=(const lift<addresses>& addr, const lift<T>& t){ return {{addr, t}};}
+
+
+template<continues<memory*> Ahead, continues<memory*> Behind>
+struct sequenced{
+  std::tuple<const Ahead&, const Behind&> args;
+  static void eval(memory*, const eval_type<Ahead>&, const eval_type<Behind>& behind){ return behind; }
+};
+template<continues<memory*> Ahead, continues<memory*> Behind>
+sequenced<Ahead, Behind> operator,(const Ahead& ahead, const Behind& behind) { return {{ahead, behind}}; }
+
+void inline asd(lift<addresses> a, lift<defined> d){ a*=d, a*=d;}
+
+struct object_reference {
+  std::tuple<const handle&> args;
+  static lift<object> eval(memory* m, const handle& h) { return {m->get(h)}; }
+};
+
+struct memory_proxy{
+  object_reference operator[](handle h) { return {h};}
+} const mem;
+
 
 struct state final : product<state, scope, memory> {
   using product<state, scope, memory>::product;
@@ -267,12 +384,10 @@ struct std::formatter<Object, CharT> : std::formatter<std::string_view, CharT> {
   format(const Object& obj, auto& ctx) const {
     if constexpr (std::same_as<stanly::object, Object>) {
       return std::format_to(
-                 ctx.out(), "({} {} {} defined{} used{})", obj.template get<stanly::type>(),
-                 obj.template get<stanly::constant>(),
-                 obj.template get<stanly::row_var>().element() == stanly::RowVarEls::Open)
-                 ? "* "
-                 : "",
-             obj.template get<stanly::defined>().bindings(), obj.template get<stanly::used>();
+          ctx.out(), "({} {} {} defined{} used{})", obj.template get<stanly::type>(),
+          obj.template get<stanly::constant>(),
+          obj.template get<stanly::row_var>().element() == stanly::RowVarEls::Open ? "* " : "",
+          obj.template get<stanly::defined>().bindings(), obj.template get<stanly::used>());
     }
     if constexpr (std::same_as<with_handles<stanly::object>, Object>) {
       return std::format_to(
@@ -282,6 +397,26 @@ struct std::formatter<Object, CharT> : std::formatter<std::string_view, CharT> {
           (obj.t.template get<stanly::row_var>().element() == stanly::RowVarEls::Open) ? "* " : "",
           format_bindings(with_handles{obj.t.template get<stanly::defined>(), obj.handles_to_str}),
           with_handles{obj.t.template get<stanly::used>(), obj.handles_to_str});
+    }
+  }
+};
+
+template <class Pointer, class CharT>
+  requires std::same_as<stanly::pointer, Pointer> ||
+           std::same_as<with_handles<stanly::pointer>, Pointer>
+struct std::formatter<Pointer, CharT> : std::formatter<std::string_view, CharT> {
+  auto
+  format(const Pointer& obj, auto& ctx) const {
+    if constexpr (std::same_as<stanly::pointer, Pointer>) {
+      return std::format_to(
+          ctx.out(), "({} {})", obj.template get<stanly::addresses>(),
+          obj.template get<stanly::constant>());
+    }
+    if constexpr (std::same_as<with_handles<stanly::pointer>, Pointer>) {
+      return std::format_to(
+          ctx.out(), "({} {})",
+          with_handles{obj.t.template get<stanly::addresses>(), obj.handles_to_str},
+          with_handles{obj.t.template get<stanly::constant>(), obj.handles_to_str});
     }
   }
 };
