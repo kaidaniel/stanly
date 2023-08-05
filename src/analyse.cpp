@@ -51,8 +51,8 @@ analyse(const read& read, state* d) {
   (*d)([&](memory* mem){
   (*d)([&](scope* scp){
   scp->update(read.var,  [&](pointer* var){
-  const addresses& field = scp->get(read.field).dereference(*mem);
-  const addresses& src = scp->get(read.src).dereference(*mem);
+  const addresses& field = dereference(scp->get(read.field), *mem);
+  const addresses& src = dereference(scp->get(read.src),*mem);
     switch(src.kind()){
       case Top: var->set_to_top(); return;
       case Bottom: invalid_state = true; return;
@@ -95,9 +95,9 @@ void
 analyse(const update& update, state* d) {
   const auto& scp = d->get<scope>();
   const auto& mem = d->get<memory>();
-  const addresses& fields = scp.get(update.field).dereference(mem);
+  const addresses& fields = dereference(scp.get(update.field), mem);
   const auto& elements = fields.is_value() ? fields.elements() : std::unordered_set<handle>{};
-  auto var = scp.get(update.var).dereference(mem);
+  auto var = dereference(scp.get(update.var), mem);
   if (!var.is_value()) { return; }
   (*d)([&](memory* m) {
     for (const handle target : var.elements()) {
@@ -105,7 +105,7 @@ analyse(const update& update, state* d) {
                   (*o)([&](defined* def) {
                     if (fields.is_top()) { def->set_to_top(); }
                     for (const handle field : elements) {
-                      def->set(field, scp.get(update.src).dereference(mem));
+                      def->set(field, dereference(scp.get(update.src), mem));
                     }
                   });
                 }));

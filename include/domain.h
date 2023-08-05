@@ -84,7 +84,6 @@ struct product : sparta::DirectProductAbstractDomain<Derived, Args...> {
 using row_var = sparta::FiniteAbstractDomain<RowVarEls, row_var_l, row_var_l::Encoding, &l_>;
 using addresses = sparta::HashedSetAbstractDomain<handle>;
 using constant = sparta::ConstantAbstractDomain<handle>;
-using defined = sparta::HashedAbstractPartition<handle, addresses>;
 using used = sparta::HashedSetAbstractDomain<handle>;
 
 struct type final
@@ -101,63 +100,80 @@ struct type final
   };
 };
 
+struct pointer final : product<pointer, addresses, constant> {
+  using product::product;
+};
+using defined = sparta::HashedAbstractPartition<handle, addresses>;
+
 struct object final : product<object, type, constant, row_var, defined, used> {
   using product::product;
 };
-
-
-
 using memory = sparta::HashedAbstractPartition<handle, object>;
-struct pointer final : product<pointer, addresses, constant> {
-  using product::product;
-  [[nodiscard]] addresses
-  dereference(const memory& m) const {
-    const auto& pointer_base = get<addresses>();
-    if (!get<constant>().is_value() || !pointer_base.is_value()) { return pointer_base; }
-    auto pointer_field_offset = *get<constant>().get_constant();
-    addresses out{};
-    for (const handle h : pointer_base.elements()) {
-      out.join_with(m.get(h).get<defined>().get(pointer_field_offset));
-    }
-    return out;
+
+[[nodiscard]] addresses inline dereference(const pointer& p, const memory& m) {
+  const auto& pointer_base = p.get<addresses>();
+  if (!p.get<constant>().is_value() || !pointer_base.is_value()) { return pointer_base; }
+  auto pointer_field_offset = *p.get<constant>().get_constant();
+  addresses out{};
+  for (const handle h : pointer_base.elements()) {
+    out.join_with(m.get(h).get<defined>().get(pointer_field_offset));
   }
-};
+  return out;
+}
 using scope = sparta::HashedAbstractEnvironment<handle, pointer>;
 
-
-template<class T, class CC>
-concept continues = requires(T t, CC cc){ fix_eval_cc(cc, t.eval, t.args);};
-template<class T, class Cont, class Result>
-concept continues_as = continues<T, Cont> && requires(T t, Cont cc){ { fix_eval_cc(cc, t.eval, t.args) } -> std::same_as<Result>;};
-template<class T>
-concept abstract_domain = std::derived_from<T, sparta::AbstractDomain<T>>;
-struct nothing{
-  std::tuple<> args;
-  static void eval(memory*){ }
+struct state final : product<state, scope, memory> {
+  using product<state, scope, memory>::product;
 };
 
-template<class T, class CC>
-auto eval_cc(CC cc, const T& t){ 
-  if constexpr(continues<T, CC>){
-    if constexpr(requires{ {fix_eval_cc(cc, t.eval, t.args)} -> std::same_as<void>;} ){
+template <class T, class CC>
+concept continues = requires(T t, CC cc) { fix_eval_cc(cc, t.eval, t.args); };
+template <class T, class Cont, class Result>
+concept continues_as = continues<T, Cont> && requires(T t, Cont cc) {
+  { fix_eval_cc(cc, t.eval, t.args) } -> std::same_as<Result>;
+};
+template <class T>
+concept abstract_domain = std::derived_from<T, sparta::AbstractDomain<T>>;
+template <class CC>
+struct nothing {
+  std::tuple<> args;
+  static void
+  eval(CC) {}
+};
+
+template <class T, class CC>
+auto
+eval_cc(CC cc, const T& t) {
+  if constexpr (continues<T, CC>) {
+    if constexpr (requires {
+                    { fix_eval_cc(cc, t.eval, t.args) } -> std::same_as<void>;
+                  }) {
       fix_eval_cc(cc, t.eval, t.args);
-      return nothing();
-    } else { return fix_eval_cc(cc, t.eval, t.args); }
-  } else { return t;}
+      return nothing<CC>();
+    } else {
+      return fix_eval_cc(cc, t.eval, t.args);
+    }
+  } else {
+    return t;
+  }
 }
-template<class CC, class... Args>
-auto fix_eval_cc(CC cc, auto eval, const std::tuple<const Args&...>& tpl){
-  return std::apply([&](auto&&... args){ return eval(cc, eval_cc(cc, args)...);}, tpl);
+template <class CC, class... Args>
+auto
+fix_eval_cc(CC cc, auto eval, const std::tuple<const Args&...>& tpl) {
+  return std::apply([&](auto&&... args) { return eval(cc, eval_cc(cc, args)...); }, tpl);
 }
 
+template <class T>
+concept object_kind =
+    abstract_domain<T> && arg_of<T, object::product> && (!std::same_as<T, object>);
 
-template<class T>
-concept object_kind = abstract_domain<T> && arg_of<T, object::product> && (!std::same_as<T, object>);
-
-template<class T, class CC=memory*>
+template <class T, class CC = state*>
 struct lift {
   std::tuple<const T&> args;
-  static auto eval(CC, const T& x){return x;} 
+  static const T&
+  eval(CC, const T& x) {
+    return x;
+  }
 };
 // template<auto F, class... Args>
 // struct suspended{
@@ -167,66 +183,195 @@ struct lift {
 // template<class T, class CC=memory*>
 // struct lift : suspended<[](CC, const T& x){return x;}, T>{};
 
-static_assert(continues<nothing, memory*>);
-static_assert(continues<lift<defined>, memory*>);
-static_assert(continues<lift<used>, memory*>);
-static_assert(continues<lift<addresses>, memory*>);
-static_assert(continues_as<lift<addresses>, memory*, addresses>);
-static_assert(!continues_as<lift<addresses>, memory*, defined>);
-static_assert(!continues_as<lift<addresses>, memory*, void>);
+static_assert(continues<nothing<state*>, state*>);
+static_assert(continues<lift<defined>, state*>);
+static_assert(continues<lift<used>, state*>);
+static_assert(continues<lift<addresses>, state*>);
+static_assert(continues_as<lift<addresses>, state*, addresses>);
+static_assert(!continues_as<lift<addresses>, state*, defined>);
+static_assert(!continues_as<lift<addresses>, state*, void>);
 
-template<class T, class CC=memory*>
-requires continues<T, CC>
+template <class T, class CC = state*>
+  requires continues<T, CC>
 using eval_type = std::decay_t<decltype(eval_cc(std::declval<CC>(), std::declval<T>()))>;
 
-template<continues_as<memory*, addresses> AddressesCont, continues<memory*> ObjectKindCont>
-requires object_kind<eval_type<ObjectKindCont>>
+template <continues_as<state*, addresses> AddressesCont, continues<state*> ObjectKindCont>
+  requires object_kind<eval_type<ObjectKindCont>>
 struct memory_update {
   std::tuple<const AddressesCont&, const ObjectKindCont&> args;
-  static void eval(memory* m, const addresses& lhs, const eval_type<ObjectKindCont>& rhs){ 
-    auto update = [&](auto&& f){ return [&](handle h) { m->update(h, [&](object* o){ (*o)(f); }); }; };
-    auto weak_update = update([&](eval_type<ObjectKindCont>* x){ x->join_with(rhs); });
-    auto strong_update = update([&](eval_type<ObjectKindCont>* x){ *x=rhs; });
+  static void
+  eval(state* s, const addresses& lhs, const eval_type<ObjectKindCont>& rhs) {
+    (*s)([&](memory* m) { eval_memory(m, lhs, rhs); });
+  }
+  static void
+  eval_memory(memory* m, const addresses& lhs, const eval_type<ObjectKindCont>& rhs) {
+    auto update = [&](auto&& f) {
+      return [&](handle h) { m->update(h, [&](object* o) { (*o)(f); }); };
+    };
+    auto weak_update = update([&](eval_type<ObjectKindCont>* x) { x->join_with(rhs); });
+    auto strong_update = update([&](eval_type<ObjectKindCont>* x) { *x = rhs; });
+
     if (m->is_top() || lhs.is_bottom()) { return; }
-    if (lhs.is_top()) { for(const auto& [h, _] : m->bindings()){ weak_update(h); }; return; }
-    if (lhs.size() == 1) { strong_update(*lhs.elements().begin()); return; }
-    for(const handle h : lhs.elements()){ weak_update(h); }
+    if (lhs.is_top()) {
+      for (const auto& [h, _] : m->bindings()) { weak_update(h); };
+      return;
+    }
+    if (lhs.size() == 1) {
+      strong_update(*lhs.elements().begin());
+      return;
+    }
+    for (const handle h : lhs.elements()) { weak_update(h); }
   }
 };
 
+static_assert(continues<memory_update<lift<addresses>, lift<defined>>, state*>);
+static_assert(continues_as<memory_update<lift<addresses>, lift<defined>>, state*, void>);
+static_assert(!continues_as<memory_update<lift<addresses>, lift<defined>>, state*, defined>);
 
+template <object_kind T>
+memory_update<lift<addresses>, lift<T>>
+operator*=(const lift<addresses>& addr, const lift<T>& t) {
+  return {{addr, t}};
+}
 
-static_assert(continues<memory_update<lift<addresses>, lift<defined>>, memory*>);
-static_assert(continues_as<memory_update<lift<addresses>, lift<defined>>, memory*, void>);
-static_assert(!continues_as<memory_update<lift<addresses>, lift<defined>>, memory*, defined>);
-
-template<object_kind T>
-memory_update<lift<addresses>, lift<T>> operator*=(const lift<addresses>& addr, const lift<T>& t){ return {{addr, t}};}
-
-
-template<continues<memory*> Ahead, continues<memory*> Behind>
-struct sequenced{
+template <continues<state*> Ahead, continues<state*> Behind>
+struct sequenced {
   std::tuple<const Ahead&, const Behind&> args;
-  static void eval(memory*, const eval_type<Ahead>&, const eval_type<Behind>& behind){ return behind; }
+  static const eval_type<Behind>&
+  eval(state*, const eval_type<Ahead>&, const eval_type<Behind>& behind) {
+    return behind;
+  }
 };
-template<continues<memory*> Ahead, continues<memory*> Behind>
-sequenced<Ahead, Behind> operator,(const Ahead& ahead, const Behind& behind) { return {{ahead, behind}}; }
+template <continues<state*> Ahead, continues<state*> Behind>
+sequenced<Ahead, Behind>
+operator,(const Ahead& ahead, const Behind& behind) {
+  return {{ahead, behind}};
+}
 
-void inline asd(lift<addresses> a, lift<defined> d){ a*=d, a*=d;}
+template <continues<state*> Ahead, continues<state*> Behind>
+sequenced<Ahead, Behind>
+operator|(const Ahead& ahead, const Behind& behind) {
+  return {{ahead, behind}};
+}
 
-struct object_reference {
+static_assert(requires(state* s, sequenced<lift<addresses>, lift<defined>> seq) {
+  eval_cc(s, seq);
+});
+
+struct object_cc;
+template <object_kind T>
+struct object_subset {
+  std::tuple<const object_cc&> args;
+  static const T&
+  eval(state*, const object& obj) {
+    return obj.get<T>();
+  }
+};
+struct object_cc {
   std::tuple<const handle&> args;
-  static lift<object> eval(memory* m, const handle& h) { return {m->get(h)}; }
+  static const object&
+  eval(state* s, const handle& h) {
+    return s->get<memory>().get(h);
+  }
+  template <object_kind T>
+  [[nodiscard]] object_subset<T>
+  whenever() const {
+    return {*this};
+  }
 };
 
-struct memory_proxy{
-  object_reference operator[](handle h) { return {h};}
+struct memory_proxy {
+  object_cc
+  operator[](handle h) const {
+    return {h};
+  }
 } const mem;
 
-
-struct state final : product<state, scope, memory> {
-  using product<state, scope, memory>::product;
+struct pointer_cc {
+  std::tuple<const handle&> args;
+  static const pointer&
+  eval(state* s, const handle& h) {
+    return s->get<scope>().get(h);
+  }
 };
+struct scope_proxy {
+  pointer_cc
+  operator[](handle h) const {
+    return {h};
+  }
+} const scp;
+
+template <continues_as<state*, pointer> PointerCont, continues<state*> ObjectKindCont>
+  requires object_kind<eval_type<ObjectKindCont>>
+struct value_update {
+  std::tuple<const PointerCont&, const ObjectKindCont&> args;
+  static void
+  eval(state* s, const pointer& lhs, const eval_type<ObjectKindCont>& rhs) {
+    (*s)([&](memory* m) { eval_memory(m, lhs, rhs); });
+  }
+  static void
+  eval_memory(memory* m, const pointer& lhs, const eval_type<ObjectKindCont>& rhs) {
+    auto update = [&](auto&& f) {
+      return [&](handle h) { m->update(h, [&](object* o) { (*o)(f); }); };
+    };
+    auto weak_update = update([&](eval_type<ObjectKindCont>* x) { x->join_with(rhs); });
+    auto strong_update = update([&](eval_type<ObjectKindCont>* x) { *x = rhs; });
+
+    if (m->is_top() || lhs.get<addresses>().is_bottom()) { return; }
+    auto location = dereference(lhs, *m);
+    if (location.is_top()) {
+      for (const auto& [h, _] : m->bindings()) { weak_update(h); };
+      return;
+    }
+    if (location.size() == 1) {
+      strong_update(*location.elements().begin());
+      return;
+    }
+    for (const handle h : location.elements()) { weak_update(h); }
+  }
+};
+
+// template<continues_as<state*, pointer> Lhs, continues_as<state*, pointer> Rhs>
+// struct reference_update {
+//   std::tuple<const Lhs&, const Rhs&> args;
+//   static void eval(state* s, const pointer& lhs, const pointer& rhs){
+//     const auto& pointer_offset = lhs.get<constant>();
+//     if(pointer_offset.is_value()) {
+//       (*s)([&](memory* m){update_offset(m, lhs, rhs, *pointer_offset.get_constant());});
+//     }
+//   }
+//   static void update_offset(memory* m, const pointer& lhs, const pointer& rhs, handle
+//   pointer_offset){
+//     auto update = [&](auto&& f){ return [&](handle h) { m->update(h, [&](object* o){ (*o)(f); });
+//     }; }; auto weak_update = update([&](defined* x){ x->join(rhs);}); auto strong_update =
+//     update([&](pointer* x){ *x=rhs; });
+
+//     if (m->is_top() || lhs.get<addresses>().is_bottom()) { return; }
+//     auto location = lhs.dereference(*m);
+//     if (location.is_top()) { for(const auto& [h, _] : m->bindings()){ weak_update(h); }; return;
+//     } if (location.size() == 1) { strong_update(*location.elements().begin()); return; }
+//     for(const handle h : location.elements()){ weak_update(h); }
+//   }
+// };
+
+template <object_kind T>
+value_update<pointer_cc, lift<T>>
+operator*=(const pointer_cc& ptr, const lift<T>& t) {
+  return {{ptr, t}};
+}
+template <object_kind T>
+value_update<pointer_cc, object_subset<T>>
+operator*=(const pointer_cc& ptr, const object_subset<T>& t) {
+  return {{ptr, t}};
+}
+
+auto inline asd(state* s, handle h) {
+  auto x = [&]() {
+    return scp[h] *= mem[h].whenever<defined>(), scp[h] *= mem[h].whenever<constant>();
+  };
+  eval_cc(s, x());
+  return x();
+}
 
 static_assert(std::derived_from<state, sparta::AbstractDomain<state>>);
 static_assert(std::derived_from<scope, sparta::AbstractDomain<scope>>);
