@@ -86,6 +86,15 @@ using addresses = sparta::HashedSetAbstractDomain<handle>;
 using constant = sparta::ConstantAbstractDomain<handle>;
 using used = sparta::HashedSetAbstractDomain<handle>;
 
+auto inline begin(const addresses& x) {
+  if (x.is_value()) return x.elements().begin();
+  return std::decay_t<decltype(x.elements().begin())>();
+}
+auto inline end(const addresses& x) {
+  if (x.is_value()) return x.elements().end();
+  return std::decay_t<decltype(x.elements().end())>();
+}
+
 struct type final
     : sparta::AbstractDomainScaffolding<sparta::acd_impl::ConstantAbstractValue<handle>, type> {
   explicit type(handle h) { this->set_to_value(sparta::acd_impl::ConstantAbstractValue(h)); }
@@ -110,13 +119,14 @@ struct object final : product<object, type, constant, row_var, defined, used> {
 };
 using memory = sparta::HashedAbstractPartition<handle, object>;
 
-[[nodiscard]] addresses inline dereference(const pointer& p, const memory& m) {
+[[nodiscard]] addresses inline dereference(const pointer& p, memory& m) {
   const auto& pointer_base = p.get<addresses>();
   if (!p.get<constant>().is_value() || !pointer_base.is_value()) { return pointer_base; }
   auto pointer_field_offset = *p.get<constant>().get_constant();
   addresses out{};
-  for (const handle h : pointer_base.elements()) {
+  for (const handle h : pointer_base) {
     out.join_with(m.get(h).get<defined>().get(pointer_field_offset));
+    m.update(h, [&](object* o) { (*o)([&](used* u) { u->add(pointer_field_offset); }); });
   }
   return out;
 }
@@ -157,9 +167,9 @@ eval_cc(CC cc, const T& t) {
     return t;
   }
 }
-template <class CC, class... Args>
+
 auto
-fix_eval_cc(CC cc, auto eval, const std::tuple<const Args&...>& tpl) {
+fix_eval_cc(auto cc, auto eval, auto&& tpl) {
   return std::apply([&](auto&&... args) { return eval(cc, eval_cc(cc, args)...); }, tpl);
 }
 
@@ -285,7 +295,7 @@ struct memory_proxy {
   operator[](handle h) const {
     return {h};
   }
-} const mem;
+} const mem{};
 
 struct pointer_cc {
   std::tuple<const handle&> args;
@@ -294,12 +304,27 @@ struct pointer_cc {
     return s->get<scope>().get(h);
   }
 };
-struct scope_proxy {
+
+struct new_pointer_cc {
+  new_pointer_cc(const handle& h) : args(h) {}
+  std::tuple<const handle&> args;
+  static const pointer&
+  eval(state* s, const handle& h) {
+    const pointer* ptr = nullptr;
+    (*s)([&](scope* sc) {
+      sc->set(h, pointer{{addresses{h}, constant::bottom()}});
+      ptr = &(sc->get(h));
+    });
+    return *ptr;
+  }
+};
+
+struct {
   pointer_cc
-  operator[](handle h) const {
+  operator[](const handle& h) const {
     return {h};
   }
-} const scp;
+} const scp{};
 
 template <continues_as<state*, pointer> PointerCont, continues<state*> ObjectKindCont>
   requires object_kind<eval_type<ObjectKindCont>>
@@ -331,28 +356,55 @@ struct value_update {
   }
 };
 
-// template<continues_as<state*, pointer> Lhs, continues_as<state*, pointer> Rhs>
-// struct reference_update {
-//   std::tuple<const Lhs&, const Rhs&> args;
-//   static void eval(state* s, const pointer& lhs, const pointer& rhs){
-//     const auto& pointer_offset = lhs.get<constant>();
-//     if(pointer_offset.is_value()) {
-//       (*s)([&](memory* m){update_offset(m, lhs, rhs, *pointer_offset.get_constant());});
-//     }
-//   }
-//   static void update_offset(memory* m, const pointer& lhs, const pointer& rhs, handle
-//   pointer_offset){
-//     auto update = [&](auto&& f){ return [&](handle h) { m->update(h, [&](object* o){ (*o)(f); });
-//     }; }; auto weak_update = update([&](defined* x){ x->join(rhs);}); auto strong_update =
-//     update([&](pointer* x){ *x=rhs; });
-
-//     if (m->is_top() || lhs.get<addresses>().is_bottom()) { return; }
-//     auto location = lhs.dereference(*m);
-//     if (location.is_top()) { for(const auto& [h, _] : m->bindings()){ weak_update(h); }; return;
-//     } if (location.size() == 1) { strong_update(*location.elements().begin()); return; }
-//     for(const handle h : location.elements()){ weak_update(h); }
-//   }
-// };
+template <continues_as<state*, pointer> Lhs, continues_as<state*, pointer> Rhs>
+struct reference_update {
+  reference_update(const Lhs& lhs, const Rhs& rhs) : args{lhs, rhs} {}
+  std::tuple<const Lhs&, const Rhs&> args;
+  static void
+  eval(state* s, const pointer& lhs, const pointer& rhs) {
+    (*s)([&](memory* m) { (*s)([&](scope* scp) { do_eval(m, scp, lhs, rhs); }); });
+  }
+  static void
+  do_eval(memory* m, scope* scp, const pointer& lhs, const pointer& rhs) {
+    const auto& offset = lhs.get<constant>();
+    const auto& base = lhs.get<addresses>();
+    const auto new_addresses = dereference(rhs, *m);
+    switch (offset.kind()) {
+      case sparta::AbstractValueKind::Bottom:
+        if (base.is_value() && base.size() == 1) {
+          scp->set(*base.elements().begin(), rhs);
+        } else {
+          for (const handle el : base) {
+            scp->update(el, [&](pointer* p) {
+              (*p)([&](addresses* addrs) { addrs->join_with(new_addresses); });
+            });
+          }
+        }
+        return;
+      case sparta::AbstractValueKind::Top:
+        for (const handle el : base) {
+          m->update(el, [&](object* o) { (*o)([&](defined* d) { d->set_to_top(); }); });
+        }
+        return;
+      case sparta::AbstractValueKind::Value:
+        if (base.size() == 1) {
+          m->update(*base.elements().begin(), [&](object* o) {
+            (*o)([&](defined* d) { d->set(*offset.get_constant(), new_addresses); });
+          });
+        } else {
+          for (const handle el : base) {
+            m->update(el, [&](object* o) {
+              (*o)([&](defined* d) {
+                d->update(
+                    *offset.get_constant(), [&](addresses* a) { a->join_with(new_addresses); });
+              });
+            });
+          }
+        }
+        return;
+    }
+  }
+};
 
 template <object_kind T>
 value_update<pointer_cc, lift<T>>
@@ -364,10 +416,19 @@ value_update<pointer_cc, object_subset<T>>
 operator*=(const pointer_cc& ptr, const object_subset<T>& t) {
   return {{ptr, t}};
 }
+reference_update<pointer_cc, pointer_cc> inline
+operator&=(const pointer_cc& lhs, const pointer_cc& rhs) {
+  return {lhs, rhs};
+}
+reference_update<new_pointer_cc, pointer_cc> inline
+operator&=(const new_pointer_cc& lhs, const pointer_cc& rhs) {
+  return {lhs, rhs};
+}
 
 auto inline asd(state* s, handle h) {
   auto x = [&]() {
-    return scp[h] *= mem[h].whenever<defined>(), scp[h] *= mem[h].whenever<constant>();
+    return scp[h] *= mem[h].whenever<defined>(), scp[h] *= mem[h].whenever<constant>(),
+           scp[h] &= scp[h], h &= scp[h];
   };
   eval_cc(s, x());
   return x();
@@ -452,10 +513,12 @@ struct std::formatter<stanly::row_var, CharT> : std::formatter<std::string_view,
 template <class T>
 std::unordered_map<std::string, std::string>
 format_bindings(const T& x) {
-  std::unordered_map<std::string, std::string> out;
+  std::unordered_map<std::string, std::string> out{};
+  if (x.t.is_top()) { return out; }
   if constexpr (requires { x.t.bindings(); }) {
     for (const auto& [key, value] : x.t.bindings()) {
-      out[std::string{x.handles_to_str.at(key)}] =
+      out[std::string{
+          x.handles_to_str.contains(key) ? x.handles_to_str.at(key) : std::format("??{}", key)}] =
           std::format("{}", with_handles{value, x.handles_to_str});
     }
   } else if constexpr (requires { x.bindings(); }) {

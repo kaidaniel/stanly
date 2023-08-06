@@ -16,6 +16,9 @@ namespace stanly {
 using enum RowVarEls;
 void
 analyse(const alloc& alloc, state* d) {
+  // eval_cc(
+  // alloc.var &= scp[alloc.var],
+  // scp[alloc.var] *= object{{type{alloc.type}, {}, row_var{Closed}, {}, {}}});
   (*d)([&](scope* s) { s->set(alloc.var, pointer{{addresses{alloc.var}, {}}}); });
   (*d)([&](memory* m) {
     m->set(alloc.var, object{{type{alloc.type}, {}, row_var{Closed}, {}, {}}});
@@ -34,7 +37,7 @@ analyse(const lit& lit, state* d) {
 // scp[.var] := scp[.src]
 void
 analyse(const ref& ref, state* d) {
-  (*d)([&](scope* s) { s->set(ref.var, pointer{{addresses{ref.src}, {}}}); });
+  eval_cc(d, ref.var &= scp[ref.src]);
 }
 // field(.var .src .field)
 // .var = .src[.field]
@@ -94,18 +97,17 @@ analyse(const read& read, state* d) {
 void
 analyse(const update& update, state* d) {
   const auto& scp = d->get<scope>();
-  const auto& mem = d->get<memory>();
-  const addresses& fields = dereference(scp.get(update.field), mem);
-  const auto& elements = fields.is_value() ? fields.elements() : std::unordered_set<handle>{};
-  auto var = dereference(scp.get(update.var), mem);
-  if (!var.is_value()) { return; }
   (*d)([&](memory* m) {
+    const addresses& fields = dereference(scp.get(update.field), *m);
+    const auto& elements = fields.is_value() ? fields.elements() : std::unordered_set<handle>{};
+    auto var = dereference(scp.get(update.var), *m);
+    if (!var.is_value()) { return; }
     for (const handle target : var.elements()) {
       m->update(target, ([&](object* o) {
                   (*o)([&](defined* def) {
                     if (fields.is_top()) { def->set_to_top(); }
                     for (const handle field : elements) {
-                      def->set(field, dereference(scp.get(update.src), mem));
+                      def->set(field, dereference(scp.get(update.src), *m));
                     }
                   });
                 }));

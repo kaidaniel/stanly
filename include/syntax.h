@@ -25,8 +25,6 @@ struct update { handle var; handle field; handle src;   };  // .var[.field] = .s
 struct append { handle var; handle src;                 };  // .var.append(.src)
 struct read   { handle var; handle src;   handle field; };  // .var = .src[.field]       => scp[.var] := { mem[s].defined[mem[f].const] : s in scp[.src], f in scp[.field] }
 struct write  { handle var; handle src;                 };  // *.var = .src              => scp[.var]
-struct use    { handle var; handle field;               };
-struct def    { handle var; handle field;               };
 struct merge  { handle var; handle old;   handle niu;   };  // .var = .old join .new
 struct dcall  { handle var; handle fn;    handle arg;   };  // .var = .fn(.arg)
 // clang-format on
