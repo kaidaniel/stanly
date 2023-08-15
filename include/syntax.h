@@ -14,11 +14,13 @@
 
 namespace stanly {
 // clang-format off
+// of these, the following are used nowhere and should be removed:
+//alloc, top, copy, append, merge, dcall
 struct alloc  { handle var; handle type;                };  // .var = new .type
 struct top    { handle var; handle reason;              };  // .var: Any
 struct lit    { handle var; handle type;  handle value; };  // .var = new .type(.value)
 struct ref    { handle var; handle src;                 };  // .var = .src
-struct copy   { handle var; handle src;                 };  // .var = clone(.src)
+// struct copy   { handle var; handle src;                 };  // .var = clone(.src)
 
 // TODO: remove 'update(var field src)' (replaced by read(tmp, src, field); write(var, tmp))
 struct update { handle var; handle field; handle src;   };  // .var[.field] = .src       => { mem[v].def[mem[f].const] : v in scp[.var], f in scp[.field] } := scp[.src]
@@ -29,7 +31,7 @@ struct merge  { handle var; handle old;   handle niu;   };  // .var = .old join 
 struct dcall  { handle var; handle fn;    handle arg;   };  // .var = .fn(.arg)
 // clang-format on
 static_assert(__cpp_lib_variant >= 202102L);
-struct node : std::variant<alloc, top, lit, ref, copy, update, append, read, merge, dcall> {
+struct node : std::variant<alloc, top, lit, ref, update, append, read, write, merge, dcall> {
   using variant::variant;
 };
 static_assert(sizeof(std::declval<node>()) == 8);
@@ -70,11 +72,6 @@ struct formatter<T, CharT> : formatter<string_view, CharT> {
     return static_cast<formatter<tpl_type>>(*this).format(to_tpl(x), ctx);
   }
 };
-// template<class CharT> struct formatter<stanly::read, CharT> : formatter<string_view, CharT> {
-//   auto format(const stanly::read x, auto &ctx) const {
-//     formatter<string_view, CharT>::format("*" + x.name, ctx);
-//   }
-// }
 
 template <class CharT>
 struct formatter<stanly::node, CharT> : formatter<stanly::node::variant, CharT> {};

@@ -154,6 +154,10 @@ struct make {
     return t->text;
   }
   std::string_view
+  text(const T& t) {
+    return t.text;
+  }
+  std::string_view
   text(std::string_view sv) {
     return sv;
   }
@@ -193,21 +197,65 @@ using enum symbol;
 }  // namespace
 
 // clang-format off
-void
-visit_tree_node(stag<symbol::sym_assignment>, assembler_c auto& a, ast_node* node, ast_node*, std::span<ast_node> children) { make{a, children, node}
-  // for(int i = 0; const auto& child : children){
-  //   if ((field)child.field.value_or(0) == field::fld_left && (symbol)child.symbol == symbol::sym_subscript) {
-      
-  //     construct<update>(a, );
-  //     i++;
-  //   }
-  // }
-  // make<ref>(field::fld_left, field::fld_right);
-  (ref())(fld_left, fld_right);
+
+void visit_tree_node_default(std::size_t, assembler_c auto& a, ast_node* node, std::span<ast_node> children){make{a, children, node}
+  (top())(node, "symbol not implemented");
+}
+
+void visit_tree_node(stag<symbol::sym_false>, assembler_c auto& a, ast_node* node, std::span<ast_node> children) { make{a, children, node}
+  (lit())(node, "bool", "false"); }
+
+void visit_tree_node(stag<symbol::sym_true>, assembler_c auto& a, ast_node* node, std::span<ast_node> children) { make{a, children, node}
+  (lit())(node, "bool", "true"); }
+
+void visit_tree_node(stag<symbol::sym_none>, assembler_c auto& a, ast_node* node, std::span<ast_node> children) { make{a, children, node}
+  (lit())(node, "None", "None"); }
+
+void visit_tree_node(stag<symbol::sym_integer>, assembler_c auto& a, ast_node* node, std::span<ast_node> children) { make{a, children, node}
+  (lit())(node, "int", node); }
+
+void visit_tree_node(stag<symbol::sym_string>, assembler_c auto& a, ast_node* node, std::span<ast_node> children) { 
+  auto m = make{a, children, node};
+  auto once = [](auto&& f) { constinit static bool can_run = true; if(can_run) { f(); can_run = false; }  };
+  if(children.empty()){
+    m(lit())(node, "str", node); 
+  } else {
+    for(auto& child : children) { if(static_cast<symbol>(child.field.value_or(0)) == symbol::sym_interpolation){ 
+      once([&]{m
+        (alloc()) (node, "interpolated_string")
+        (append())(node, node); 
+      });
+      m(append())(node, child);
+    }
+   }
+  }
+}
+
+void visit_tree_node(stag<symbol::sym_assignment>, assembler_c auto& a, ast_node* node, std::span<ast_node> children) { make{a, children, node}
+  (ref())(fld_left, fld_right);}
+
+void visit_tree_node(stag<symbol::sym_named_expression>, assembler_c auto& a, ast_node* node, std::span<ast_node> children) {make{a, children, node}
+  (ref())(fld_name, fld_value)
+  (ref())(node, fld_value);
 }
 
 void
-visit_tree_node(stag<symbol::sym_augmented_assignment>, assembler_c auto& a, ast_node* node, ast_node*, std::span<ast_node> children) { make{a, children, node}
+visit_tree_node(stag<symbol::sym_dictionary>, assembler_c auto& a, ast_node* node, std::span<ast_node> children) { 
+  auto m = make{a, children, node};
+  m(alloc())(node, "dict");
+  for(auto child : children) { m(merge())(node, node, child); }
+}
+
+void
+visit_tree_node(stag<symbol::sym_pair>, assembler_c auto& a, ast_node* node, std::span<ast_node> children){
+  make{a, children, node}
+  (alloc())(node, "dict")
+  (read())(fld_key, node, fld_key)
+  (write())(fld_key, fld_value);
+}
+
+void
+visit_tree_node(stag<symbol::sym_augmented_assignment>, assembler_c auto& a, ast_node* node, std::span<ast_node> children) { make{a, children, node}
   (alloc()) (node, "args")
   (append())(node, fld_left)
   (append())(node, fld_right)
@@ -216,15 +264,14 @@ visit_tree_node(stag<symbol::sym_augmented_assignment>, assembler_c auto& a, ast
 }
 
 // TODO: make sure @attributes is always present
-// TODO: remove parent pointer from signature, since it can't be used to disambiguate left from right child anyways.
 void
-visit_tree_node(stag<symbol::sym_attribute>, assembler_c auto& a, ast_node* node, ast_node*, std::span<ast_node> c) { make{a, c, node}
+visit_tree_node(stag<symbol::sym_attribute>, assembler_c auto& a, ast_node* node, std::span<ast_node> c) { make{a, c, node}
   (read())(node, fld_object, "@attributes")
   (read())(node, node,        fld_attribute);
 }
 // TODO: make sure @subscripts is always present
 void
-visit_tree_node(stag<symbol::sym_subscript>, assembler_c auto& a, ast_node* node, ast_node*, std::span<ast_node> c) { make{a, c, node}
+visit_tree_node(stag<symbol::sym_subscript>, assembler_c auto& a, ast_node* node, std::span<ast_node> c) { make{a, c, node}
   (read())(node, fld_value, "@subscripts")
   (read())(node, node,       fld_subscript);
 }
