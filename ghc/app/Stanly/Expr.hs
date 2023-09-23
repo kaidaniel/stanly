@@ -1,4 +1,7 @@
+{-# LANGUAGE DeriveGeneric #-}
+
 module Stanly.Expr (Expr (..), Value (..), Env (..), Var, Addr, assign, emptyEnv) where
+import GHC.Generics
 
 type Var = String
 
@@ -10,8 +13,7 @@ data Expr
   | Op2 String Expr Expr
   | Num Integer
   | If Expr Expr Expr
-  deriving
-    (Eq)
+  deriving (Generic, Eq)
 
 instance Show Expr where
   show (Vbl x) = x

@@ -20,6 +20,9 @@ import Test.QuickCheck
     sized,
     verboseCheck,
     withMaxSuccess,
+    (===),
+    Property,
+    genericShrink
   )
 
 instance Arbitrary Expr where
@@ -38,18 +41,21 @@ instance Arbitrary Expr where
                 App <$> rec' <*> rec',
                 Lam <$> word <*> rec',
                 Rec <$> word <*> rec',
-                If <$> rec' <*> rec' <*> rec'
+                If  <$> rec' <*> rec' <*> rec'
               ]
 
+shrink :: Expr -> [Expr]
+shrink = genericShrink
 -- runTestTT (TestList [
 --   TestList ["parser(show(x)) == x" ~: parser (show e) ~?= Right e | e <- asts],
 --   TestList ["show(parser(x)) == x" ~: show (case parser p of Right x -> x; y -> error $ show y) ~?= p | p <- programs]
 --   ]) >>
 
-prop_parser_show :: Expr -> Bool
-prop_parser_show e = parser (show e) == Right e
+
+parserInvertsShow :: Expr -> Property
+parserInvertsShow e = parser (show e) === Right e
 
 main :: IO ()
-main =
-  verboseCheck (withMaxSuccess 10 prop_parser_show)
-    >> quickCheck (withMaxSuccess 1000 prop_parser_show)
+main = do
+  verboseCheck  (withMaxSuccess  5 parserInvertsShow)
+  quickCheck (withMaxSuccess 10000 parserInvertsShow)
