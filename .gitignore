@@ -4,3 +4,6 @@
 /.scratch/
 .bash
 build-*
+ghc/dist-newstyle/
+ghc/hie.yaml
+ghc/cabal.project.local
