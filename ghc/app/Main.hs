@@ -3,6 +3,10 @@ import Stanly.ConcreteSemantics
 import Stanly.Expr
 import System.IO
 
+data Options = Options
+    { optParse :: Bool
+    , optFile :: Maybe FilePath
+    }
 
 f = parse expr "<stdin>"
 

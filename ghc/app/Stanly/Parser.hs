@@ -1,3 +1,6 @@
+{-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE ApplicativeDo #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 module Stanly.Parser (parser, expr, parse) where
 
 import Stanly.Expr
@@ -6,47 +9,37 @@ import Text.Read (Lexeme(String))
 import Text.Parsec.Token
 import GHC.Generics
 import Control.Monad.Fix(fix)
-import Stanly.Expr (Expr)
+import Stanly.IdiomBrackets(i)
 
-
-var :: Parsec String st String
-var  = many1 letter
-
-letExpr :: Parsec String st Expr
-letExpr = do
-  string "let" >> space; spaces;
-  x <- var; spaces;
-  string "="; spaces;
-  definition <- expr; spaces;
-  string "in"; spaces;
-  continuation <- expr;
-  return (App (Lam x continuation) definition) 
-  <?> "let expression [Let]"
-
-expr =  try letExpr
-    <|> (between (char '(') (char ')') (spaces *> exprNoParens <* spaces)            <?> "expression [Expr]")
-    <|> atom'
+expr :: Parsec String st Expr
+expr =  
+  try [i| (\x v k -> App (Lam x k) v) ("let" `intro` ident) ("=" `intro` expr) ("in" `intro` expr) |]
+  <|> between (char '(') (char ')') (ws exprNoParens)
+  <|> ws atom
   where
     exprNoParens =
-          (Lam <$> ((char 'λ' >> spaces) *> var <* (char '.' >> spaces)) <*> expr    <?> "lambda abstraction [Lam]")
-      <|> (Rec <$> ((char 'μ' >> spaces) *> var <* (char '.' >> spaces)) <*> expr    <?> "recursive definition [Rec]")
-      </> (If  <$> intro "if" <*> intro "then" <*> intro "else"                      <?> "if-then-else expression [If]")
-      </> (App <$> (spaces *> expr <* spaces ) <*> expr                              <?> "function application [App]")
-      </> do { l <- expr; spaces; o <- arit; spaces; r <- expr; return (Op2 o l r)   <?> "binary operator [Op2]"}
+      try [i| Lam (binder ["λ", "fn "]) expr |]
+      </> [i| Rec (binder ["μ", "mu "]) expr |]
+      </> [i| If ("if" `intro` expr) ("then" `intro` expr) ("else" `intro` expr) |]
+      </> [i| App (ws expr) expr |]
+      </> [i| (flip Op2) expr op expr |]
       <|> atom
     atom =
-          (Num <$> (read <$> many1 digit)                                            <?> "number [Num]")
-      <|> (Vbl <$> var                                                               <?> "variable [Vbl]")
-    atom' = spaces *> atom <* spaces
-    arit  = choice [string x | x <- ["+", "-", "*", "/"]]
-    (</>) l r = l <|> try r
-    intro w = do { string w; lookAhead (char '(') <|> space; spaces; e <- expr; spaces; return e;}
+          [i| Num integer |]
+      <|> [i| Vbl ident |]
 
+    op  = ws (choice [string x | x <- ["+", "-", "*", "/"]])
+    binder c = (choice [string x | x <- c]) *> ws (ident <* char '.')
+    (</>) l r = l <|> try r
+    intro w e = do { string w; lookAhead (char '(') <|> space; ws e}
+    integer = read <$> many1 digit
+    ws e = spaces *> e <* spaces
+    ident  = many1 letter
 
 
 -- | Turn program text into an AST.
 parser :: String -> Either ParseError Expr
-parser = parse (do { ast <- expr; eof; return ast }) "<string>"
+parser = parse (expr <* eof) "<string>"
 
 
 -- | Invalid programs.
@@ -72,6 +65,8 @@ parser = parse (do { ast <- expr; eof; return ast }) "<string>"
 -- >>> unparse <$> parser "(x)"
 -- >>> unparse <$> parser "let x = (μ f. (f x)) in z"
 -- >>> unparse <$> parser "( λ x. ((x) (1)) )"
+-- >>> unparse <$> parser "(fn x.x)"
+-- >>> unparse <$> parser "(mu f.((f f) 3))"
 -- Right "(if (\955s.1) then ifxthenyelsez else 2)"
 -- Right "(f a)"
 -- Right "(f a)"
@@ -80,3 +75,5 @@ parser = parse (do { ast <- expr; eof; return ast }) "<string>"
 -- Right "x"
 -- Right "((\955x.z) (\956f.(f x)))"
 -- Right "(\955x.(x 1))"
+-- Right "(\955x.x)"
+-- Right "(\956f.((f f) 3))"

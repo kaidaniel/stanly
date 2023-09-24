@@ -9,15 +9,15 @@ category:           Development
 
 executable stanly
     main-is:          Main.hs
-    other-modules:    Stanly.Eval, Stanly.Parser, Stanly.Expr, Stanly.ConcreteSemantics
-    build-depends:    base ^>=4.16.4.0, mtl ^>=2.2.2, parsec ^>=3.1.15.0
+    other-modules:    Stanly.Eval, Stanly.Parser, Stanly.Expr, Stanly.ConcreteSemantics, Stanly.IdiomBrackets
+    build-depends:    base ^>=4.16.4.0, mtl ^>=2.2.2, parsec ^>=3.1.15.0, haskell-src-meta >= 0.2 && < 1, template-haskell >= 2.7 && < 3
     hs-source-dirs:   app
-    default-language: Haskell2010
+    default-language: GHC2021
 
 test-suite stanly-test
     type:             exitcode-stdio-1.0
     main-is:          Spec.hs
-    other-modules:    Stanly.Eval, Stanly.Parser, Stanly.Expr, Stanly.ConcreteSemantics
+    other-modules:    Stanly.Eval, Stanly.Parser, Stanly.Expr, Stanly.ConcreteSemantics, Stanly.IdiomBrackets
     hs-source-dirs:   app
-    build-depends:    base ^>=4.16.4.0, mtl ^>=2.2.2, parsec ^>=3.1.15.0, hspec ^>=2.11, QuickCheck ^>=2.14
-    default-language: Haskell2010
+    build-depends:    base ^>=4.16.4.0, mtl ^>=2.2.2, parsec ^>=3.1.15.0, hspec ^>=2.11, QuickCheck ^>=2.14, haskell-src-meta >= 0.2 && < 1, template-haskell >= 2.7 && < 3
+    default-language: GHC2021
