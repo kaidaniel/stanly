@@ -1,7 +1,8 @@
 {-# LANGUAGE DeriveGeneric #-}
 
-module Stanly.Expr (Expr (..), Value (..), Env (..), Var, Addr, assign, emptyEnv, unparse) where
+module Stanly.Expr (Expr (..), Value (..), Env (..), Var, Addr, assign', fmt) where
 import GHC.Generics
+import Control.Monad.Fix (fix)
 
 type Var = String
 
@@ -15,32 +16,31 @@ data Expr
   | If Expr Expr Expr
   deriving (Generic, Eq, Show)
 
-
-unparse :: Expr -> String
-unparse (Vbl x) = x
-unparse (App fn arg) = "(" ++ unparse fn ++ " " ++ unparse arg ++ ")"
-unparse (Lam x body) = "(λ" ++ x ++ "." ++ unparse body ++ ")"
-unparse (Rec f body) = "(μ" ++ f ++ "." ++ unparse body ++ ")"
-unparse (Op2 o left right) = "(" ++ unparse left ++ " " ++ o ++ " " ++ unparse right ++ ")"
-unparse (Num n) = show n
-unparse (If etest etrue efalse) = "(if " ++ unparse etest ++ " then " ++ unparse etrue ++ " else " ++ unparse efalse ++ ")"
+assign' var addr (Env env) = Env ((var, addr) : env)
 
 type Addr = Int
+newtype Env = Env [(Var, Addr)] deriving (Eq, Show)
+data Value = LamV Var Expr Env | NumV Integer deriving (Eq, Show)
 
-newtype Env = Env [(Var, Addr)] deriving (Eq)
 
-data Value = LamV Var Expr Env | NumV Integer deriving (Eq)
+class Fmt a where
+  fmt :: a -> String
 
-emptyEnv = Env []
+instance Fmt Value where
+  fmt (LamV x body r) = "λ" ++ x ++ "." ++ fmt body ++ " " ++ fmt r
+  fmt (NumV n) = show n
 
-instance Show Value where
-  show (LamV x body r) = "λ" ++ x ++ "." ++ unparse body ++ " " ++ show r
-  show (NumV n) = show n
-
-instance Show Env where
-  show env = "⟦" ++ showrec env "" ++ "⟧"
+instance Fmt Env where
+  fmt env = "⟦" ++ fmt env "" ++ "⟧"
     where
-      showrec (Env ((x, a) : r)) sep = sep ++ x ++ "→" ++ show a ++ showrec (Env r) " "
-      showrec (Env []) _ = ""
+      fmt (Env ((x, a) : r)) sep = sep ++ x ++ "→" ++ show a ++ fmt (Env r) " "
+      fmt (Env []) _ = ""
 
-assign var addr (Env env) = Env ((var, addr) : env)
+instance Fmt Expr where
+  fmt (Vbl x) = x
+  fmt (App fn arg) = "(" ++ fmt fn ++ " " ++ fmt arg ++ ")"
+  fmt (Lam x body) = "(λ" ++ x ++ "." ++ fmt body ++ ")"
+  fmt (Rec f body) = "(μ" ++ f ++ "." ++ fmt body ++ ")"
+  fmt (Op2 o left right) = "(" ++ fmt left ++ " " ++ o ++ " " ++ fmt right ++ ")"
+  fmt (Num n) = show n
+  fmt (If etest etrue efalse) = "(if " ++ fmt etest ++ " then " ++ fmt etrue ++ " else " ++ fmt efalse ++ ")"

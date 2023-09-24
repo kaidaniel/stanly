@@ -1,9 +1,9 @@
 module Stanly.Eval (eval) where
 
 import Data.Function (fix)
-import Stanly.Expr (Expr (..), Value (..), assign)
+import Stanly.Expr (Expr (..), Value (..), assign', Env, Var)
 
-eval run ask local asks find ext alloc assign isZero delta = eval'
+eval run ask local asks find ext alloc assign' isZero delta = eval'
   where
     eval' e = run (fix ev e)
     ev ev' e = case e of
@@ -22,7 +22,7 @@ eval run ask local asks find ext alloc assign isZero delta = eval'
       Rec f body -> do
         r <- ask
         a <- alloc f
-        v <- local (const $ assign f a r) (ev' body)
+        v <- local (const $ assign' f a r) (ev' body)
         ext a v
         return v
       Lam x body -> asks (LamV x body)
@@ -31,4 +31,4 @@ eval run ask local asks find ext alloc assign isZero delta = eval'
         v <- ev' arg
         a <- alloc x
         ext a v
-        local (const $ assign x a r) (ev' body)
+        local (const $ assign' x a r) (ev' body)
