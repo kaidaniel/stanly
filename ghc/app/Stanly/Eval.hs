@@ -32,16 +32,3 @@ eval run ask local asks find ext alloc assign isZero delta = eval'
         a <- alloc x
         ext a v
         local (const $ assign x a r) (ev' body)
-
--- |
--- >>> eval (Op2 "+" (Num 5) (Num 3))
--- (8,[])
---
--- >>> eval (App (Lam "x" (Lam "y" (Vbl "x"))) (Num 4))
--- (λy.x ⟦x→ 0⟧,[(0,4)])
---
--- >>> eval (App (Lam "x" (Lam "y" (Vbl "x"))) (App (Lam "x" (Lam "y" (Vbl "x"))) (Num 4)))
--- (λy.x ⟦x→ 1⟧,[(1,λy.x ⟦x→ 0⟧),(0,4)])
---
---
--- |

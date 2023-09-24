@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 
-module Stanly.Expr (Expr (..), Value (..), Env (..), Var, Addr, assign, emptyEnv) where
+module Stanly.Expr (Expr (..), Value (..), Env (..), Var, Addr, assign, emptyEnv, unparse) where
 import GHC.Generics
 
 type Var = String
@@ -13,16 +13,17 @@ data Expr
   | Op2 String Expr Expr
   | Num Integer
   | If Expr Expr Expr
-  deriving (Generic, Eq)
+  deriving (Generic, Eq, Show)
 
-instance Show Expr where
-  show (Vbl x) = x
-  show (App fn arg) = "(" ++ show fn ++ " " ++ show arg ++ ")"
-  show (Lam x body) = "(λ" ++ x ++ "." ++ show body ++ ")"
-  show (Rec f body) = "(μ" ++ f ++ "." ++ show body ++ ")"
-  show (Op2 o left right) = "(" ++ show left ++ " " ++ o ++ " " ++ show right ++ ")"
-  show (Num n) = show n
-  show (If etest etrue efalse) = "(if " ++ show etest ++ " then " ++ show etrue ++ " else " ++ show efalse ++ ")"
+
+unparse :: Expr -> String
+unparse (Vbl x) = x
+unparse (App fn arg) = "(" ++ unparse fn ++ " " ++ unparse arg ++ ")"
+unparse (Lam x body) = "(λ" ++ x ++ "." ++ unparse body ++ ")"
+unparse (Rec f body) = "(μ" ++ f ++ "." ++ unparse body ++ ")"
+unparse (Op2 o left right) = "(" ++ unparse left ++ " " ++ o ++ " " ++ unparse right ++ ")"
+unparse (Num n) = show n
+unparse (If etest etrue efalse) = "(if " ++ unparse etest ++ " then " ++ unparse etrue ++ " else " ++ unparse efalse ++ ")"
 
 type Addr = Int
 
@@ -33,13 +34,13 @@ data Value = LamV Var Expr Env | NumV Integer deriving (Eq)
 emptyEnv = Env []
 
 instance Show Value where
-  show (LamV x body r) = "λ" ++ x ++ "." ++ show body ++ " " ++ show r
+  show (LamV x body r) = "λ" ++ x ++ "." ++ unparse body ++ " " ++ show r
   show (NumV n) = show n
 
 instance Show Env where
   show env = "⟦" ++ showrec env "" ++ "⟧"
     where
-      showrec (Env ((x, a) : r)) sep = sep ++ x ++ "→ " ++ show a ++ showrec (Env r) " "
+      showrec (Env ((x, a) : r)) sep = sep ++ x ++ "→" ++ show a ++ showrec (Env r) " "
       showrec (Env []) _ = ""
 
 assign var addr (Env env) = Env ((var, addr) : env)
