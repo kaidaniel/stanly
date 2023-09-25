@@ -12,7 +12,7 @@ data Expr
   | Lam Var Expr
   | Rec Var Expr
   | Op2 String Expr Expr
-  | Num Integer
+  | Num Int
   | If Expr Expr Expr
   deriving (Generic, Eq, Show)
 
@@ -20,7 +20,7 @@ assign' var addr (Env env) = Env ((var, addr) : env)
 
 type Addr = Int
 newtype Env = Env [(Var, Addr)] deriving (Eq, Show)
-data Value = LamV Var Expr Env | NumV Integer deriving (Eq, Show)
+data Value = LamV Var Expr Env | NumV Int deriving (Eq, Show)
 
 
 class Fmt a where

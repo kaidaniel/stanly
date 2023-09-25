@@ -1,34 +1,46 @@
-module Stanly.Eval (eval) where
+{-# LANGUAGE FunctionalDependencies #-}
 
-import Data.Function (fix)
-import Stanly.Expr (Expr (..), Value (..), assign', Env, Var)
+module Stanly.Eval (eval, Interpreter(..)) where
+import Stanly.Expr (Expr (..), Env, Var, Addr)
+import Control.Monad.Reader
 
-eval run ask local asks find ext alloc assign' isZero delta = eval'
-  where
-    eval' e = run (fix ev e)
-    ev ev' e = case e of
-      Num n -> return $ NumV n
-      Vbl x -> do
-        r <- ask
-        find r x
-      If etest etrue efalse -> do
-        NumV n <- ev' etest
-        z <- isZero n
-        ev' $ if z then etrue else efalse
-      Op2 o left right -> do
-        NumV l <- ev' left
-        NumV r <- ev' right
-        delta o l r
-      Rec f body -> do
-        r <- ask
-        a <- alloc f
-        v <- local (const $ assign' f a r) (ev' body)
-        ext a v
-        return v
-      Lam x body -> asks (LamV x body)
-      App fn arg -> do
-        LamV x body r <- ev' fn
-        v <- ev' arg
-        a <- alloc x
-        ext a v
-        local (const $ assign' x a r) (ev' body)
+class (MonadFail m) => Interpreter m v | m -> v where
+  truthy :: v -> m Bool
+  alloc :: Var -> m Int
+  evOp2 :: String -> v -> v -> m v
+  find :: Env -> Var -> m v
+  ext :: Addr -> v -> m ()
+  bindVar :: Var -> Addr -> Env -> m Env
+  env :: m Env
+  inEnv :: m Env -> m v -> m v
+  returnClosure :: Var -> Expr -> m v
+  literalValue :: Expr -> m v
+  getClosure :: v -> m(Var, Expr, Env)
+
+eval :: Interpreter m v => (Expr -> m v) -> Expr -> m v
+eval ev' e@(Num _) = literalValue e
+eval ev' (Vbl x) = do
+  r <- env
+  find r x
+eval ev' (If etest etrue efalse) = do
+  n <- ev' etest
+  z <- truthy n
+  ev' $ if z then etrue else efalse
+eval ev' (Op2 op2 left right) = do
+  left' <- ev' left
+  right' <- ev' right
+  evOp2 op2 left' right'
+eval ev' (Rec f body) = do
+  r <- env
+  a <- alloc f
+  v <- inEnv (bindVar f a r) (ev' body)
+  ext a v
+  return v
+eval ev' e@(Lam _ _) = literalValue e
+eval ev' (App fn arg) = do
+  fn' <- ev' fn
+  (x, body, r) <- getClosure fn'
+  v <- ev' arg
+  a <- alloc x
+  ext a v
+  inEnv (bindVar x a r) (ev' body)
