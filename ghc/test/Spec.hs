@@ -1,16 +1,11 @@
 import Test.Hspec
 import Test.Hspec.QuickCheck
 import Test.QuickCheck
-import Stanly.Parser
+import Stanly.Parser(parser)
 import Stanly.Expr(Expr(..), fmt)
-import Stanly.Eval(Value(..))
-import Stanly.Sema(eval)
-
-
-
-closureOf eval' str =
-  let (v, _) = eval' (case parser str of Left err -> error $ show err; Right ast -> ast)
-  in  fmt (Lam (var v) (Stanly.Eval.expr v))
+import Stanly.Eval(expr, var)
+import Stanly.Concrete(Concrete)
+import Stanly.Exec(exec)
 
 main :: IO ()
 main = hspec $ do
@@ -19,5 +14,9 @@ main = hspec $ do
         \(e :: Expr) -> (fmt <$> (parser . fmt) e) === Right (fmt e)
     describe "ConcreteSemantics.eval" $
       it "results in closure over free variables" $ do
-        closureOf eval "let x = (1 + 10) in ((λy.(λf.(f x))) (2 + 20))" `shouldBe` "(λf.(f x))"
-        closureOf eval "((λg.(λx.(g x))) 3)" `shouldBe` "(λx.(g x))"
+        closureOf (exec @Concrete) "let x = (1 + 10) in ((λy.(λf.(f x))) (2 + 20))" `shouldBe` "(λf.(f x))"
+        closureOf (exec @Concrete) "((λg.(λx.(g x))) 3)" `shouldBe` "(λx.(g x))"
+  where
+    closureOf eval' str =
+      let (v, _) = eval' (case parser str of Left err -> error $ show err; Right ast -> ast)
+      in  fmt (Lam (var v) (expr v))

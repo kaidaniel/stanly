@@ -5,10 +5,6 @@ module Stanly.Parser (parser, expr, parse) where
 
 import Stanly.Expr(Fmt(..), Expr(..))
 import Text.Parsec
-import Text.Read (Lexeme(String))
-import Text.Parsec.Token
-import GHC.Generics
-import Control.Monad.Fix(fix)
 import Stanly.IdiomBrackets(i)
 
 expr :: Parsec String st Expr

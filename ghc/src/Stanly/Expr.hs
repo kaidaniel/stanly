@@ -4,7 +4,6 @@ module Stanly.Expr (Expr (..), Var, Fmt(..)) where
 import GHC.Generics
 import Test.QuickCheck
 
-
 type Var = String
 
 data Expr

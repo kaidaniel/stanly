@@ -1,7 +1,3 @@
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-{-# HLINT ignore "Use const" #-}
-{-# HLINT ignore "Eta reduce" #-}
-
 module Stanly.Eval (eval, Interpreter(..), Value(..), Env(..), Store(..)) where
 import Stanly.Expr (Expr (..), Var, Fmt(..))
 import Control.Monad.Reader (MonadReader (ask, local))
@@ -37,27 +33,30 @@ class (MonadState (Store v) m, MonadReader Env m, Value v) => Interpreter m v wh
   lambda :: Var -> Expr -> m v
   number :: Int -> m v
   alloc :: Var -> v -> m Int
+  step :: Expr -> m v
+  step = eval
+  run :: m v -> (v, Store v)
 
-eval :: Interpreter m v => (Expr -> m v) -> Expr -> m v
-eval _ (Num n) = number n
-eval _ (Vbl x) = do { r <- ask; find r x }
-eval ev' (If etest etrue efalse) = do { n <- ev' etest; ev' $ if truthy n then etrue else efalse }
-eval ev' (Op2 o left right) = do { left' <- ev' left; right' <- ev' right; op2 o left' right' }
-eval ev' (Rec f body) = do
+eval :: Interpreter m v => Expr -> m v
+eval (Num n) = number n
+eval (Vbl x) = do { r <- ask; find r x }
+eval (If etest etrue efalse) = do { n <- step etest; step $ if truthy n then etrue else efalse }
+eval (Op2 o left right) = do { left' <- step left; right' <- step right; op2 o left' right' }
+eval (Rec f body) = do
   r <- ask
-  v <- ev' body
+  v <- step body
   a <- alloc f v
   v' <- local (\_ -> ext f a r) (pure v)
   initz a v'
   return v'
-eval _ (Lam x e) = lambda x e
-eval ev' (App fn arg) = do
-  fn' <- ev' fn
+eval (Lam x e) = lambda x e
+eval (App fn arg) = do
+  fn' <- step fn
   let x = var fn'
-  v <- ev' arg
+  v <- step arg
   a <- alloc x v
   initz a v
-  local (\_ -> ext x a (env fn')) (ev' (expr fn'))
+  local (\_ -> ext x a (env fn')) (step (expr fn'))
 
 instance Fmt Env where
   fmt :: Env -> String
