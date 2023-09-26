@@ -1,8 +1,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 
-module Stanly.Expr (Expr (..), Value (..), Env (..), Var, Addr, assign', fmt) where
+module Stanly.Expr (Expr (..), Var, Fmt(..)) where
 import GHC.Generics
-import Control.Monad.Fix (fix)
 
 type Var = String
 
@@ -16,25 +15,8 @@ data Expr
   | If Expr Expr Expr
   deriving (Generic, Eq, Show)
 
-assign' var addr (Env env) = Env ((var, addr) : env)
-
-type Addr = Int
-newtype Env = Env [(Var, Addr)] deriving (Eq, Show)
-data Value = LamV Var Expr Env | NumV Int deriving (Eq, Show)
-
-
 class Fmt a where
   fmt :: a -> String
-
-instance Fmt Value where
-  fmt (LamV x body r) = "λ" ++ x ++ "." ++ fmt body ++ " " ++ fmt r
-  fmt (NumV n) = show n
-
-instance Fmt Env where
-  fmt env = "⟦" ++ fmt env "" ++ "⟧"
-    where
-      fmt (Env ((x, a) : r)) sep = sep ++ x ++ "→" ++ show a ++ fmt (Env r) " "
-      fmt (Env []) _ = ""
 
 instance Fmt Expr where
   fmt (Vbl x) = x

@@ -7,17 +7,30 @@ author:             Kai Daniel
 maintainer:         kaiingodaniel@gmail.com
 category:           Development
 
+common shared-properties
+  default-language: GHC2021
+  build-depends:
+    parsec ^>=3.1.15.0, base ^>=4.16.4.0, mtl ^>=2.2.2
+  ghc-options:
+    -Wall
+
+
+library stanly-lib
+    import:          shared-properties
+    exposed-modules: Stanly.ConcreteSemantics, Stanly.Expr, Stanly.Parser, Stanly.Eval
+    other-modules:   Stanly.IdiomBrackets
+    hs-source-dirs:  src
+    build-depends:   haskell-src-meta >= 0.2 && < 1, template-haskell >= 2.7 && < 3
+
 executable stanly
+    import:           shared-properties
     main-is:          Main.hs
-    other-modules:    Stanly.Eval, Stanly.Parser, Stanly.Expr, Stanly.ConcreteSemantics, Stanly.IdiomBrackets
-    build-depends:    base ^>=4.16.4.0, mtl ^>=2.2.2, parsec ^>=3.1.15.0, haskell-src-meta >= 0.2 && < 1, template-haskell >= 2.7 && < 3
+    build-depends:    stanly-lib
     hs-source-dirs:   app
-    default-language: GHC2021
 
 test-suite stanly-test
+    import:           shared-properties
     type:             exitcode-stdio-1.0
     main-is:          Spec.hs
-    other-modules:    Stanly.Eval, Stanly.Parser, Stanly.Expr, Stanly.ConcreteSemantics, Stanly.IdiomBrackets
-    hs-source-dirs:   app
-    build-depends:    base ^>=4.16.4.0, mtl ^>=2.2.2, parsec ^>=3.1.15.0, hspec ^>=2.11, QuickCheck ^>=2.14, haskell-src-meta >= 0.2 && < 1, template-haskell >= 2.7 && < 3
-    default-language: GHC2021
+    hs-source-dirs:   test
+    build-depends:    stanly-lib, hspec ^>=2.11, QuickCheck ^>=2.14

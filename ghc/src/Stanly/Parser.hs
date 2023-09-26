@@ -3,7 +3,7 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 module Stanly.Parser (parser, expr, parse) where
 
-import Stanly.Expr
+import Stanly.Expr(Fmt(..), Expr(..))
 import Text.Parsec
 import Text.Read (Lexeme(String))
 import Text.Parsec.Token

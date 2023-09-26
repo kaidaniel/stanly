@@ -1,16 +1,10 @@
 cradle:
   cabal:
+    - path: "src"
+      component: "stanly:lib:stanly-lib"
+
     - path: "app/Main.hs"
       component: "stanly:exe:stanly"
 
-    - path: "app/Stanly/Eval.hs"
-      component: "stanly:exe:stanly"
-
-    - path: "app/Stanly/Parser.hs"
-      component: "stanly:exe:stanly"
-
-    - path: "app/Stanly/Expr.hs"
-      component: "stanly:exe:stanly"
-
-    - path: "app/Stanly/Monads.hs"
-      component: "stanly:exe:stanly"
+    - path: "test"
+      component: "stanly:test:stanly-test"
