@@ -2,7 +2,7 @@
 {-# HLINT ignore "Use const" #-}
 {-# HLINT ignore "Eta reduce" #-}
 
-module Stanly.Eval (eval, Interpreter(..), Value(..), Env(..), Store) where
+module Stanly.Eval (eval, Interpreter(..), Value(..), Env(..), Store(..)) where
 import Stanly.Expr (Expr (..), Var, Fmt(..))
 import Control.Monad.Reader (MonadReader (ask, local))
 import Control.Monad.State (MonadState, gets, modify)
@@ -10,19 +10,21 @@ import Control.Monad.State (MonadState, gets, modify)
 type Addr = Int
 
 jst :: Maybe a -> a
-jst x = case x of Just x' -> x'; Nothing -> error "intended to be impossible happen at run time"
+jst x = case x of Just x' -> x'; Nothing -> error "intended to be impossible to happen at run time"
 
 ext :: Var -> Addr -> Env -> Env
 ext x addr (Env r) = Env ((x, addr) : r)
 
-type Store v = [(Addr, v)]
-newtype Env = Env [(Var, Addr)] deriving (Eq, Show)
+newtype Store v = Store { unStore :: [(Addr, v)] } 
+  deriving (Eq, Show, Foldable)
+newtype Env = Env { unEnv :: [(Var, Addr)] } 
+  deriving (Eq, Show)
 
 find :: (MonadState (Store v) m, Value v) => Env -> Var -> m v
-find (Env r) x = gets (jst . lookup (jst $ lookup x r) )
+find (Env r) x = gets (jst . lookup (jst $ lookup x r) . unStore)
 
 initz :: MonadState (Store v) m => Addr -> v -> m ()
-initz a v = modify ((a, v) :)
+initz a v = modify (\(Store s) -> Store ((a, v) : s))
 
 class Value v where
   var :: v -> Var
@@ -30,7 +32,7 @@ class Value v where
   env :: v -> Env
   truthy :: v -> Bool
 
-class (MonadState (Store v) m, MonadReader Env m, Value v, Monad m) => Interpreter m v where
+class (MonadState (Store v) m, MonadReader Env m, Value v) => Interpreter m v where
   op2 :: String -> v -> v -> m v
   lambda :: Var -> Expr -> m v
   number :: Int -> m v
@@ -59,7 +61,8 @@ eval ev' (App fn arg) = do
 
 instance Fmt Env where
   fmt :: Env -> String
-  fmt env = "⟦" ++ fmt' env "" ++ "⟧"
+  fmt env' = "⟦" ++ fmt' env' "" ++ "⟧"
     where
       fmt' (Env ((x, a) : r)) sep = sep ++ x ++ "→" ++ show a ++ fmt' (Env r) " "
-      fmt' (Env []) _ = ""
+      fmt' (Env []) _ = ""  
+      

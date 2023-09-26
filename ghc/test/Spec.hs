@@ -4,28 +4,9 @@ import Test.QuickCheck
 import Stanly.Parser
 import Stanly.Expr(Expr(..), fmt)
 import Stanly.Eval(Value(..))
-import Stanly.ConcreteSemantics(eval)
+import Stanly.Sema(eval)
 
-instance Arbitrary Expr where
-  arbitrary = sized arbitrary'
-    where
-      word :: Gen String
-      word = listOf1 (elements ['a' .. 'z'])
-      arbitrary' 0 = pure $ Num 1
-      arbitrary' n =
-        let rec' = resize (n `div` 2) arbitrary
-         in oneof
-              [ Num <$> (choose (0, 1000)),
-                Vbl <$> word,
-                Op2 <$> (elements ["+", "-", "*", "/"]) <*> rec' <*> rec',
-                App <$> rec' <*> rec',
-                Lam <$> word <*> rec',
-                Rec <$> word <*> rec',
-                If  <$> rec' <*> rec' <*> rec'
-              ]
 
-shrink :: Expr -> [Expr]
-shrink = genericShrink
 
 closureOf eval' str =
   let (v, _) = eval' (case parser str of Left err -> error $ show err; Right ast -> ast)

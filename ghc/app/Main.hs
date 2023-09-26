@@ -1,5 +1,5 @@
 import Stanly.Parser
-import Stanly.ConcreteSemantics
+import Stanly.Sema
 import Stanly.Expr
 import System.IO
 
