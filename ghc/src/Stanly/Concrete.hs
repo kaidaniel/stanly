@@ -3,7 +3,8 @@ module Stanly.Concrete (Concrete) where
 import Control.Monad.Reader (runReaderT, MonadReader, asks, ReaderT)
 import Control.Monad.State (runState, State, gets, MonadState)
 import Stanly.Eval (Interpreter(..), Value(..), Store(..), Env(..))
-import Stanly.Expr (Expr (..), Var, Fmt(..))
+import Stanly.Expr (Expr (..), Var)
+import Stanly.Fmt (Fmt(fmt))
 
 data Val
   = LamV Var Expr Env 
@@ -12,6 +13,7 @@ data Val
   
 newtype Concrete a = Concrete { runConcrete :: ReaderT Env (State (Store Val)) a}
   deriving (Functor, Applicative, Monad, MonadReader Env, MonadState (Store Val))
+
 instance Interpreter Concrete Val where
   op2 o (NumV n0) (NumV n1) = case o of
     "+" -> return $ NumV (n0 + n1)

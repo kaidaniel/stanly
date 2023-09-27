@@ -1,8 +1,12 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE ApplicativeDo #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
-module Stanly.Expr (Expr (..), Var, Fmt(..)) where
+module Stanly.Expr (Expr (..), Var, parser, parse, expr) where
 import GHC.Generics
-import Test.QuickCheck
+import Text.Parsec
+import Stanly.IdiomBrackets(i)
 
 type Var = String
 
@@ -16,35 +20,32 @@ data Expr
   | If Expr Expr Expr
   deriving (Generic, Eq, Show)
 
-class Fmt a where
-  fmt :: a -> String
+expr :: Parsec String st Expr
+expr =  
+  try [i| (\x v k -> App (Lam x k) v) ("let" `intro` ident) ("=" `intro` expr) ("in" `intro` expr) |]
+  <|> between (char '(') (char ')') (ws exprNoParens)
+  <|> ws atom
+  where
+    exprNoParens =
+      try [i| Lam (binder ["λ", "fn "]) expr |]
+      </> [i| Rec (binder ["μ", "mu "]) expr |]
+      </> [i| If ("if" `intro` expr) ("then" `intro` expr) ("else" `intro` expr) |]
+      </> [i| App (ws expr) expr |]
+      </> [i| (flip Op2) expr op expr |]
+      <|> atom
+    atom =
+          [i| Num integer |]
+      <|> [i| Vbl ident |]
 
-instance Fmt Expr where
-  fmt (Vbl x) = x
-  fmt (App fn arg) = "(" ++ fmt fn ++ " " ++ fmt arg ++ ")"
-  fmt (Lam x body) = "(λ" ++ x ++ "." ++ fmt body ++ ")"
-  fmt (Rec f body) = "(μ" ++ f ++ "." ++ fmt body ++ ")"
-  fmt (Op2 o left right) = "(" ++ fmt left ++ " " ++ o ++ " " ++ fmt right ++ ")"
-  fmt (Num n) = show n
-  fmt (If etest etrue efalse) = "(if " ++ fmt etest ++ " then " ++ fmt etrue ++ " else " ++ fmt efalse ++ ")"
+    op  = ws (choice [string x | x <- ["+", "-", "*", "/"]])
+    binder c = (choice [string x | x <- c]) *> ws (ident <* char '.')
+    (</>) l r = l <|> try r
+    intro w e = do { string w; lookAhead (char '(') <|> space; ws e}
+    integer = read <$> many1 digit
+    ws e = spaces *> e <* spaces
+    ident  = many1 letter
 
-instance Arbitrary Expr where
-  arbitrary = sized arbitrary'
-    where
-      word :: Gen String
-      word = listOf1 (elements ['a' .. 'z'])
-      arbitrary' 0 = pure $ Num 1
-      arbitrary' n =
-        let rec' = resize (n `div` 2) arbitrary
-         in oneof
-              [ Num <$> choose (0, 1000),
-                Vbl <$> word,
-                Op2 <$> elements ["+", "-", "*", "/"] <*> rec' <*> rec',
-                App <$> rec' <*> rec',
-                Lam <$> word <*> rec',
-                Rec <$> word <*> rec',
-                If  <$> rec' <*> rec' <*> rec'
-              ]
 
-shrink :: Expr -> [Expr]
-shrink = genericShrink
+-- | Turn program text into an AST.
+parser :: String -> Either ParseError Expr
+parser = parse (expr <* eof) "<string>"

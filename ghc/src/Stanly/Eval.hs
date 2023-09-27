@@ -1,5 +1,5 @@
 module Stanly.Eval (eval, Interpreter(..), Value(..), Env(..), Store(..)) where
-import Stanly.Expr (Expr (..), Var, Fmt(..))
+import Stanly.Expr (Expr (..), Var)
 import Control.Monad.Reader (MonadReader (ask, local))
 import Control.Monad.State (MonadState, gets, modify)
 
@@ -13,6 +13,7 @@ ext x addr (Env r) = Env ((x, addr) : r)
 
 newtype Store v = Store { unStore :: [(Addr, v)] } 
   deriving (Eq, Show, Foldable)
+
 newtype Env = Env { unEnv :: [(Var, Addr)] } 
   deriving (Eq, Show)
 
@@ -58,10 +59,3 @@ eval (App fn arg) = do
   initz a v
   local (\_ -> ext x a (env fn')) (step (expr fn'))
 
-instance Fmt Env where
-  fmt :: Env -> String
-  fmt env' = "⟦" ++ fmt' env' "" ++ "⟧"
-    where
-      fmt' (Env ((x, a) : r)) sep = sep ++ x ++ "→" ++ show a ++ fmt' (Env r) " "
-      fmt' (Env []) _ = ""  
-      
