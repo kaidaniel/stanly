@@ -1,3 +1,5 @@
+{-# LANGUAGE TypeFamilies #-}
+
 module Stanly.Eval (eval, Interpreter(..), Value(..), Env(..), Store(..)) where
 import Stanly.Expr (Expr (..), Var)
 import Control.Monad.Reader (MonadReader (ask, local))
@@ -8,8 +10,8 @@ type Addr = Int
 jst :: Maybe a -> a
 jst x = case x of Just x' -> x'; Nothing -> error "intended to be impossible to happen at run time"
 
-ext :: Var -> Addr -> Env -> Env
-ext x addr (Env r) = Env ((x, addr) : r)
+ext :: Env -> (Var, Addr) -> Env
+ext (Env environment) binding  = Env (binding : environment)
 
 newtype Store v = Store { unStore :: [(Addr, v)] } 
   deriving (Eq, Show, Foldable)
@@ -20,8 +22,8 @@ newtype Env = Env { unEnv :: [(Var, Addr)] }
 find :: (MonadState (Store v) m, Value v) => Env -> Var -> m v
 find (Env r) x = gets (jst . lookup (jst $ lookup x r) . unStore)
 
-initz :: MonadState (Store v) m => Addr -> v -> m ()
-initz a v = modify (\(Store s) -> Store ((a, v) : s))
+memkpy :: MonadState (Store v) m => (Addr, v) -> m ()
+memkpy binding = modify (\(Store s) -> Store (binding : s))
 
 class Value v where
   var :: v -> Var
@@ -29,33 +31,33 @@ class Value v where
   env :: v -> Env
   truthy :: v -> Bool
 
+
 class (MonadState (Store v) m, MonadReader Env m, Value v) => Interpreter m v where
   op2 :: String -> v -> v -> m v
   lambda :: Var -> Expr -> m v
   number :: Int -> m v
-  alloc :: Var -> v -> m Int
-  step :: Expr -> m v
-  step = eval
+  alloc :: Var -> m Addr
+  ev :: Expr -> m v
+  ev = eval
   run :: m v -> (v, Store v)
 
 eval :: Interpreter m v => Expr -> m v
 eval (Num n) = number n
 eval (Vbl x) = do { r <- ask; find r x }
-eval (If etest etrue efalse) = do { n <- step etest; step $ if truthy n then etrue else efalse }
-eval (Op2 o left right) = do { left' <- step left; right' <- step right; op2 o left' right' }
-eval (Rec f body) = do
+eval (If etest etrue efalse) = do { n <- ev etest; ev $ if truthy n then etrue else efalse }
+eval (Op2 o left right) = do { left' <- ev left; right' <- ev right; op2 o left' right' }
+eval (Rec fname body) = do
   r <- ask
-  v <- step body
-  a <- alloc f v
-  v' <- local (\_ -> ext f a r) (pure v)
-  initz a v'
-  return v'
+  addr <- alloc fname
+  v <- local (\_ -> ext r (fname, addr)) (ev body)
+  memkpy (addr, v)
+  return v
 eval (Lam x e) = lambda x e
 eval (App fn arg) = do
-  fn' <- step fn
-  let x = var fn'
-  v <- step arg
-  a <- alloc x v
-  initz a v
-  local (\_ -> ext x a (env fn')) (step (expr fn'))
+  fn' <- ev fn
+  let argname = var fn'
+  arg' <- ev arg
+  addr <- alloc argname
+  memkpy (addr, arg')
+  local (\_ -> ext (env fn') (argname, addr)) (ev (expr fn'))
 

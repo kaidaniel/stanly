@@ -17,15 +17,14 @@ common shared-properties
 
 library stanly-lib
     import:          shared-properties
-    exposed-modules: Stanly.Concrete, Stanly.Expr, Stanly.Parser, Stanly.Exec, Stanly.Eval
+    exposed-modules: Stanly.Concrete, Stanly.Expr, Stanly.Exec, Stanly.Eval, Stanly.Fmt
     other-modules:   Stanly.IdiomBrackets
     hs-source-dirs:  src
-    build-depends:   haskell-src-meta >= 0.2 && < 1, template-haskell >= 2.7 && < 3, QuickCheck ^>=2.14
-
+    build-depends:   haskell-src-meta >= 0.2 && < 1, template-haskell >= 2.7 && < 3, QuickCheck ^>=2.14, ansi-terminal ^>=1.0
 executable stanly
     import:           shared-properties
     main-is:          Main.hs
-    build-depends:    stanly-lib
+    build-depends:    stanly-lib, pretty-simple ^>=4.1
     hs-source-dirs:   app
 
 test-suite stanly-test

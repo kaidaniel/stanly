@@ -24,7 +24,7 @@ instance Interpreter Concrete Val where
   op2 _ _ _ = error "argument to op2 must be NumV"
   lambda x body = asks (LamV x body);
   number n = return $ NumV n
-  alloc _ _ = gets length
+  alloc _ = gets length
   run :: Concrete Val -> (Val, Store Val)
   run (m::Concrete Val) = runState (runReaderT (runConcrete m) (Env [])) (Store [])
 
