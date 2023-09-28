@@ -42,10 +42,20 @@ shrink = genericShrink
 
 main :: IO ()
 main = hspec $ do
-    describe "parser" $
-      prop "is inverted by fmt" $
-        \(e :: Expr) -> (fmt <$> (parser . fmt) e) === Right (fmt e)
-    describe "ConcreteSemantics.eval" $
+    describe "parser" $ do
+      it "parses examples" $ do
+        fmt <$> parser "(if(λs.1)then(ifxthenyelsez)else(2))" `shouldBe` (Right "(if (\955s.1) then ifxthenyelsez else 2)")
+        fmt <$> parser "((f)    (a))" `shouldBe` (Right "(f a)")
+        fmt <$> parser "(if ifx then theny else (if thenx then elsey else ifz))" `shouldBe` (Right "(if ifx then theny else (if thenx then elsey else ifz))")
+        fmt <$> parser "let x = (μ f. (f x)) in z" `shouldBe` (Right "((\955x.z) (\956f.(f x)))")
+        fmt <$> parser "(mu f.((f f) 3))" `shouldBe` (Right "(\956f.((f f) 3))")
+        fmt <$> parser "(fn x.x)" `shouldBe` (Right "(\955x.x)")
+      
+      it "is inverted by fmt" $
+        property $ \(e :: Expr) -> (fmt <$> (parser . fmt) e) === Right (fmt e)
+
+
+    describe "Concrete.eval" $ do
       it "results in closure over free variables" $ do
         closureOf (exec @Concrete) "let x = (1 + 10) in ((λy.(λf.(f x))) (2 + 20))" `shouldBe` "(λf.(f x))"
         closureOf (exec @Concrete) "((λg.(λx.(g x))) 3)" `shouldBe` "(λx.(g x))"

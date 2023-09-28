@@ -20,7 +20,7 @@ library stanly-lib
     exposed-modules: Stanly.Concrete, Stanly.Expr, Stanly.Exec, Stanly.Eval, Stanly.Fmt
     other-modules:   Stanly.IdiomBrackets
     hs-source-dirs:  src
-    build-depends:   haskell-src-meta >= 0.2 && < 1, template-haskell >= 2.7 && < 3, QuickCheck ^>=2.14, ansi-terminal ^>=1.0
+    build-depends:   haskell-src-meta >= 0.2 && < 1, template-haskell >= 2.7 && < 3, QuickCheck ^>=2.14
 executable stanly
     import:           shared-properties
     main-is:          Main.hs
