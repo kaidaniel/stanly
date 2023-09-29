@@ -3,7 +3,7 @@ import Test.Hspec
 import Test.Hspec.QuickCheck
 import Test.QuickCheck
 import Stanly.Expr(Expr(..), parser)
-import Stanly.Eval(expr, var)
+import Stanly.Eval(expr, var, env)
 import Stanly.Concrete(Concrete)
 import Stanly.Exec(exec)
 import Stanly.Fmt(fmt)
@@ -59,11 +59,17 @@ main = hspec $ do
       it "results in closure over free variables" $ do
         closureOf (exec @Concrete) "let x = (1 + 10) in ((λy.(λf.(f x))) (2 + 20))" `shouldBe` "(λf.(f x))"
         closureOf (exec @Concrete) "((λg.(λx.(g x))) 3)" `shouldBe` "(λx.(g x))"
+      it "halts at correct environments and stores" $ do
+        envAndStoreOf (exec @Concrete) "((λx.(λg.(g x))) 3)" `shouldBe` ("ℾ⟦x↦0⟧", "⅀⟦0↦3⟧")
+        envAndStoreOf (exec @Concrete) "let f = (fn g.(g 0)) in ((fn y.(fn g.y)) f)" 
+                           `shouldBe` ("ℾ⟦y↦1,f↦0⟧", "⅀⟦1↦λg.(g 0) ℾ⟦⟧,0↦λg.(g 0) ℾ⟦⟧⟧")
   where
     closureOf eval' str =
       let (v, _) = eval' (case parser str of Left err -> error $ show err; Right ast -> ast)
       in  fmt (Lam (var v) (expr v))
-
+    envAndStoreOf eval' str =
+      let (v, store) = eval' (case parser str of Left err -> error $ show err; Right ast -> ast)
+      in  (fmt $ env v, fmt store)
 
 
 -- | Invalid programs.
