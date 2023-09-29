@@ -17,10 +17,10 @@ instance Fmt Expr where
   fmt (Num n) = show n
   fmt (If etest etrue efalse) = "(if " ++ fmt etest ++ " then " ++ fmt etrue ++ " else " ++ fmt efalse ++ ")"
 
-instance Fmt addr => Fmt (Env addr) where
+instance Show addr => Fmt (Env addr) where
   fmt r = "ℾ⟦" ++ fmt' r "" ++ "⟧"
     where
-        fmt' (Env ((v, a) : r)) sep = sep ++ show v ++ "↦" ++ fmt a ++ fmt' (Env r) ","
+        fmt' (Env ((v, a) : r)) sep = sep ++ v ++ "↦" ++ show a ++ fmt' (Env r) ","
         fmt' (Env []) _ = ""
 
 
@@ -30,6 +30,3 @@ instance (Show addr, Fmt v) => Fmt (Store addr v) where
         where
             fmt' (Store ((a, v) : r)) sep = sep ++ show a ++ "↦" ++ fmt v ++ fmt' (Store r) ","
             fmt' (Store []) _ = ""
-
-instance Fmt Int where
-  fmt = show
