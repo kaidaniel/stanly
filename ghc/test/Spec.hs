@@ -60,9 +60,9 @@ main = hspec $ do
         closureOf (exec @Concrete) "let x = (1 + 10) in ((λy.(λf.(f x))) (2 + 20))" `shouldBe` "(λf.(f x))"
         closureOf (exec @Concrete) "((λg.(λx.(g x))) 3)" `shouldBe` "(λx.(g x))"
       it "halts at correct environments and stores" $ do
-        envAndStoreOf (exec @Concrete) "((λx.(λg.(g x))) 3)" `shouldBe` ("ℾ⟦x↦0⟧", "⅀⟦0↦3⟧")
+        envAndStoreOf (exec @Concrete) "((λx.(λg.(g x))) 3)" `shouldBe` ("⟦x↦0⟧", "Σ⟦0↦3⟧")
         envAndStoreOf (exec @Concrete) "let f = (fn g.(g 0)) in ((fn y.(fn g.y)) f)" 
-                           `shouldBe` ("ℾ⟦y↦1,f↦0⟧", "⅀⟦1↦λg.(g 0) ℾ⟦⟧,0↦λg.(g 0) ℾ⟦⟧⟧")
+                           `shouldBe` ("⟦y↦1,f↦0⟧", "Σ⟦1↦λg.(g 0)⟦⟧,0↦λg.(g 0)⟦⟧⟧")
   where
     closureOf eval' str =
       let (v, _) = eval' (case parser str of Left err -> error $ show err; Right ast -> ast)

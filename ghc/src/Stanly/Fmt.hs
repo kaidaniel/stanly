@@ -51,10 +51,10 @@ instance Fmt Expr where
   ansiFmt :: Expr -> ANSI
   ansiFmt e = case e of
     (Vbl x) -> green >+ x
-    (App fn arg) -> red >+ "(" <> ansiFmt fn <> red >+ "↢" <> ansiFmt arg <> red >+ ")"
-    (Lam x body) -> start "λ" <>  bold >+ x <> start "." <> ansiFmt body <> start ""
-    (Rec f body) -> start "(μ" <> bold >+ f <> start "." <> ansiFmt body <> start ")"
-    (Op2 o left right) -> start "(" <> ansiFmt left <> start o <> ansiFmt right <> start ")"
+    (App fn arg) -> red >+ "(" <> ansiFmt fn <> red >+ " " <> ansiFmt arg <> red >+ ")"
+    (Lam x body) -> dim >+ "(λ" <>  bold >+ x <> start "." <> ansiFmt body <> dim >+ ")"
+    (Rec f body) -> dim >+ "(μ" <> bold >+ f <> start "." <> ansiFmt body <> dim >+ ")"
+    (Op2 o left right) -> dim >+ "(" <> ansiFmt left <> start o <> ansiFmt right <> dim >+")"
     (Num n) -> start $ show n
     (If etest etrue efalse) -> start "(if " <> ansiFmt etest <> start " then " <> ansiFmt etrue <> start " else " <> ansiFmt efalse <> start ")"
 
@@ -68,7 +68,7 @@ instance Show addr => Fmt (Env addr) where
 
 
 instance (Show addr, Fmt v) => Fmt (Store addr v) where
-    ansiFmt s = yellow >+ "Store⟦" <> fmt' s "" <> yellow >+ "⟧"
+    ansiFmt s = yellow >+ "Σ⟦" <> fmt' s "" <> yellow >+ "⟧"
         where
             fmt' :: (Show addr, Fmt v) => Store addr v -> String -> ANSI
             fmt' (Store ((a, v) : r)) sep = start sep <> green >+ show a <> start "↦" <> ansiFmt v <> fmt' (Store r) ","

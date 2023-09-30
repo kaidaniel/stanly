@@ -15,7 +15,7 @@ main = do
     indented $ (reverse . dropWhile isSpace . reverse)  str
     putStrLn "Desugared"
     indented $ termFmt ast
-    putStrLn "Concrete:"
+    putStrLn "Concrete"
     let (value, store) = (exec @Concrete) ast
     indented $ termFmt value ++ " " ++ termFmt store
     where
