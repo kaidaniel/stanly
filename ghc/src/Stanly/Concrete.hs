@@ -4,7 +4,7 @@ import Control.Monad.Reader (runReaderT, MonadReader, asks, ReaderT)
 import Control.Monad.State (runState, State, gets, MonadState)
 import Stanly.Eval (Interpreter(..), Value(..), Store(..), Env(..))
 import Stanly.Expr (Expr (..), Var)
-import Stanly.Fmt (Fmt(fmt))
+import Stanly.Fmt
 
 data Val
   = LamV Var Expr (Env Int)
@@ -38,5 +38,5 @@ instance Value Val Int where
   env (NumV _) = Env []
 
 instance Fmt Val where
-  fmt (LamV x body r) = "λ" ++ x ++ "." ++ fmt body ++ " " ++ fmt r
-  fmt (NumV n) = show n
+  ansiFmt (LamV x body r) = start "λ" <> bold >+ x <> start "." <> ansiFmt body <> ansiFmt r
+  ansiFmt (NumV n) = start $ show n
