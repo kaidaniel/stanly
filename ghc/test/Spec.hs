@@ -65,6 +65,9 @@ main = hspec $ do
     it "can't use undefined variables" $ do
       resultOf (exec @Concrete) "(x + 1)" `shouldBe` "(Bottom: \"x\" not found in environment. x⟦⟧, Σ⟦⟧)"
       resultOf (exec @Concrete) "let f = (fn y.(y + 1)) in (f z)" `shouldBe` "(Bottom: \"z\" not found in environment. z⟦f↦0⟧, Σ⟦0↦λy.(y+1)⟦⟧⟧)"
+    it "can't divide by zero" $ do
+      resultOf (exec @Concrete) "(1 / 0)" `shouldBe` "(Bottom: Division by zero. 1/0, Σ⟦⟧)"
+      resultOf (exec @Concrete) "let x = 2 in let y = 0 in (x / y)" `shouldBe` "(Bottom: Division by zero. 2/0, Σ⟦1↦0,0↦2⟧)"
 
   where
     resultOf exec' str = fmt $ exec' $ either (error . show) id (parser str)

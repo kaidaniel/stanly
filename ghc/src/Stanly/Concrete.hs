@@ -29,7 +29,7 @@ instance Interpreter Concrete Val Int where
     "+" -> return $ NumV (n0 + n1)
     "-" -> return $ NumV (n0 - n1)
     "*" -> return $ NumV (n0 * n1)
-    "/" -> if n1 == 0 then bottom div0 else return $ NumV (n0 `div` n1)
+    "/" -> if n1 == 0 then bottom $ "Division by zero. " ++ show n0 ++ "/" ++ show n1 else return $ NumV (n0 `div` n1)
     _ -> bottom $ unknownOp o
   op2 o _ _ = bottom $ invalidArgs o
   lambda x body = asks (LamV x body)
