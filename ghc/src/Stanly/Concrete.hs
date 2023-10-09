@@ -22,9 +22,8 @@ type Store' = Store Int Val
 type ScopeT = ReaderT Env'
 type BottomT = ExceptT String
 type FreshAddrT = StateT Store'
-type Id = Identity
 
-newtype Concrete a = Concrete (ScopeT (BottomT (FreshAddrT Id)) a)
+newtype ConcreteT m a = ConcreteT (ScopeT (BottomT (FreshAddrT m)) a)
   deriving
     ( Functor,
       Applicative,
@@ -33,6 +32,8 @@ newtype Concrete a = Concrete (ScopeT (BottomT (FreshAddrT Id)) a)
       MonadReader (Env Int),
       MonadState (Store Int Val)
     )
+
+type Concrete = ConcreteT Identity
 
 instance Interpreter Concrete Val Int where
   op2 o (NumV n0) (NumV n1) = case o of
@@ -45,15 +46,19 @@ instance Interpreter Concrete Val Int where
         else return $ NumV (n0 `div` n1)
     _ -> bottom $ unknownOp o
   op2 o _ _ = bottom $ invalidArgs o
-  lambda x body = asks (LamV x body)
-  number n = return $ NumV n
   alloc _ = gets length
-  run (Concrete m) =
+  run (ConcreteT m) =
     runIdentity (runStateT (runExceptT (runReaderT m (Env []))) (Store []))
   truthy (NumV n) = return (n /= 0)
   truthy _ = return False
-  destruct (LamV x e r) = (Just (x, r), e)
-  destruct (NumV n) = (Nothing, Num n)
+  destruct :: Concrete Val -> Concrete (Expr, Maybe (Var, Env Int))
+  destruct m = m >>= destruct'
+    where
+      destruct' (LamV x e r) = return (e, Just (x, r))
+      destruct' (NumV n) = return (Num n, Nothing)
+  construct (Lam x e) = Just $ asks (LamV x e)
+  construct (Num n) = Just $ return (NumV n)
+  construct _ = Nothing
 
 instance Fmt Val where
   ansiFmt (LamV x body r) = start "λ" <> bold >+ x <> start "." <> ansiFmt body <> ansiFmt r
@@ -67,14 +72,12 @@ invalidArgs, unknownOp :: String -> String
 invalidArgs o = "Invalid arguments to operator '" ++ o ++ "'"
 unknownOp o = "Unknown operator '" ++ o ++ "'"
 
-type TraceT = WriterT [(Val, Store')]
-newtype Trace a = Trace (ScopeT (BottomT (FreshAddrT (TraceT Id))) a)
+newtype Trace a = Trace (ConcreteT (WriterT [(Val, Store')] Identity) a)
   deriving
     ( Functor,
       Applicative,
       Monad,
       MonadError String,
       MonadReader Env',
-      MonadState Store',
-      MonadWriter [(Val, Store')]
+      MonadState Store'
     )
