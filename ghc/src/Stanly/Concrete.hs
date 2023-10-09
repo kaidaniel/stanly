@@ -40,12 +40,10 @@ instance Interpreter Concrete Val Int where
   truthy _ = return False
 
 instance Value Val Int where
-  var (LamV x _ _) = x
-  var (NumV _) = error "'Value.var' expects LamV input, not NumV"
   expr (LamV _ e _) = e
   expr (NumV n) = Num n
-  env (LamV _ _ r) = r
-  env (NumV _) = error "'Value.env' expects LamV input, not NumV"
+  closure (LamV x _ r) = Just (x, r)
+  closure (NumV _) = Nothing
 
 instance Fmt Val where
   ansiFmt (LamV x body r) = start "λ" <> bold >+ x <> start "." <> ansiFmt body <> ansiFmt r
