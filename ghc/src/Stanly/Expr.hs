@@ -7,6 +7,7 @@ module Stanly.Expr (Expr (..), Var, parser, parse, expr) where
 import GHC.Generics
 import Text.Parsec
 import Stanly.IdiomBrackets(i)
+import Stanly.Fmt
 
 type Var = String
 
@@ -49,3 +50,13 @@ expr =
 -- | Turn program text into an AST.
 parser :: String -> Either ParseError Expr
 parser = parse (expr <* eof) "<string>"
+
+instance Fmt Expr where
+  ansiFmt e = case e of
+    (Vbl x) -> green >+ x
+    (App fn arg) -> red >+ "(" <> ansiFmt fn <> red >+ " " <> ansiFmt arg <> red >+ ")"
+    (Lam x body) -> dim >+ "(λ" <> bold >+ x <> start "." <> ansiFmt body <> dim >+ ")"
+    (Rec f body) -> dim >+ "(μ" <> bold >+ f <> start "." <> ansiFmt body <> dim >+ ")"
+    (Op2 o left right) -> dim >+ "(" <> ansiFmt left <> start o <> ansiFmt right <> dim >+ ")"
+    (Num n) -> start $ show n
+    (If etest etrue efalse) -> start "(if " <> ansiFmt etest <> start " then " <> ansiFmt etrue <> start " else " <> ansiFmt efalse <> start ")"

@@ -1,14 +1,19 @@
 {-# LANGUAGE FunctionalDependencies #-}
 
-module Stanly.Eval (eval, Interpreter (..), Value (..), Env (..), Store (..)) where
+module Stanly.Eval (eval, throw, Interpreter (..), Value (..), Env (..), Store (..)) where
 
+import Control.Monad.Except
 import Control.Monad.Reader (MonadReader (ask, local))
 import Control.Monad.State (MonadState, gets, modify)
 import Stanly.Expr (Expr (..), Var)
+import Stanly.Fmt
+
+throw :: (MonadError String m) => String -> m a
+throw err = throwError $ "Error: " ++ err
 
 newtype Store addr val = Store {unStore :: [(addr, val)]} deriving (Eq, Show, Foldable)
 
-newtype Env addr = Env {unEnv :: [(Var, addr)]} deriving (Eq, Show)
+newtype Env addr = Env [(Var, addr)] deriving (Eq, Show)
 
 class Value val addr | val -> addr where
   var :: val -> Var
@@ -16,7 +21,7 @@ class Value val addr | val -> addr where
   env :: val -> Env addr
 
 class
-  (Eq addr, MonadState (Store addr val) m, MonadReader (Env addr) m, Value val addr) =>
+  (Show addr, Eq addr, MonadState (Store addr val) m, MonadReader (Env addr) m, MonadError String m, Value val addr) =>
   Interpreter m val addr
     | val -> m,
       addr -> m
@@ -43,7 +48,7 @@ eval expression = case expression of
     memkpy (addr, v)
     return v
   (Lam x e) -> lambda x e
-  (App (Num _) _) -> invalidSyntax
+  (App (Num _) _) -> do r <- ask; throw $ "Applying a number: " ++ termFmt expression ++ termFmt r
   (App fn arg) -> do
     fn' <- ev fn
     let argname = var fn'
@@ -56,4 +61,19 @@ eval expression = case expression of
     ext (Env environment) binding = Env (binding : environment)
     jst x = case x of Just x' -> x'; Nothing -> error "intended to be impossible to happen at run time"
     find (Env r) x = gets (jst . lookup (jst $ lookup x r) . unStore)
-    invalidSyntax = error $ "Invalid syntax: " ++ show expression
+    
+
+instance (Show addr) => Fmt (Env addr) where
+  ansiFmt :: (Show addr) => Env addr -> ANSI
+  ansiFmt r = green >+ "⟦" <> fmt' r "" <> green >+ "⟧"
+    where
+      fmt' :: (Show addr) => Env addr -> String -> ANSI
+      fmt' (Env ((v, a) : r')) sep = start sep <> green >+ v <> start "↦" <> green >+ show a <> fmt' (Env r') ","
+      fmt' (Env []) _ = start ""
+
+instance (Show addr, Fmt v) => Fmt (Store addr v) where
+  ansiFmt s = yellow >+ "Σ⟦" <> fmt' s "" <> yellow >+ "⟧"
+    where
+      fmt' :: (Show addr, Fmt v) => Store addr v -> String -> ANSI
+      fmt' (Store ((a, v) : r)) sep = start sep <> green >+ show a <> start "↦" <> ansiFmt v <> fmt' (Store r) ","
+      fmt' (Store []) _ = start ""
