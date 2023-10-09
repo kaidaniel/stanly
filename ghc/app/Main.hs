@@ -7,7 +7,7 @@ import Stanly.Fmt (Fmt (..))
 main :: IO ()
 main = do
   str <- getContents
-  ast <- case parse expr "<stdin>" str of Left err -> error $ show err; Right ast -> return ast
+  ast <- either (error . show) return (parse expr "<stdin>" str)
   putStrLn "Input"
   indented $ (reverse . dropWhile isSpace . reverse) str
   putStrLn "Desugared"

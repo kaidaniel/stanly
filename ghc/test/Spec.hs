@@ -59,7 +59,8 @@ main = hspec $ do
       resultOf (exec @Concrete) "((fn g.(fn x.(g x))) 3)" `shouldBe` "(λx.(g x)⟦g↦0⟧, Σ⟦0↦3⟧)"
       resultOf (exec @Concrete) "let f = (fn g.(g 0)) in ((fn y.(fn g.y)) f)" `shouldBe` "(λg.y⟦y↦1,f↦0⟧, Σ⟦1↦λg.(g 0)⟦⟧,0↦λg.(g 0)⟦⟧⟧)"
   where
-    resultOf exec' str = fmt $ exec' (case parser str of Left err -> error $ show err; Right ast -> ast)
+    resultOf exec' str = fmt $ exec' $ either (error . show) id (parser str)
+
 
 -- | Invalid programs.
 -- >>> import Stanly.Fmt(fmt)
