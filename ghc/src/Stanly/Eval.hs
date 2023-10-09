@@ -21,7 +21,7 @@ class Value val addr | val -> addr where
   env :: val -> Env addr
 
 class
-  (Show addr, Eq addr, MonadState (Store addr val) m, MonadReader (Env addr) m, MonadError String m, Value val addr) =>
+  (Fmt val, Show addr, Eq addr, MonadState (Store addr val) m, MonadReader (Env addr) m, MonadError String m, Value val addr) =>
   Interpreter m val addr
     | val -> m,
       addr -> m
@@ -44,8 +44,8 @@ eval expression = case expression of
     case lookup variable environment of 
       Just address -> case lookup address store of
         Just val -> return val
-        Nothing -> error $ show variable ++ " not found in store: " ++ fmt expression ++ fmt (Env environment)
-      Nothing -> bottom $ show variable ++ " not found in environment: " ++ fmt expression ++ fmt (Env environment)
+        Nothing -> error $ show variable ++ " not found in store. " ++ fmt expression ++ fmt (Env environment) ++ ", " ++ fmt (Store store)
+      Nothing -> bottom $ show variable ++ " not found in environment. " ++ fmt expression ++ fmt (Env environment)
   (If test tru fls) -> do result <- ev test; t <- truthy result; ev (if t then tru else fls)
   (Op2 o left right) -> do left' <- ev left; right' <- ev right; op2 o left' right'
   (Rec fname body) -> do
@@ -55,7 +55,7 @@ eval expression = case expression of
     memkpy (addr, v)
     return v
   (Lam x e) -> lambda x e
-  (App (Num _) _) -> do r <- ask; bottom $ "Applying a number: " ++ fmt expression ++ fmt r
+  (App (Num _) _) -> do r <- ask; bottom $ "Can't apply a number. " ++ fmt expression ++ fmt r
   (App fn arg) -> do
     fn' <- ev fn
     let argname = var fn'

@@ -59,11 +59,11 @@ main = hspec $ do
       resultOf (exec @Concrete) "((fn g.(fn x.(g x))) 3)" `shouldBe` "(λx.(g x)⟦g↦0⟧, Σ⟦0↦3⟧)"
       resultOf (exec @Concrete) "let f = (fn g.(g 0)) in ((fn y.(fn g.y)) f)" `shouldBe` "(λg.y⟦y↦1,f↦0⟧, Σ⟦1↦λg.(g 0)⟦⟧,0↦λg.(g 0)⟦⟧⟧)"
     it "can't apply numbers" $ do
-      resultOf (exec @Concrete) "(0 1)" `shouldBe` "(Bottom: Applying a number: (0 1)⟦⟧, Σ⟦⟧)"
-      resultOf (exec @Concrete) "let x = 1 in (x 0)" `shouldBe` "(Bottom: Applying a number: (x 0)⟦x↦0⟧, Σ⟦0↦1⟧)"
+      resultOf (exec @Concrete) "(0 1)" `shouldBe` "(Bottom: Can't apply a number. (0 1)⟦⟧, Σ⟦⟧)"
+      resultOf (exec @Concrete) "let x = 1 in (x 0)" `shouldBe` "(Bottom: Can't apply a number. (x 0)⟦x↦0⟧, Σ⟦0↦1⟧)"
     it "can't use undefined variables" $ do
-      resultOf (exec @Concrete) "(x + 1)" `shouldBe` "(Bottom: \"x\" not found in environment: x⟦⟧, Σ⟦⟧)"
-      resultOf (exec @Concrete) "let f = (fn y.(y + 1)) in (f z)" `shouldBe` "(Bottom: \"z\" not found in environment: z⟦f↦0⟧, Σ⟦0↦λy.(y+1)⟦⟧⟧)"
+      resultOf (exec @Concrete) "(x + 1)" `shouldBe` "(Bottom: \"x\" not found in environment. x⟦⟧, Σ⟦⟧)"
+      resultOf (exec @Concrete) "let f = (fn y.(y + 1)) in (f z)" `shouldBe` "(Bottom: \"z\" not found in environment. z⟦f↦0⟧, Σ⟦0↦λy.(y+1)⟦⟧⟧)"
 
   where
     resultOf exec' str = fmt $ exec' $ either (error . show) id (parser str)
