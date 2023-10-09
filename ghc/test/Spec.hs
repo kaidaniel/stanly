@@ -1,4 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
+{-# OPTIONS_GHC -Wno-unused-top-binds #-}
 
 import GHC.Generics (Generic)
 import Stanly.Concrete (Concrete)
@@ -15,7 +17,7 @@ instance Arbitrary TestExpr where
   arbitrary = sized (fmap TestExpr . arbitrary')
     where
       word :: Gen String
-      word = listOf1 (elements ['a' .. 'z'])
+      word = oneof [listOf1 $ elements ['a' .. 'z'], pure "letx", pure "fnx", pure "recx", pure "ifx", pure "thenx", pure "elsex", pure "mux"]
       arbitrary' 0 = pure $ Num 1
       arbitrary' n =
         let rec' = resize (n `div` 2) (fmap unTestExpr arbitrary)

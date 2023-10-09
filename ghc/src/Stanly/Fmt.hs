@@ -35,17 +35,11 @@ cyan = ansi 96
 white = ansi 97
 dflt = ansi 99
 
-toText :: ANSI -> T.Text
-toText (ANSI x) = foldl (\txt (ESC code, t) -> ((txt <> code) <> t) <> unESC reset) mempty x
-
-removeESCs :: ANSI -> T.Text
-removeESCs (ANSI x) = foldl (\txt (_, t) -> txt <> t) mempty x
-
 class Fmt a where
   fmt :: a -> String
-  fmt e = T.unpack (removeESCs $ ansiFmt e)
+  fmt e = let ANSI x = ansiFmt e in T.unpack (foldl (\txt (_, t) -> txt <> t) mempty x)
   termFmt :: a -> String
-  termFmt e = T.unpack (toText $ ansiFmt e)
+  termFmt e = let ANSI x = ansiFmt e in T.unpack (foldl (\txt (ESC code, t) -> ((txt <> code) <> t) <> unESC reset) mempty x)
   ansiFmt :: a -> ANSI
 
 instance Fmt Expr where
@@ -64,7 +58,7 @@ instance (Show addr) => Fmt (Env addr) where
   ansiFmt r = green >+ "⟦" <> fmt' r "" <> green >+ "⟧"
     where
       fmt' :: (Show addr) => Env addr -> String -> ANSI
-      fmt' (Env ((v, a) : r)) sep = start sep <> green >+ v <> start "↦" <> green >+ show a <> fmt' (Env r) ","
+      fmt' (Env ((v, a) : r')) sep = start sep <> green >+ v <> start "↦" <> green >+ show a <> fmt' (Env r') ","
       fmt' (Env []) _ = start ""
 
 instance (Show addr, Fmt v) => Fmt (Store addr v) where
@@ -76,6 +70,3 @@ instance (Show addr, Fmt v) => Fmt (Store addr v) where
 
 instance (Fmt a, Fmt b) => Fmt (a, b) where
   ansiFmt (a, b) = start "(" <> ansiFmt a <> start ", " <> ansiFmt b <> start ")"
-
--- unparse :: Expr -> String
--- unparse e = T.replace "\x1b[96m" "" fmt e
