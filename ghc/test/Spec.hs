@@ -60,8 +60,8 @@ main = hspec $ do
       resultOf (exec @Concrete) "let f = (fn g.(g 0)) in ((fn y.(fn g.y)) f)" `shouldBe` "(λg.y⟦y↦1,f↦0⟧, Σ⟦1↦λg.(g 0)⟦⟧,0↦λg.(g 0)⟦⟧⟧)"
     it "can't apply numbers" $ do
       resultOf (exec @Concrete) "(0 1)" `shouldBe` "(Bottom: \"0\" is not a function. (0 1)⟦⟧, Σ⟦⟧)"
-      resultOf (exec @Concrete) "let x = 1 in (x 0)" `shouldBe` "(Bottom: \"x\" is not a function. (x 0)⟦x↦0⟧, Σ⟦0↦1⟧)"
-      resultOf (exec @Concrete) "let f = (fn x.(1 + x)) in ((f 2) 4)" `shouldBe` "(Bottom: \"(f 2)\" is not a function. ((f 2) 4)⟦f↦0⟧, Σ⟦1↦2,0↦λx.(1+x)⟦⟧⟧)"
+      resultOf (exec @Concrete) "let x = 1 in (x 0)" `shouldBe` "(Bottom: \"1\" is not a function. (x 0)⟦x↦0⟧, Σ⟦0↦1⟧)"
+      resultOf (exec @Concrete) "let f = (fn x.(1 + x)) in ((f 2) 4)" `shouldBe` "(Bottom: \"3\" is not a function. ((f 2) 4)⟦f↦0⟧, Σ⟦1↦2,0↦λx.(1+x)⟦⟧⟧)"
     it "can't use undefined variables" $ do
       resultOf (exec @Concrete) "(x + 1)" `shouldBe` "(Bottom: \"x\" not found in environment. x⟦⟧, Σ⟦⟧)"
       resultOf (exec @Concrete) "let f = (fn y.(y + 1)) in (f z)" `shouldBe` "(Bottom: \"z\" not found in environment. z⟦f↦0⟧, Σ⟦0↦λy.(y+1)⟦⟧⟧)"

@@ -16,8 +16,7 @@ newtype Store addr val = Store {unStore :: [(addr, val)]} deriving (Eq, Show, Fo
 newtype Env addr = Env [(Var, addr)] deriving (Eq, Show)
 
 class Value val addr | val -> addr where
-  expr :: val -> Expr
-  closure :: val -> Maybe (Var, Env addr)
+  destruct :: val -> (Maybe (Var, Env addr), Expr)
 
 class
   (Fmt val, Show addr, Eq addr, MonadState (Store addr val) m, MonadReader (Env addr) m, MonadError String m, Value val addr) =>
@@ -54,17 +53,16 @@ eval expression = case expression of
     memkpy (addr, v)
     return v
   (Lam x e) -> lambda x e
-  -- (App (Num _) _) -> do r <- ask; bottom $ "Can't apply a number. " ++ fmt expression ++ fmt r
   (App fn arg) -> do
     fn' <- ev fn
-    case closure fn' of
-      Just (argname, r) -> do 
+    case destruct fn' of
+      (Just (argname, r), expr) -> do 
         arg' <- ev arg
         addr <- alloc argname; memkpy (addr, arg')
-        local (\_ -> ext r (argname, addr)) (ev (expr fn'))
-      Nothing -> do
+        local (\_ -> ext r (argname, addr)) (ev expr)
+      (Nothing, expr) -> do
         r <- ask
-        bottom $ "\"" ++ fmt fn ++ "\" is not a function. " ++ fmt expression ++ fmt r
+        bottom $ "\"" ++ fmt expr ++ "\" is not a function. " ++ fmt expression ++ fmt r
   where
     memkpy binding = modify (\(Store store) -> Store (binding : store))
     ext (Env environment) binding = Env (binding : environment)

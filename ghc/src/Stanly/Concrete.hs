@@ -40,10 +40,8 @@ instance Interpreter Concrete Val Int where
   truthy _ = return False
 
 instance Value Val Int where
-  expr (LamV _ e _) = e
-  expr (NumV n) = Num n
-  closure (LamV x _ r) = Just (x, r)
-  closure (NumV _) = Nothing
+  destruct (LamV x e r) = (Just (x, r), e)
+  destruct (NumV n) = (Nothing, Num n)
 
 instance Fmt Val where
   ansiFmt (LamV x body r) = start "λ" <> bold >+ x <> start "." <> ansiFmt body <> ansiFmt r
