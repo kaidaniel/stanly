@@ -58,6 +58,13 @@ main = hspec $ do
       resultOf (exec @Concrete) "let x = (1 + 10) in ((λy.(λf.(f x))) (2 + 20))" `shouldBe` "(λf.(f x)⟦y↦1,x↦0⟧, Σ⟦1↦22,0↦11⟧)"
       resultOf (exec @Concrete) "((fn g.(fn x.(g x))) 3)" `shouldBe` "(λx.(g x)⟦g↦0⟧, Σ⟦0↦3⟧)"
       resultOf (exec @Concrete) "let f = (fn g.(g 0)) in ((fn y.(fn g.y)) f)" `shouldBe` "(λg.y⟦y↦1,f↦0⟧, Σ⟦1↦λg.(g 0)⟦⟧,0↦λg.(g 0)⟦⟧⟧)"
+    it "can't apply numbers" $ do
+      resultOf (exec @Concrete) "(0 1)" `shouldBe` "(Error: Applying a number: (0 1)⟦⟧, Σ⟦⟧)"
+      resultOf (exec @Concrete) "let x = 1 in (x 0)" `shouldBe` "(Error: Applying a number: (x 0)⟦x↦0⟧, Σ⟦0↦1⟧)"
+    it "can't use undefined variables" $ do
+      resultOf (exec @Concrete) "(x + 1)" `shouldBe` "(Error: Undefined Variable 'x': (x + 1)⟦⟧, Σ⟦⟧)"
+      resultOf (exec @Concrete) "let f = (fn y.(y + 1)) in (f z)" `shouldBe` "(Error: Undefined Variable 'z': (f z)⟦f↦0⟧, Σ⟦0↦λy.(y + 1)⟦⟧⟧)"
+
   where
     resultOf exec' str = fmt $ exec' $ either (error . show) id (parser str)
 

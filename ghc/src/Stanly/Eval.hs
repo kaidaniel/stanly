@@ -48,7 +48,7 @@ eval expression = case expression of
     memkpy (addr, v)
     return v
   (Lam x e) -> lambda x e
-  (App (Num _) _) -> do r <- ask; throw $ "Applying a number: " ++ termFmt expression ++ termFmt r
+  (App (Num _) _) -> do r <- ask; throw $ "Applying a number: " ++ fmt expression ++ fmt r
   (App fn arg) -> do
     fn' <- ev fn
     let argname = var fn'
