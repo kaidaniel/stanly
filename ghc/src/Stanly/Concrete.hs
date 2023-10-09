@@ -7,7 +7,7 @@ import Control.Monad.Except
 import Control.Monad.Identity (Identity, runIdentity)
 import Control.Monad.Reader (MonadReader, ReaderT, asks, runReaderT)
 import Control.Monad.State (MonadState, StateT, gets, runStateT)
-import Stanly.Eval (Env (..), Interpreter (..), Store (..), Value (..), bottom)
+import Stanly.Eval (Env (..), Interpreter (..), Store (..), bottom)
 import Stanly.Expr (Expr (..), Var)
 import Stanly.Fmt
 
@@ -38,8 +38,6 @@ instance Interpreter Concrete Val Int where
   run (m :: Concrete Val) = runConcrete m
   truthy (NumV n) = return (n /= 0)
   truthy _ = return False
-
-instance Value Val Int where
   destruct (LamV x e r) = (Just (x, r), e)
   destruct (NumV n) = (Nothing, Num n)
 

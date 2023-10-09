@@ -1,6 +1,6 @@
 {-# LANGUAGE FunctionalDependencies #-}
 
-module Stanly.Eval (eval, bottom, Interpreter (..), Value (..), Env (..), Store (..)) where
+module Stanly.Eval (eval, bottom, Interpreter (..), Env (..), Store (..)) where
 
 import Control.Monad.Except
 import Control.Monad.Reader (MonadReader (ask, local))
@@ -10,16 +10,11 @@ import Stanly.Fmt
 
 bottom :: (MonadError String m) => String -> m a
 bottom err = throwError $ "Bottom: " ++ err
-
 newtype Store addr val = Store {unStore :: [(addr, val)]} deriving (Eq, Show, Foldable)
-
 newtype Env addr = Env [(Var, addr)] deriving (Eq, Show)
 
-class Value val addr | val -> addr where
-  destruct :: val -> (Maybe (Var, Env addr), Expr)
-
 class
-  (Fmt val, Show addr, Eq addr, MonadState (Store addr val) m, MonadReader (Env addr) m, MonadError String m, Value val addr) =>
+  (Fmt val, Show addr, Eq addr, MonadState (Store addr val) m, MonadReader (Env addr) m, MonadError String m) =>
   Interpreter m val addr
     | val -> m,
       addr -> m
@@ -32,6 +27,7 @@ class
   ev :: Expr -> m val
   ev = eval
   run :: m val -> (Either String val, Store addr val)
+  destruct :: val -> (Maybe (Var, Env addr), Expr)
 
 eval :: (Interpreter m val addr) => Expr -> m val
 eval expression = case expression of
