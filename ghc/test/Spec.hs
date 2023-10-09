@@ -1,6 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
 import Test.Hspec
-import Test.Hspec.QuickCheck
 import Test.QuickCheck
 import Stanly.Expr(Expr(..), parser)
 import Stanly.Eval(expr, var, env)
@@ -31,7 +30,7 @@ instance Arbitrary TestExpr where
                 Rec <$> word <*> rec',
                 If  <$> rec' <*> rec' <*> rec'
               ]
-  
+
 instance Arbitrary Expr where
   arbitrary = unTestExpr <$> arbitrary
 
@@ -44,13 +43,13 @@ main :: IO ()
 main = hspec $ do
     describe "parser" $ do
       it "parses examples" $ do
-        fmt <$> parser "(if(λs.1)then(ifxthenyelsez)else(2))" `shouldBe` (Right "(if (\955s.1) then ifxthenyelsez else 2)")
-        fmt <$> parser "((f)    (a))" `shouldBe` (Right "(f a)")
-        fmt <$> parser "(if ifx then theny else (if thenx then elsey else ifz))" `shouldBe` (Right "(if ifx then theny else (if thenx then elsey else ifz))")
-        fmt <$> parser "let x = (μ f. (f x)) in z" `shouldBe` (Right "((\955x.z) (\956f.(f x)))")
-        fmt <$> parser "(mu f.((f f) 3))" `shouldBe` (Right "(\956f.((f f) 3))")
-        fmt <$> parser "(fn x.x)" `shouldBe` (Right "(\955x.x)")
-      
+        fmt <$> parser "(if(λs.1)then(ifxthenyelsez)else(2))" `shouldBe` Right "(if (\955s.1) then ifxthenyelsez else 2)"
+        fmt <$> parser "((f)    (a))" `shouldBe` Right "(f a)"
+        fmt <$> parser "(if ifx then theny else (if thenx then elsey else ifz))" `shouldBe` Right "(if ifx then theny else (if thenx then elsey else ifz))"
+        fmt <$> parser "let x = (μ f. (f x)) in z" `shouldBe` Right "((\955x.z) (\956f.(f x)))"
+        fmt <$> parser "(mu f.((f f) 3))" `shouldBe` Right "(\956f.((f f) 3))"
+        fmt <$> parser "(fn x.x)" `shouldBe` Right "(\955x.x)"
+
       it "is inverted by fmt" $
         property $ \(e :: Expr) -> (fmt <$> (parser . fmt) e) === Right (fmt e)
 
@@ -61,14 +60,14 @@ main = hspec $ do
         closureOf (exec @Concrete) "((λg.(λx.(g x))) 3)" `shouldBe` "(λx.(g x))"
       it "halts at correct environments and stores" $ do
         envAndStoreOf (exec @Concrete) "((λx.(λg.(g x))) 3)" `shouldBe` ("⟦x↦0⟧", "Σ⟦0↦3⟧")
-        envAndStoreOf (exec @Concrete) "let f = (fn g.(g 0)) in ((fn y.(fn g.y)) f)" 
+        envAndStoreOf (exec @Concrete) "let f = (fn g.(g 0)) in ((fn y.(fn g.y)) f)"
                            `shouldBe` ("⟦y↦1,f↦0⟧", "Σ⟦1↦λg.(g 0)⟦⟧,0↦λg.(g 0)⟦⟧⟧")
   where
-    closureOf eval' str =
-      let (v, _) = eval' (case parser str of Left err -> error $ show err; Right ast -> ast)
+    closureOf exec' str =
+      let (Right v, _) = exec' (case parser str of Left err -> error $ show err; Right ast -> ast)
       in  fmt (Lam (var v) (expr v))
-    envAndStoreOf eval' str =
-      let (v, store) = eval' (case parser str of Left err -> error $ show err; Right ast -> ast)
+    envAndStoreOf exec' str =
+      let (Right v, store) = exec' (case parser str of Left err -> error $ show err; Right ast -> ast)
       in  (fmt $ env v, fmt store)
 
 

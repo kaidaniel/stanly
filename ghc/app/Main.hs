@@ -3,8 +3,6 @@ import Stanly.Concrete(Concrete)
 import Stanly.Exec(exec)
 import Stanly.Fmt(Fmt(..))
 import Data.Char (isSpace)
-import Text.Pretty.Simple (pPrint)
-import qualified Data.Text.IO as TIO
 
 
 main :: IO ()
@@ -16,7 +14,7 @@ main = do
     putStrLn "Desugared"
     indented $ termFmt ast
     putStrLn "Concrete"
-    let (value, store) = (exec @Concrete) ast
+    let (Right value, store) = (exec @Concrete) ast
     indented $ termFmt value ++ " " ++ termFmt store
     where
         indented s = putStrLn $ " " ++ s

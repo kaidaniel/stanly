@@ -4,6 +4,12 @@ module Stanly.Eval (eval, Interpreter(..), Value(..), Env(..), Store(..)) where
 import Stanly.Expr (Expr (..), Var)
 import Control.Monad.Reader (MonadReader (ask, local))
 import Control.Monad.State (MonadState, gets, modify)
+import Control.Monad.Except
+
+-- | The scope: Addresses for free variables in the expression under evaluation.
+-- type MonadVblReader addr m = MonadReader (Env addr) m
+-- | The heap: Values for adresses.
+-- type MonadStore
 
 newtype Store addr val = Store { unStore :: [(addr, val)] } deriving (Eq, Show, Foldable)
 newtype Env addr = Env { unEnv :: [(Var, addr)] } deriving (Eq, Show)
@@ -22,7 +28,7 @@ class (Eq addr, MonadState (Store addr val) m, MonadReader (Env addr) m, Value v
   alloc  :: Var -> m addr
   ev     :: Expr -> m val
   ev = eval
-  run :: m val -> (val, Store addr val)
+  run :: m val -> (Either String val, Store addr val)
 
 eval :: Interpreter m val addr => Expr -> m val
 eval expression = case expression of
@@ -37,6 +43,7 @@ eval expression = case expression of
     memkpy (addr, v)
     return v
   (Lam x e) -> lambda x e
+  (App (Num _) _) -> invalidSyntax
   (App fn arg) -> do
     fn' <- ev fn
     let argname = var fn'
@@ -49,3 +56,4 @@ eval expression = case expression of
     ext (Env environment) binding  = Env (binding : environment)
     jst x = case x of Just x' -> x'; Nothing -> error "intended to be impossible to happen at run time"
     find (Env r) x = gets (jst . lookup (jst $ lookup x r) . unStore)
+    invalidSyntax = error $ "Invalid syntax: " ++ show expression
