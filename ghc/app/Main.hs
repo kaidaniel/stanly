@@ -12,6 +12,8 @@ main = do
   indented $ (reverse . dropWhile isSpace . reverse) str
   putStrLn "Desugared"
   indented $ termFmt ast
+  putStrLn "AST"
+  indented $ show ast
   putStrLn "Concrete"
   indented $ termFmt ((exec @Concrete) ast)
   where
