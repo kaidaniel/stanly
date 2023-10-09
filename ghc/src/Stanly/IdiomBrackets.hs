@@ -1,11 +1,10 @@
-{-# LANGUAGE TemplateHaskell, QuasiQuotes #-}
+{-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 -- | from https://hackage.haskell.org/package/applicative-quoters
 -- | Idiom brackets. Vixey's idea.
-
 module Stanly.IdiomBrackets (i) where
 
-import Control.Applicative ((<*>), pure)
 import Control.Monad ((<=<))
 import Language.Haskell.Meta (parseExp)
 import Language.Haskell.TH.Lib
@@ -29,22 +28,25 @@ import Language.Haskell.TH.Syntax
 -- have fixity information (unless haskell-src-meta becomes clever enough to
 -- resolve that itself).
 i :: QuasiQuoter
-i = QuasiQuoter { quoteExp = applicate <=< either fail return . parseExp,
-  quotePat = msg "pattern",
-  quoteType = msg "type",
-  quoteDec = msg "dec" }
- where
-  msg context = error $ "Can't use idiom brackets in a " ++ context ++ " context."
+i =
+  QuasiQuoter
+    { quoteExp = applicate <=< either fail return . parseExp,
+      quotePat = msg "pattern",
+      quoteType = msg "type",
+      quoteDec = msg "dec"
+    }
+  where
+    msg context = error $ "Can't use idiom brackets in a " ++ context ++ " context."
 
 applicate :: Exp -> ExpQ
 applicate (AppE f x) =
-  [| $(applicate f) <*> $(return x) |]
+  [|$(applicate f) <*> $(return x)|]
 applicate (InfixE (Just left) op (Just right)) =
-  [| pure $(return op) <*> $(return left) <*> $(return right) |]
-applicate (UInfixE left op right) = case (left,right) of
-  (UInfixE{}, _) -> ambig
-  (_, UInfixE{}) -> ambig
-  (_, _) -> [| pure $(return op) <*> $(return left) <*> $(return right) |]
- where
-  ambig = fail "Ambiguous infix expression in idiom bracket."
-applicate x = [| pure $(return x) |]
+  [|($(return op) <$> $(return left)) <*> $(return right)|]
+applicate (UInfixE left op right) = case (left, right) of
+  (UInfixE {}, _) -> ambig
+  (_, UInfixE {}) -> ambig
+  (_, _) -> [|($(return op) <$> $(return left)) <*> $(return right)|]
+  where
+    ambig = fail "Ambiguous infix expression in idiom bracket."
+applicate x = [|pure $(return x)|]
