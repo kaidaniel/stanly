@@ -1,15 +1,15 @@
 {-# LANGUAGE FunctionalDependencies #-}
 
-module Stanly.Eval (eval, throw, Interpreter (..), Value (..), Env (..), Store (..)) where
+module Stanly.Eval (eval, bottom, Interpreter (..), Value (..), Env (..), Store (..)) where
 
 import Control.Monad.Except
 import Control.Monad.Reader (MonadReader (ask, local))
-import Control.Monad.State (MonadState, gets, modify)
+import Control.Monad.State (MonadState, modify, get)
 import Stanly.Expr (Expr (..), Var)
 import Stanly.Fmt
 
-throw :: (MonadError String m) => String -> m a
-throw err = throwError $ "Error: " ++ err
+bottom :: (MonadError String m) => String -> m a
+bottom err = throwError $ "Bottom: " ++ err
 
 newtype Store addr val = Store {unStore :: [(addr, val)]} deriving (Eq, Show, Foldable)
 
@@ -38,7 +38,14 @@ class
 eval :: (Interpreter m val addr) => Expr -> m val
 eval expression = case expression of
   (Num n) -> number n
-  (Vbl variable) -> do scope <- ask; find scope variable
+  (Vbl variable) -> do 
+    (Env environment) <- ask
+    (Store store) <- get
+    case lookup variable environment of 
+      Just address -> case lookup address store of
+        Just val -> return val
+        Nothing -> error $ show variable ++ " not found in store: " ++ fmt expression ++ fmt (Env environment)
+      Nothing -> bottom $ show variable ++ " not found in environment: " ++ fmt expression ++ fmt (Env environment)
   (If test tru fls) -> do result <- ev test; t <- truthy result; ev (if t then tru else fls)
   (Op2 o left right) -> do left' <- ev left; right' <- ev right; op2 o left' right'
   (Rec fname body) -> do
@@ -48,7 +55,7 @@ eval expression = case expression of
     memkpy (addr, v)
     return v
   (Lam x e) -> lambda x e
-  (App (Num _) _) -> do r <- ask; throw $ "Applying a number: " ++ fmt expression ++ fmt r
+  (App (Num _) _) -> do r <- ask; bottom $ "Applying a number: " ++ fmt expression ++ fmt r
   (App fn arg) -> do
     fn' <- ev fn
     let argname = var fn'
@@ -59,8 +66,6 @@ eval expression = case expression of
   where
     memkpy binding = modify (\(Store store) -> Store (binding : store))
     ext (Env environment) binding = Env (binding : environment)
-    jst x = case x of Just x' -> x'; Nothing -> error "intended to be impossible to happen at run time"
-    find (Env r) x = gets (jst . lookup (jst $ lookup x r) . unStore)
     
 
 instance (Show addr) => Fmt (Env addr) where

@@ -7,7 +7,7 @@ import Control.Monad.Except
 import Control.Monad.Identity (Identity, runIdentity)
 import Control.Monad.Reader (MonadReader, ReaderT, asks, runReaderT)
 import Control.Monad.State (MonadState, StateT, gets, runStateT)
-import Stanly.Eval (Env (..), Interpreter (..), Store (..), Value (..))
+import Stanly.Eval (Env (..), Interpreter (..), Store (..), Value (..), bottom)
 import Stanly.Expr (Expr (..), Var)
 import Stanly.Fmt
 
@@ -24,18 +24,14 @@ newtype Concrete a
 runConcrete :: Concrete a -> (Either String a, Store Int Val)
 runConcrete (Concrete scope) = runIdentity (runStateT (runExceptT (runReaderT scope (Env []))) (Store []))
 
-
-throw :: MonadError String m => String -> m a
-throw err = throwError $ "Error: " ++ err
-
 instance Interpreter Concrete Val Int where
   op2 o (NumV n0) (NumV n1) = case o of
     "+" -> return $ NumV (n0 + n1)
     "-" -> return $ NumV (n0 - n1)
     "*" -> return $ NumV (n0 * n1)
-    "/" -> if n1 == 0 then throw div0 else return $ NumV (n0 `div` n1)
-    _ -> throw $ unknownOp o
-  op2 o _ _ = throw $ invalidArgs o
+    "/" -> if n1 == 0 then bottom div0 else return $ NumV (n0 `div` n1)
+    _ -> bottom $ unknownOp o
+  op2 o _ _ = bottom $ invalidArgs o
   lambda x body = asks (LamV x body)
   number n = return $ NumV n
   alloc _ = gets length
