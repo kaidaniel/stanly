@@ -1,6 +1,5 @@
 import Data.Char (isSpace)
-import Stanly.Concrete (Concrete)
-import Stanly.Exec (exec)
+import Stanly.Concrete (execConcrete)
 import Stanly.Expr (expr, parse)
 import Stanly.Fmt (Fmt (..))
 
@@ -15,6 +14,6 @@ main = do
   putStrLn "AST"
   indented $ show ast
   putStrLn "Concrete"
-  indented $ termFmt ((exec @Concrete) ast)
+  indented $ termFmt (execConcrete ast)
   where
     indented s = putStrLn $ " " ++ s

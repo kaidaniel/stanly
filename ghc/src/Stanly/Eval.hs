@@ -19,7 +19,6 @@ class
   alloc :: Var -> m addr
   ev :: Expr -> m val
   ev = eval
-  run :: m val -> (Either String val, Store addr val)
   destruct :: m val -> m (Expr, Maybe (Var, Env addr))
   construct :: Expr -> Maybe (m val)
 

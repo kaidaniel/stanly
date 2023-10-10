@@ -1,14 +1,14 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
 {-# HLINT ignore "Eta reduce" #-}
-module Stanly.Concrete (Concrete) where
+module Stanly.Concrete (Concrete, execConcrete) where
 
 import Control.Monad.Except
 import Control.Monad.Identity (Identity, runIdentity)
-import Control.Monad.Reader (MonadReader, ReaderT, asks, runReaderT)
-import Control.Monad.State (MonadState, StateT, gets, runStateT)
+import Control.Monad.Reader
+import Control.Monad.State
 import Control.Monad.Writer
-import Stanly.Eval (Env (..), Interpreter (..), Store (..), bottom)
+import Stanly.Eval
 import Stanly.Expr (Expr (..), Var)
 import Stanly.Fmt
 
@@ -22,43 +22,65 @@ type Store' = Store Int Val
 type ScopeT = ReaderT Env'
 type BottomT = ExceptT String
 type FreshAddrT = StateT Store'
+type MonadScope = MonadReader Env'
+type MonadBottom = MonadError String
+type MonadFreshAddr = MonadState Store'
+
 
 newtype ConcreteT m a = ConcreteT (ScopeT (BottomT (FreshAddrT m)) a)
   deriving
     ( Functor,
       Applicative,
       Monad,
-      MonadError String,
-      MonadReader (Env Int),
-      MonadState (Store Int Val)
+      MonadBottom,
+      MonadScope,
+      MonadFreshAddr
     )
 
 type Concrete = ConcreteT Identity
 
-instance Interpreter Concrete Val Int where
-  op2 o (NumV n0) (NumV n1) = case o of
-    "+" -> return $ NumV (n0 + n1)
-    "-" -> return $ NumV (n0 - n1)
-    "*" -> return $ NumV (n0 * n1)
-    "/" ->
-      if n1 == 0
-        then bottom $ "Division by zero. " ++ show n0 ++ "/" ++ show n1
-        else return $ NumV (n0 `div` n1)
-    _ -> bottom $ unknownOp o
-  op2 o _ _ = bottom $ invalidArgs o
-  alloc _ = gets length
-  run (ConcreteT m) =
-    runIdentity (runStateT (runExceptT (runReaderT m (Env []))) (Store []))
-  truthy (NumV n) = return (n /= 0)
-  truthy _ = return False
-  destruct :: Concrete Val -> Concrete (Expr, Maybe (Var, Env Int))
-  destruct m = m >>= destruct'
+op2Num :: MonadBottom m => String -> Val -> Val -> m Val
+op2Num o (NumV n0) (NumV n1) = case o of
+  "+" -> return $ NumV (n0 + n1)
+  "-" -> return $ NumV (n0 - n1)
+  "*" -> return $ NumV (n0 * n1)
+  "/" ->
+    if n1 == 0
+      then bottom $ "Division by zero. " ++ show n0 ++ "/" ++ show n1
+      else return $ NumV (n0 `div` n1)
+  _ -> bottom $ unknownOp o
+op2Num o _ _ = bottom $ invalidArgs o
+
+truthyNum :: Monad m => Val -> m Bool
+truthyNum (NumV n) = return (n /= 0)
+truthyNum _ = return False
+
+allocFresh :: MonadFreshAddr m => Var -> m Int
+allocFresh _ = gets length
+
+destructVal :: Monad m => m Val -> m (Expr, Maybe (Var, Env Int))
+destructVal m = m >>= destructVal'
     where
-      destruct' (LamV x e r) = return (e, Just (x, r))
-      destruct' (NumV n) = return (Num n, Nothing)
-  construct (Lam x e) = Just $ asks (LamV x e)
-  construct (Num n) = Just $ return (NumV n)
-  construct _ = Nothing
+      destructVal' (LamV x e r) = return (e, Just (x, r))
+      destructVal' (NumV n) = return (Num n, Nothing)
+
+constructVal :: MonadScope m => Expr -> Maybe (m Val)
+constructVal (Lam x e) = Just $ asks (LamV x e)
+constructVal (Num n) = Just $ return (NumV n)
+constructVal _ = Nothing
+
+runConcreteT :: ConcreteT m a -> m (Either String a, Store')
+runConcreteT (ConcreteT m) = runStateT (runExceptT (runReaderT m (Env []))) (Store [])
+
+execConcrete :: Expr -> (Either String Val, Store')
+execConcrete = runIdentity . runConcreteT . ev
+
+instance Interpreter Concrete Val Int where
+  op2 = op2Num
+  alloc = allocFresh
+  truthy = truthyNum
+  destruct = destructVal
+  construct = constructVal
 
 instance Fmt Val where
   ansiFmt (LamV x body r) = start "λ" <> bold >+ x <> start "." <> ansiFmt body <> ansiFmt r
@@ -72,12 +94,29 @@ invalidArgs, unknownOp :: String -> String
 invalidArgs o = "Invalid arguments to operator '" ++ o ++ "'"
 unknownOp o = "Unknown operator '" ++ o ++ "'"
 
-newtype Trace a = Trace (ConcreteT (WriterT [(Val, Store')] Identity) a)
+-- type Trace' = [(Expr, Env', Store')]
+type Trace' = Writer [(Expr, Env', Store')] -- (val, [e, r, s])
+
+newtype Trace a = Trace (ConcreteT Trace' a)
   deriving
     ( Functor,
       Applicative,
       Monad,
-      MonadError String,
-      MonadReader Env',
-      MonadState Store'
+      MonadBottom,
+      MonadScope,
+      MonadFreshAddr
     )
+  
+
+-- instance Interpreter Trace Val Int where
+--   op2 = op2Num
+--   alloc = allocFresh
+--   truthy = truthyNum
+--   destruct = destructVal
+--   construct = constructVal
+--   ev expr = do
+--     r <- ask
+--     s <- get
+--     -- TODO: find out how to derive MonadWriter.
+--     tell [(expr, r, s)]
+--     eval expr
