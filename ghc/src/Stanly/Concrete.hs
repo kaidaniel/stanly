@@ -1,16 +1,16 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
 {-# HLINT ignore "Eta reduce" #-}
-module Stanly.Concrete (Concrete, execConcrete) where
+module Stanly.Concrete(Concrete, execConcrete, execTrace) where
 
 import Control.Monad.Except
 import Control.Monad.Identity (Identity, runIdentity)
 import Control.Monad.Reader
 import Control.Monad.State
-import Control.Monad.Writer
 import Stanly.Eval
 import Stanly.Expr (Expr (..), Var)
 import Stanly.Fmt
+import Control.Monad.Writer
 
 data Val
   = LamV Var Expr (Env Int)
@@ -26,17 +26,7 @@ type MonadScope = MonadReader Env'
 type MonadBottom = MonadError String
 type MonadFreshAddr = MonadState Store'
 
-
-newtype ConcreteT m a = ConcreteT (ScopeT (BottomT (FreshAddrT m)) a)
-  deriving
-    ( Functor,
-      Applicative,
-      Monad,
-      MonadBottom,
-      MonadScope,
-      MonadFreshAddr
-    )
-
+type ConcreteT m = ScopeT (BottomT (FreshAddrT m))
 type Concrete = ConcreteT Identity
 
 op2Num :: MonadBottom m => String -> Val -> Val -> m Val
@@ -70,7 +60,7 @@ constructVal (Num n) = Just $ return (NumV n)
 constructVal _ = Nothing
 
 runConcreteT :: ConcreteT m a -> m (Either String a, Store')
-runConcreteT (ConcreteT m) = runStateT (runExceptT (runReaderT m (Env []))) (Store [])
+runConcreteT m = runStateT (runExceptT (runReaderT m (Env []))) (Store [])
 
 execConcrete :: Expr -> (Either String Val, Store')
 execConcrete = runIdentity . runConcreteT . ev
@@ -94,29 +84,26 @@ invalidArgs, unknownOp :: String -> String
 invalidArgs o = "Invalid arguments to operator '" ++ o ++ "'"
 unknownOp o = "Unknown operator '" ++ o ++ "'"
 
--- type Trace' = [(Expr, Env', Store')]
-type Trace' = Writer [(Expr, Env', Store')] -- (val, [e, r, s])
+type TraceT m = ConcreteT (WriterT [(Expr, Env', Store')] m)
 
-newtype Trace a = Trace (ConcreteT Trace' a)
-  deriving
-    ( Functor,
-      Applicative,
-      Monad,
-      MonadBottom,
-      MonadScope,
-      MonadFreshAddr
-    )
+evTrace :: (Interpreter m Val Int,  MonadWriter [(Expr, Env', Store')] m) => Expr -> m Val
+evTrace expr = do
+  env <- ask
+  store <- get
+  tell [(expr, env, store)]
+  eval expr
   
 
--- instance Interpreter Trace Val Int where
---   op2 = op2Num
---   alloc = allocFresh
---   truthy = truthyNum
---   destruct = destructVal
---   construct = constructVal
---   ev expr = do
---     r <- ask
---     s <- get
---     -- TODO: find out how to derive MonadWriter.
---     tell [(expr, r, s)]
---     eval expr
+instance Interpreter (TraceT Identity) Val Int where
+  op2 = op2Num
+  alloc = allocFresh
+  truthy = truthyNum
+  destruct = destructVal
+  construct = constructVal
+  ev = evTrace
+  
+runTraceT :: ConcreteT (WriterT w m) a -> m ((Either String a, Store'), w)
+runTraceT m = runWriterT (runConcreteT m)
+
+execTrace :: Expr -> [(Expr, Env', Store')]
+execTrace expr = let (_, trace) = (runIdentity . runTraceT . ev) expr in trace
