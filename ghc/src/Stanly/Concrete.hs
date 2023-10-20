@@ -11,7 +11,6 @@ import Stanly.Eval
 import Stanly.Expr (Expr (..), Var)
 import Stanly.Fmt
 import Control.Monad.Writer
-import Data.List (intercalate)
 
 data Val
   = LamV Var Expr (Env Int)
