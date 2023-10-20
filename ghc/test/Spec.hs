@@ -3,7 +3,7 @@
 {-# OPTIONS_GHC -Wno-unused-top-binds #-}
 
 import GHC.Generics (Generic)
-import Stanly.Concrete (execConcrete)
+import Stanly.Concrete (execConcrete, execTrace)
 import Stanly.Expr (Expr (..), parser)
 import Stanly.Fmt (fmt)
 import Test.Hspec
@@ -51,7 +51,7 @@ main = hspec $ do
       property $
         \(e :: Expr) -> (fmt <$> (parser . fmt) e) === Right (fmt e)
 
-  describe "Concrete.eval" $ do
+  describe "execConcrete" $ do
     it "is correct for some examples" $ do
       resultOf execConcrete "let x = 1 in ((fn x.(x + x)) 2)" `shouldBe` "(4, Σ⟦1↦2,0↦1⟧)"
       resultOf execConcrete "let x = (1 + 10) in ((λy.(λf.(f x))) (2 + 20))" `shouldBe` "(λf.(f x)⟦y↦1,x↦0⟧, Σ⟦1↦22,0↦11⟧)"
@@ -67,6 +67,33 @@ main = hspec $ do
     it "can't divide by zero" $ do
       resultOf execConcrete "(1 / 0)" `shouldBe` "(Bottom: Division by zero. 1/0, Σ⟦⟧)"
       resultOf execConcrete "let x = 2 in let y = 0 in (x / y)" `shouldBe` "(Bottom: Division by zero. 2/0, Σ⟦1↦0,0↦2⟧)"
+
+  describe "execTrace" $ do
+    it "is correct in simple examples" $ do
+      resultOf execTrace "((3 + 4) * 9)" `shouldBe` unlines [
+        "1. (((3+4)*9), ⟦⟧, Σ⟦⟧)", 
+        "2. ((3+4), ⟦⟧, Σ⟦⟧)", 
+        "3. (3, ⟦⟧, Σ⟦⟧)", 
+        "4. (4, ⟦⟧, Σ⟦⟧)", 
+        "5. (9, ⟦⟧, Σ⟦⟧)"]
+      resultOf execTrace "((fn x.((x + 4) * 9)) 3)" `shouldBe` unlines [
+        "1. (((λx.((x+4)*9)) 3), ⟦⟧, Σ⟦⟧)",
+        "2. ((λx.((x+4)*9)), ⟦⟧, Σ⟦⟧)",
+        "3. (3, ⟦⟧, Σ⟦⟧)",
+        "4. (((x+4)*9), ⟦x↦0⟧, Σ⟦0↦3⟧)",
+        "5. ((x+4), ⟦x↦0⟧, Σ⟦0↦3⟧)",
+        "6. (x, ⟦x↦0⟧, Σ⟦0↦3⟧)",
+        "7. (4, ⟦x↦0⟧, Σ⟦0↦3⟧)",
+        "8. (9, ⟦x↦0⟧, Σ⟦0↦3⟧)"]
+    it "stops on encountering Bottom" $ do
+      resultOf execTrace "((1 / 0) + 5)" `shouldBe` unlines [
+        "1. (((1/0)+5), ⟦⟧, Σ⟦⟧)",
+        "2. ((1/0), ⟦⟧, Σ⟦⟧)",
+        "3. (1, ⟦⟧, Σ⟦⟧)",
+        "4. (0, ⟦⟧, Σ⟦⟧)"]
+      resultOf execTrace "(f x)" `shouldBe` unlines [
+        "1. ((f x), ⟦⟧, Σ⟦⟧)",
+        "2. (f, ⟦⟧, Σ⟦⟧)"]
 
   where
     resultOf exec' str = fmt $ exec' $ either (error . show) id (parser str)

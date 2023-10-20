@@ -6,6 +6,7 @@ import Data.Text qualified as T
 
 newtype ANSI = ANSI {unANSI :: [(ESC, T.Text)]} deriving (Eq, Show, Semigroup, Monoid)
 
+
 newtype ESC = ESC {unESC :: T.Text} deriving (Eq, Show, Semigroup, Monoid)
 
 (>+) :: ESC -> String -> ANSI
@@ -42,3 +43,6 @@ class Fmt a where
 
 instance (Fmt a, Fmt b) => Fmt (a, b) where
   ansiFmt (a, b) = start "(" <> ansiFmt a <> start ", " <> ansiFmt b <> start ")"
+
+instance (Fmt a, Fmt b, Fmt c) => Fmt (a, b, c) where
+  ansiFmt (a, b, c) = dim >+ "(" <> ansiFmt a <> start ", " <> ansiFmt b <> start ", " <> ansiFmt c <> dim >+ ")"

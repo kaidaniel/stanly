@@ -11,6 +11,7 @@ import Stanly.Eval
 import Stanly.Expr (Expr (..), Var)
 import Stanly.Fmt
 import Control.Monad.Writer
+import Data.List (intercalate)
 
 data Val
   = LamV Var Expr (Env Int)
@@ -71,6 +72,7 @@ instance Interpreter Concrete Val Int where
   truthy = truthyNum
   destruct = destructVal
   construct = constructVal
+  ev = eval
 
 instance Fmt Val where
   ansiFmt (LamV x body r) = start "λ" <> bold >+ x <> start "." <> ansiFmt body <> ansiFmt r
@@ -84,15 +86,17 @@ invalidArgs, unknownOp :: String -> String
 invalidArgs o = "Invalid arguments to operator '" ++ o ++ "'"
 unknownOp o = "Unknown operator '" ++ o ++ "'"
 
-type TraceT m = ConcreteT (WriterT [(Expr, Env', Store')] m)
+newtype ProgramTrace = ProgramTrace [(Expr, Env', Store')] deriving (Eq, Show, Semigroup, Monoid)
 
-evTrace :: (Interpreter m Val Int,  MonadWriter [(Expr, Env', Store')] m) => Expr -> m Val
-evTrace expr = do
-  env <- ask
-  store <- get
-  tell [(expr, env, store)]
-  eval expr
-  
+instance Fmt ProgramTrace where
+  ansiFmt :: ProgramTrace -> ANSI
+  ansiFmt (ProgramTrace li) = join' (zip (map ansiFmt li) [1 ..])
+    where
+      join' :: [(ANSI, Integer)] -> ANSI
+      join' = foldr (\(a, n) b -> start (show @Integer n ++ ". ") <> a <> start "\n" <> b) mempty
+
+type TraceT m = ConcreteT (WriterT ProgramTrace m)
+
 
 instance Interpreter (TraceT Identity) Val Int where
   op2 = op2Num
@@ -100,10 +104,14 @@ instance Interpreter (TraceT Identity) Val Int where
   truthy = truthyNum
   destruct = destructVal
   construct = constructVal
-  ev = evTrace
-  
+  ev expr = do
+    env <- ask
+    store <- get
+    tell $ ProgramTrace [(expr, env, store)]
+    eval expr
+
 runTraceT :: ConcreteT (WriterT w m) a -> m ((Either String a, Store'), w)
 runTraceT m = runWriterT (runConcreteT m)
 
-execTrace :: Expr -> [(Expr, Env', Store')]
+execTrace :: Expr -> ProgramTrace
 execTrace expr = let (_, trace) = (runIdentity . runTraceT . ev) expr in trace

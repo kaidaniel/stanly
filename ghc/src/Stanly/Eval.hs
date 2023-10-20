@@ -18,7 +18,6 @@ class
   truthy :: val -> m Bool
   alloc :: Var -> m addr
   ev :: Expr -> m val
-  ev = eval
   destruct :: m val -> m (Expr, Maybe (Var, Env addr))
   construct :: Expr -> Maybe (m val)
 

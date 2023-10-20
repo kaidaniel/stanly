@@ -8,14 +8,16 @@ main = do
   str <- getContents
   ast <- either (error . show) return (parse expr "<stdin>" str)
   putStrLn "Input"
-  indented $ (reverse . dropWhile isSpace . reverse) str
+  prnt $ (reverse . dropWhile isSpace . reverse) str
   putStrLn "Desugared"
-  indented $ termFmt ast
+  prnt $ termFmt ast
   putStrLn "AST"
-  indented $ show ast
+  prnt $ show ast
   putStrLn "Concrete"
-  indented $ termFmt (execConcrete ast)
+  prnt $ termFmt (execConcrete ast)
   putStrLn "Trace"
-  indented $ show (execTrace ast)
+  prnt $ termFmt (execTrace ast)
   where
-    indented s = putStrLn $ " " ++ s
+    indented' s = "  " ++ s
+    indented s = unlines (map indented' (lines s))
+    prnt s = putStrLn $ indented s
