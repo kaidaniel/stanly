@@ -3,7 +3,7 @@
 {-# LANGUAGE ApplicativeDo #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
-module Stanly.Expr (Expr (..), Var, parser, parse, expr) where
+module Stanly.Expr (Expr (..), Var, parser, parse, expr, strictSubexprs) where
 import GHC.Generics
 import Text.Parsec
 import Stanly.IdiomBrackets(i)
@@ -20,6 +20,17 @@ data Expr
   | Num Int
   | If Expr Expr Expr
   deriving (Generic, Eq, Show)
+
+strictSubexprs :: Expr -> [Expr]
+strictSubexprs = f
+  where
+  f (Lam _ e0) = e0 : f e0
+  f (Num _) = []
+  f (App e0 e1) = e0 : e1 : f e0 ++ f e1
+  f (Op2 _ e0 e1) = e0 : e1 : f e0 ++ f e1
+  f (If e0 e1 e2) = e0 : e1 : e2 : f e0 ++ f e1 ++ f e2
+  f (Rec _ e0) = e0 : f e0
+  f (Vbl _) = []
 
 expr :: Parsec String st Expr
 expr =  

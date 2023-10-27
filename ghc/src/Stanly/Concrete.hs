@@ -1,16 +1,18 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
 {-# HLINT ignore "Eta reduce" #-}
-module Stanly.Concrete(Concrete, execConcrete, execTrace) where
+module Stanly.Concrete(Concrete, execConcrete, execTrace, execNotCovered) where
 
 import Control.Monad.Except
 import Control.Monad.Identity (Identity, runIdentity)
 import Control.Monad.Reader
 import Control.Monad.State
-import Stanly.Eval
-import Stanly.Expr (Expr (..), Var)
+import Stanly.Eval(eval)
+import Stanly.Interpreter(bottom, Interpreter (..), Env (..), Store (..))
+import Stanly.Expr
 import Stanly.Fmt
 import Control.Monad.Writer
+import Data.List ((\\))
 
 data Val
   = LamV Var Expr (Env Int)
@@ -96,21 +98,27 @@ instance Fmt ProgramTrace where
 
 type TraceT m = ConcreteT (WriterT ProgramTrace m)
 
-
 instance Interpreter (TraceT Identity) Val Int where
   op2 = op2Num
   alloc = allocFresh
   truthy = truthyNum
   destruct = destructVal
   construct = constructVal
-  ev expr = do
+  ev e = do
     env <- ask
     store <- get
-    tell $ ProgramTrace [(expr, env, store)]
-    eval expr
+    tell $ ProgramTrace [(e, env, store)]
+    eval e
 
 runTraceT :: ConcreteT (WriterT w m) a -> m ((Either String a, Store'), w)
 runTraceT m = runWriterT (runConcreteT m)
 
 execTrace :: Expr -> ProgramTrace
-execTrace expr = let (_, trace) = (runIdentity . runTraceT . ev) expr in trace
+execTrace e = snd ((runIdentity . runTraceT . ev) e)
+
+newtype NotCovered = NotCovered [Expr] deriving (Eq, Show, Semigroup, Monoid)
+instance Fmt NotCovered where
+  ansiFmt (NotCovered li) = foldr ((\a b -> a <> start "\n" <> b) . ansiFmt) mempty li
+
+execNotCovered :: Expr -> NotCovered
+execNotCovered e = NotCovered $ let ProgramTrace t = execTrace e in (e : strictSubexprs e) \\ map (\(e', _, _) -> e') t

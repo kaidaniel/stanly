@@ -3,7 +3,7 @@
 {-# OPTIONS_GHC -Wno-unused-top-binds #-}
 
 import GHC.Generics (Generic)
-import Stanly.Concrete (execConcrete, execTrace)
+import Stanly.Concrete (execConcrete, execTrace, execNotCovered)
 import Stanly.Expr (Expr (..), parser)
 import Stanly.Fmt (fmt)
 import Test.Hspec
@@ -69,14 +69,14 @@ main = hspec $ do
       resultOf execConcrete "let x = 2 in let y = 0 in (x / y)" `shouldBe` "(Bottom: Division by zero. 2/0, Σ⟦1↦0,0↦2⟧)"
 
   describe "execTrace" $ do
-    it "is correct in simple examples" $ do
-      resultOf execTrace "((3 + 4) * 9)" `shouldBe` unlines [
+    it "is correct for simple examples" $ do
+      resultOf execTrace "((3 + 4) * 9)" `shouldBe'` [
         "1. (((3+4)*9), ⟦⟧, Σ⟦⟧)", 
         "2. ((3+4), ⟦⟧, Σ⟦⟧)", 
         "3. (3, ⟦⟧, Σ⟦⟧)", 
         "4. (4, ⟦⟧, Σ⟦⟧)", 
         "5. (9, ⟦⟧, Σ⟦⟧)"]
-      resultOf execTrace "((fn x.((x + 4) * 9)) 3)" `shouldBe` unlines [
+      resultOf execTrace "((fn x.((x + 4) * 9)) 3)" `shouldBe'` [
         "1. (((λx.((x+4)*9)) 3), ⟦⟧, Σ⟦⟧)",
         "2. ((λx.((x+4)*9)), ⟦⟧, Σ⟦⟧)",
         "3. (3, ⟦⟧, Σ⟦⟧)",
@@ -86,17 +86,24 @@ main = hspec $ do
         "7. (4, ⟦x↦0⟧, Σ⟦0↦3⟧)",
         "8. (9, ⟦x↦0⟧, Σ⟦0↦3⟧)"]
     it "stops on encountering Bottom" $ do
-      resultOf execTrace "((1 / 0) + 5)" `shouldBe` unlines [
+      resultOf execTrace "((1 / 0) + 5)" `shouldBe'` [
         "1. (((1/0)+5), ⟦⟧, Σ⟦⟧)",
         "2. ((1/0), ⟦⟧, Σ⟦⟧)",
         "3. (1, ⟦⟧, Σ⟦⟧)",
         "4. (0, ⟦⟧, Σ⟦⟧)"]
-      resultOf execTrace "(f x)" `shouldBe` unlines [
+      resultOf execTrace "(f x)" `shouldBe'` [
         "1. ((f x), ⟦⟧, Σ⟦⟧)",
         "2. (f, ⟦⟧, Σ⟦⟧)"]
 
+  describe "execNotCovered" $ do
+    it "is correct for simple examples" $ do
+      resultOf execNotCovered "(if 0 then 2 else 1)" `shouldBe'` ["2"]
+      resultOf execNotCovered "(fn x.(x))" `shouldBe'` ["x"]
+      resultOf execNotCovered "(if (1 / 0) then 2 else 3)" `shouldBe'` ["2", "3"]
+
   where
     resultOf exec' str = fmt $ exec' $ either (error . show) id (parser str)
+    shouldBe' a b = shouldBe a (unlines b)
 
 
 -- | Invalid programs.
