@@ -1,17 +1,16 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
 {-# HLINT ignore "Eta reduce" #-}
-module Stanly.Concrete(Concrete, execConcrete, execTrace, execNotCovered) where
+module Stanly.Concrete(execConcrete, execTrace, execNotCovered) where
 
-import Control.Monad.Except
 import Control.Monad.Identity (Identity, runIdentity)
-import Control.Monad.Reader
-import Control.Monad.State
+import Control.Monad.Reader(ask, asks)
+import Control.Monad.State(gets, get)
 import Stanly.Eval(eval)
-import Stanly.Interpreter(bottom, Interpreter (..), Env (..), Store (..))
-import Stanly.Expr
-import Stanly.Fmt
-import Control.Monad.Writer
+import Stanly.Interpreter(bottom, runInterpreterT, MonadScope, MonadBottom, MonadStore, MonadInterpreter (..), InterpreterT, Env (..), Store (..))
+import Stanly.Expr ( Expr(Num, Lam), Var, strictSubexprs )
+import Stanly.Fmt ( (>+), bold, start, ANSI, Fmt(ansiFmt) )
+import Control.Monad.Writer(WriterT, runWriterT, tell)
 import Data.List ((\\))
 
 data Val
@@ -19,17 +18,6 @@ data Val
   | NumV Int
   deriving (Eq, Show)
 
-type Env' = Env Int
-type Store' = Store Int Val
-type ScopeT = ReaderT Env'
-type BottomT = ExceptT String
-type FreshAddrT = StateT Store'
-type MonadScope = MonadReader Env'
-type MonadBottom = MonadError String
-type MonadFreshAddr = MonadState Store'
-
-type ConcreteT m = ScopeT (BottomT (FreshAddrT m))
-type Concrete = ConcreteT Identity
 
 op2Num :: MonadBottom m => String -> Val -> Val -> m Val
 op2Num o (NumV n0) (NumV n1) = case o of
@@ -47,7 +35,7 @@ truthyNum :: Monad m => Val -> m Bool
 truthyNum (NumV n) = return (n /= 0)
 truthyNum _ = return False
 
-allocFresh :: MonadFreshAddr m => Var -> m Int
+allocFresh :: (MonadStore Int Val m) => Var -> m Int
 allocFresh _ = gets length
 
 destructVal :: Monad m => m Val -> m (Expr, Maybe (Var, Env Int))
@@ -56,18 +44,15 @@ destructVal m = m >>= destructVal'
       destructVal' (LamV x e r) = return (e, Just (x, r))
       destructVal' (NumV n) = return (Num n, Nothing)
 
-constructVal :: MonadScope m => Expr -> Maybe (m Val)
+constructVal :: (MonadScope Int m) => Expr -> Maybe (m Val)
 constructVal (Lam x e) = Just $ asks (LamV x e)
 constructVal (Num n) = Just $ return (NumV n)
 constructVal _ = Nothing
 
-runConcreteT :: ConcreteT m a -> m (Either String a, Store')
-runConcreteT m = runStateT (runExceptT (runReaderT m (Env []))) (Store [])
+execConcrete :: Expr -> (Either String Val, Store Int Val)
+execConcrete = runIdentity . runInterpreterT . ev
 
-execConcrete :: Expr -> (Either String Val, Store')
-execConcrete = runIdentity . runConcreteT . ev
-
-instance Interpreter Concrete Val Int where
+instance MonadInterpreter Int Val (InterpreterT Int Val Identity) where
   op2 = op2Num
   alloc = allocFresh
   truthy = truthyNum
@@ -87,7 +72,7 @@ invalidArgs, unknownOp :: String -> String
 invalidArgs o = "Invalid arguments to operator '" ++ o ++ "'"
 unknownOp o = "Unknown operator '" ++ o ++ "'"
 
-newtype ProgramTrace = ProgramTrace [(Expr, Env', Store')] deriving (Eq, Show, Semigroup, Monoid)
+newtype ProgramTrace = ProgramTrace [(Expr, Env Int, Store Int Val)] deriving (Eq, Show, Semigroup, Monoid)
 
 instance Fmt ProgramTrace where
   ansiFmt :: ProgramTrace -> ANSI
@@ -96,9 +81,9 @@ instance Fmt ProgramTrace where
       join' :: [(ANSI, Integer)] -> ANSI
       join' = foldr (\(a, n) b -> start (show @Integer n ++ ". ") <> a <> start "\n" <> b) mempty
 
-type TraceT m = ConcreteT (WriterT ProgramTrace m)
+type TraceT m = InterpreterT Int Val (WriterT ProgramTrace m)
 
-instance Interpreter (TraceT Identity) Val Int where
+instance MonadInterpreter Int Val (TraceT Identity) where
   op2 = op2Num
   alloc = allocFresh
   truthy = truthyNum
@@ -110,8 +95,8 @@ instance Interpreter (TraceT Identity) Val Int where
     tell $ ProgramTrace [(e, env, store)]
     eval e
 
-runTraceT :: ConcreteT (WriterT w m) a -> m ((Either String a, Store'), w)
-runTraceT m = runWriterT (runConcreteT m)
+runTraceT :: InterpreterT Int Val (WriterT w m) a -> m ((Either String a, Store Int Val), w)
+runTraceT m = runWriterT (runInterpreterT m)
 
 execTrace :: Expr -> ProgramTrace
 execTrace e = snd ((runIdentity . runTraceT . ev) e)
