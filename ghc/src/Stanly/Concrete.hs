@@ -7,57 +7,52 @@ import Control.Monad.Identity (Identity, runIdentity)
 import Control.Monad.Reader(ask, asks)
 import Control.Monad.State(gets, get)
 import Stanly.Eval(eval)
-import Stanly.Interpreter(bottom, runInterpreterT, MonadScope, MonadBottom, MonadStore, MonadInterpreter (..), InterpreterT, Env (..), Store (..))
+import Stanly.Interpreter
 import Stanly.Expr ( Expr(Num, Lam), Var, strictSubexprs )
 import Stanly.Fmt ( (>+), bold, start, ANSI, Fmt(ansiFmt) )
 import Control.Monad.Writer(WriterT, runWriterT, tell)
 import Data.List ((\\))
+import Control.Monad.Except (throwError)
 
 data Val
   = LamV Var Expr (Env Int)
   | NumV Int
   deriving (Eq, Show)
 
-
-op2Num :: MonadBottom m => String -> Val -> Val -> m Val
-op2Num o (NumV n0) (NumV n1) = case o of
-  "+" -> return $ NumV (n0 + n1)
-  "-" -> return $ NumV (n0 - n1)
-  "*" -> return $ NumV (n0 * n1)
-  "/" ->
-    if n1 == 0
-      then bottom $ "Division by zero. " ++ show n0 ++ "/" ++ show n1
-      else return $ NumV (n0 `div` n1)
-  _ -> bottom $ unknownOp o
-op2Num o _ _ = bottom $ invalidArgs o
-
-truthyNum :: Monad m => Val -> m Bool
-truthyNum (NumV n) = return (n /= 0)
-truthyNum _ = return False
-
-allocFresh :: (MonadStore Int Val m) => Var -> m Int
-allocFresh _ = gets length
-
-destructVal :: Monad m => m Val -> m (Expr, Maybe (Var, Env Int))
-destructVal m = m >>= destructVal'
-    where
-      destructVal' (LamV x e r) = return (e, Just (x, r))
-      destructVal' (NumV n) = return (Num n, Nothing)
-
-constructVal :: (MonadScope Int m) => Expr -> Maybe (m Val)
-constructVal (Lam x e) = Just $ asks (LamV x e)
-constructVal (Num n) = Just $ return (NumV n)
-constructVal _ = Nothing
+type ConcreteT m = InterpreterT Int Val String m
 
 execConcrete :: Expr -> (Either String Val, Store Int Val)
 execConcrete = runIdentity . runInterpreterT . ev
 
-instance MonadInterpreter Int Val (InterpreterT Int Val Identity) where
-  op2 = op2Num
-  alloc = allocFresh
-  truthy = truthyNum
-  destruct = destructVal
-  construct = constructVal
+instance (Monad m) => Lattice (ConcreteT m) where
+  bottom err = throwError $ "Bottom: " ++ err
+  top err = error $ "Concrete semantics does not have a top element. " ++ err
+
+instance (Monad m) => Value Val (ConcreteT m) where
+  op2 o (NumV n0) (NumV n1) = case o of
+    "+" -> return $ NumV (n0 + n1)
+    "-" -> return $ NumV (n0 - n1)
+    "*" -> return $ NumV (n0 * n1)
+    "/" ->
+      if n1 == 0
+        then bottom $ "Division by zero. " ++ show n0 ++ "/" ++ show n1
+        else return $ NumV (n0 `div` n1)
+    _ -> bottom $ unknownOp o
+  op2 o _ _ = bottom $ invalidArgs o
+  truthy (NumV n) = return (n /= 0)
+  truthy _ = return False
+
+instance (Monad m) => Memory Int Val (ConcreteT m) where
+  alloc _ = gets length
+  construct (Lam x e) = Just $ asks (LamV x e)
+  construct (Num n) = Just $ return (NumV n)
+  construct _ = Nothing
+  destruct m = m >>= destruct'
+    where
+      destruct' (LamV x e r) = return (e, Just (x, r))
+      destruct' (NumV n) = return (Num n, Nothing)
+
+instance Interpreter Int Val (ConcreteT Identity) where
   ev = eval
 
 instance Fmt Val where
@@ -81,21 +76,14 @@ instance Fmt ProgramTrace where
       join' :: [(ANSI, Integer)] -> ANSI
       join' = foldr (\(a, n) b -> start (show @Integer n ++ ". ") <> a <> start "\n" <> b) mempty
 
-type TraceT m = InterpreterT Int Val (WriterT ProgramTrace m)
-
-instance MonadInterpreter Int Val (TraceT Identity) where
-  op2 = op2Num
-  alloc = allocFresh
-  truthy = truthyNum
-  destruct = destructVal
-  construct = constructVal
+instance (Monad m) => Interpreter Int Val (ConcreteT (WriterT ProgramTrace m)) where
   ev e = do
     env <- ask
     store <- get
     tell $ ProgramTrace [(e, env, store)]
     eval e
 
-runTraceT :: InterpreterT Int Val (WriterT w m) a -> m ((Either String a, Store Int Val), w)
+runTraceT :: ConcreteT (WriterT w m) a -> m ((Either String a, Store Int Val), w)
 runTraceT m = runWriterT (runInterpreterT m)
 
 execTrace :: Expr -> ProgramTrace

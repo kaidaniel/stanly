@@ -4,9 +4,9 @@ import Control.Monad.Reader (ask, local)
 import Control.Monad.State (modify, get)
 import Stanly.Expr (Expr (..))
 import Stanly.Fmt(fmt)
-import Stanly.Interpreter(bottom, MonadInterpreter(..), Env(..), Store(..))
+import Stanly.Interpreter(bottom, construct, op2, alloc, truthy, op2, destruct, Value(..), Lattice(..), Memory(..), Interpreter(..), Env(..), Store(..))
 
-eval :: (MonadInterpreter addr val m) => Expr -> m val
+eval :: (Interpreter addr val m) => Expr -> m val
 eval expression = case expression of
   (Num _) -> construct' expression
   (Lam _ _) -> construct' expression
