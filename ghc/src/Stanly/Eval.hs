@@ -1,42 +1,36 @@
 module Stanly.Eval (eval) where
 
-import Control.Monad.Reader (ask, local)
-import Control.Monad.State (modify, get)
+import Control.Monad.Reader (ask, local, asks, MonadReader(..))
+import Control.Monad ( void, liftM2, join )
 import Stanly.Expr (Expr (..))
 import Stanly.Fmt(fmt)
-import Stanly.Interpreter(bottom, construct, op2, alloc, truthy, op2, destruct, Value(..), Lattice(..), Memory(..), Interpreter(..), Env(..), Store(..))
+import Stanly.Interpreter
 
-eval :: (Interpreter addr val m) => Expr -> m val
+eval :: (Interpreter l m) => Expr -> m (Val l)
 eval expression = case expression of
-  (Num _) -> construct' expression
-  (Lam _ _) -> construct' expression
-  (Vbl variable) -> do 
+  (Num n) -> return $ NumV n
+  (Lam x e) -> asks (LamV x e)
+  (Vbl variable) -> do
     (Env environment) <- ask
-    (Store store) <- get
-    case lookup variable environment of 
-      Just address -> case lookup address store of
-        Just val -> return val
-        Nothing -> error $ show variable ++ " not found in store. " ++ fmt expression ++ fmt (Env environment) ++ ", " ++ fmt (Store store)
-      Nothing -> bottom $ show variable ++ " not found in environment. " ++ fmt expression ++ fmt (Env environment)
+    case lookup variable environment of
+      Just address -> find address
+      Nothing -> exc $ show variable ++ " not found in environment. " ++ fmt expression ++ fmt (Env environment)
   (If test tru fls) -> do result <- ev test; t <- truthy result; ev (if t then tru else fls)
-  (Op2 o left right) -> do left' <- ev left; right' <- ev right; op2 o left' right'
+  (Op2 o left right) -> join $ liftM2 (op2 o) (ev left) (ev right)
   (Rec fname body) -> do
     scope <- ask
     addr <- alloc fname
-    v <- local (\_ -> ext scope (fname, addr)) (ev body)
-    memkpy (addr, v)
-    return v
+    ext addr $ withBinding scope (fname, addr) $ ev body
   (App fn arg) -> do
-    fn' <- destruct $ ev fn
+    fn' <- ev fn
     case fn' of
-      (expr, Just (argname, r)) -> do 
+      (LamV argname body r) -> do
         arg' <- ev arg
-        addr <- alloc argname; memkpy (addr, arg')
-        local (\_ -> ext r (argname, addr)) (ev expr)
-      (expr, Nothing) -> do
+        addr <- alloc argname
+        void $ ext addr $ return arg'
+        withBinding r (argname, addr) $ ev body
+      _ -> do
         r <- ask
-        bottom $ "\"" ++ fmt expr ++ "\" is not a function. " ++ fmt expression ++ fmt r
+        exc $ "\"" ++ fmt fn' ++ "\" is not a function. " ++ fmt expression ++ fmt r
   where
-    memkpy binding = modify (\(Store store) -> Store (binding : store))
-    ext (Env environment) binding = Env (binding : environment)
-    construct' e = case construct e of Just v -> v; Nothing -> error $ "Expression " ++ fmt e ++ " is not a value."
+    withBinding (Env environment) binding = local (\_ -> Env (binding : environment))

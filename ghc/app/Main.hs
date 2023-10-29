@@ -1,5 +1,6 @@
 import Data.Char (isSpace)
 import Stanly.Concrete (execConcrete, execTrace, execNotCovered)
+import Stanly.Abstract (execPowerSet)
 import Stanly.Expr (expr, parse)
 import Stanly.Fmt (Fmt (..))
 
@@ -13,12 +14,14 @@ main = do
   prnt $ termFmt ast
   putStrLn "AST"
   prnt $ show ast
-  putStrLn "Concrete"
+  putStrLn "Concrete.Concrete"
   prnt $ termFmt (execConcrete ast)
-  putStrLn "Trace"
+  putStrLn "Concrete.Trace"
   prnt $ termFmt (execTrace ast)
-  putStrLn "NotCovered"
+  putStrLn "Concrete.NotCovered"
   prnt $ termFmt (execNotCovered ast)
+  putStrLn "Abstract.PowerSet"
+  prnt $ termFmt (execPowerSet ast)
   where
     indented' s = "  " ++ s
     indented s = unlines (map indented' (lines s))

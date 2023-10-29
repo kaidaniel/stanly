@@ -1,8 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE GeneralisedNewtypeDeriving #-}
 
 module Stanly.Fmt where
 
-import Data.Text qualified as T
+import qualified Data.Text as T
 
 newtype ANSI = ANSI {unANSI :: [(ESC, T.Text)]} deriving (Eq, Show, Semigroup, Monoid)
 

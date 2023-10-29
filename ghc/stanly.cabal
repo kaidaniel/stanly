@@ -10,26 +10,28 @@ category:           Development
 common shared-properties
   default-language: GHC2021
   build-depends:
-    parsec ^>=3.1.15.0, base ^>=4.16.4.0, mtl ^>=2.2.2
+    parsec, base, mtl
   ghc-options:
     -Wall
 
 
 library stanly-lib
     import:          shared-properties
-    exposed-modules: Stanly.Concrete, Stanly.Expr, Stanly.Eval, Stanly.Fmt, Stanly.Interpreter
+    exposed-modules: Stanly.Concrete, Stanly.Expr, Stanly.Eval, Stanly.Fmt, Stanly.Interpreter, Stanly.Abstract
     other-modules:   Stanly.IdiomBrackets
     hs-source-dirs:  src
-    build-depends:   haskell-src-meta >= 0.2 && < 1, template-haskell >= 2.7 && < 3, QuickCheck ^>=2.14, text
+    build-depends:   haskell-src-meta, template-haskell, QuickCheck, text
+      
 executable stanly
     import:           shared-properties
     main-is:          Main.hs
-    build-depends:    stanly-lib, pretty-simple ^>=4.1, text
+    build-depends:    stanly-lib, pretty-simple, text
     hs-source-dirs:   app
+     
 
 test-suite stanly-test
     import:           shared-properties
     type:             exitcode-stdio-1.0
     main-is:          Spec.hs
     hs-source-dirs:   test
-    build-depends:    stanly-lib, hspec ^>=2.11, QuickCheck ^>=2.14
+    build-depends:    stanly-lib, hspec, QuickCheck

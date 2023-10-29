@@ -1,46 +1,55 @@
 module Stanly.Interpreter where
 
-import Control.Monad.Except (ExceptT, runExceptT)
-import Control.Monad.State (MonadState, StateT, runStateT)
-import Control.Monad.Reader (MonadReader, ReaderT, runReaderT)
+import Control.Monad.Reader (MonadReader)
 import Stanly.Expr(Expr, Var)
 import Stanly.Fmt
 
-newtype Store addr val = Store [(addr, val)] deriving (Eq, Show, Foldable)
-newtype Env addr = Env [(Var, addr)] deriving (Eq, Show)
+newtype Store_ l = Store_ [(l, Val l)] deriving (Eq, Show, Foldable)
+newtype Env l = Env [(Var, l)] deriving (Eq, Show, Foldable)
 
-class Lattice m where
-    bottom :: String -> m a
-    top :: String -> m a
+data Val l
+  = LamV Var Expr (Env l)
+  | NumV Int
+  | Top String
+  deriving (Eq, Show, Foldable)
 
-class (Fmt val, Lattice m) => Value val m where
-    op2 :: String -> val -> val -> m val
-    truthy :: val -> m Bool
+class Store l m where
+    find :: l -> m (Val l)
+    ext :: l -> m (Val l) -> m (Val l)
+    alloc :: Var -> m l
 
-class (Show addr, Eq addr, Value val m, MonadState (Store addr val) m, MonadReader (Env addr) m) => Memory addr val m where
-    alloc :: Var -> m addr
-    construct :: Expr -> Maybe (m val)
-    destruct :: m val -> m(Expr, Maybe (Var, Env addr))
-    
-class (Memory addr val m) => Interpreter addr val m where
-    ev :: Expr -> m val
+class Exc m where
+    exc :: String -> m a
 
-type InterpreterT addr val extremum m = ReaderT (Env addr) (ExceptT extremum (StateT (Store addr val) m))
+class Primops l m where
+    op2 :: String -> Val l -> Val l -> m (Val l)
+    truthy :: Val l -> m Bool
 
-runInterpreterT :: InterpreterT addr val extremum m a -> m (Either extremum a, Store addr val)
-runInterpreterT m = runStateT (runExceptT (runReaderT m (Env []))) (Store [])
 
-instance (Show addr) => Fmt (Env addr) where
-  ansiFmt :: (Show addr) => Env addr -> ANSI
+class (Exc m, Show l, Eq l, Primops l m, Store l m, MonadReader (Env l) m, Exc m) => Interpreter l m where
+    ev :: Expr -> m (Val l)
+
+
+instance (Show l) => Fmt (Env l) where
+  ansiFmt :: (Show l) => Env l -> ANSI
   ansiFmt r = green >+ "⟦" <> fmt' r "" <> green >+ "⟧"
     where
-      fmt' :: (Show addr) => Env addr -> String -> ANSI
+      fmt' :: (Show l) => Env l -> String -> ANSI
       fmt' (Env ((v, a) : r')) sep = start sep <> green >+ v <> start "↦" <> green >+ show a <> fmt' (Env r') ","
       fmt' (Env []) _ = start ""
 
-instance (Show addr, Fmt v) => Fmt (Store addr v) where
+instance (Show l) => Fmt (Store_ l) where
   ansiFmt s = yellow >+ "Σ⟦" <> fmt' s "" <> yellow >+ "⟧"
     where
-      fmt' :: (Show addr, Fmt v) => Store addr v -> String -> ANSI
-      fmt' (Store ((a, v) : r)) sep = start sep <> green >+ show a <> start "↦" <> ansiFmt v <> fmt' (Store r) ","
-      fmt' (Store []) _ = start ""
+      fmt' :: (Show l) => Store_ l -> String -> ANSI
+      fmt' (Store_ ((a, v) : r)) sep = start sep <> green >+ show a <> start "↦" <> ansiFmt v <> fmt' (Store_ r) ","
+      fmt' (Store_ []) _ = start ""
+
+instance (Show l) => Fmt (Val l) where
+  ansiFmt (LamV x body r) = start "λ" <> bold >+ x <> start "." <> ansiFmt body <> ansiFmt r
+  ansiFmt (NumV n) = start $ show n
+  ansiFmt (Top s) = start ("Top: " ++ s)
+
+instance (Show l) => Fmt (Either String (Val l)) where
+  ansiFmt (Left err) = start err
+  ansiFmt (Right val) = ansiFmt val
