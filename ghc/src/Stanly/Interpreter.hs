@@ -5,12 +5,12 @@ import Stanly.Expr(Expr, Var)
 import Stanly.Fmt
 
 newtype Store_ l = Store_ [(l, Val l)] deriving (Eq, Show, Foldable)
-newtype Env l = Env [(Var, l)] deriving (Eq, Show, Foldable)
+newtype Env l = Env { unEnv :: [(Var, l)] } deriving (Eq, Show, Foldable)
 
 data Val l
   = LamV Var Expr (Env l)
   | NumV Int
-  | Top String
+  | Undefined String
   deriving (Eq, Show, Foldable)
 
 class Store l m where
@@ -26,7 +26,7 @@ class Primops l m where
     truthy :: Val l -> m Bool
 
 
-class (Exc m, Show l, Eq l, Primops l m, Store l m, MonadReader (Env l) m, Exc m) => Interpreter l m where
+class (Exc m, Show l, Eq l, Primops l m, Store l m, MonadReader (Env l) m) => Interpreter l m where
     ev :: Expr -> m (Val l)
 
 
@@ -48,7 +48,7 @@ instance (Show l) => Fmt (Store_ l) where
 instance (Show l) => Fmt (Val l) where
   ansiFmt (LamV x body r) = start "λ" <> bold >+ x <> start "." <> ansiFmt body <> ansiFmt r
   ansiFmt (NumV n) = start $ show n
-  ansiFmt (Top s) = start ("Top: " ++ s)
+  ansiFmt (Undefined s) = start ("Undefined: " ++ s)
 
 instance (Show l) => Fmt (Either String (Val l)) where
   ansiFmt (Left err) = start err

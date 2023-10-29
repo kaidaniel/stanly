@@ -4,6 +4,7 @@
 
 import GHC.Generics (Generic)
 import Stanly.Concrete (execConcrete, execTrace, execNotCovered)
+import Stanly.Abstract (execPowerSet)
 import Stanly.Expr (Expr (..), parser)
 import Stanly.Fmt (fmt)
 import Test.Hspec
@@ -39,7 +40,7 @@ shrink = genericShrink
 main :: IO ()
 main = hspec $ do
   describe "parser" $ do
-    it "parses examples" $ do
+    it "parses some edge cases" $ do
       fmt <$> parser "(if(λs.1)then(ifxthenyelsez)else(2))" `shouldBe` Right "(if (\955s.1) then ifxthenyelsez else 2)"
       fmt <$> parser "((f)    (a))" `shouldBe` Right "(f a)"
       fmt <$> parser "(if ifx then theny else (if thenx then elsey else ifz))" `shouldBe` Right "(if ifx then theny else (if thenx then elsey else ifz))"
@@ -51,8 +52,8 @@ main = hspec $ do
       property $
         \(e :: Expr) -> (fmt <$> (parser . fmt) e) === Right (fmt e)
 
-  describe "execConcrete" $ do
-    it "is correct for some examples" $ do
+  describe "Concrete.execConcrete" $ do
+    it "is correct for a few some examples" $ do
       resultOf execConcrete "let x = 1 in ((fn x.(x + x)) 2)" `shouldBe` "(4, Σ⟦1↦2,0↦1⟧)"
       resultOf execConcrete "let x = (1 + 10) in ((λy.(λf.(f x))) (2 + 20))" `shouldBe` "(λf.(f x)⟦y↦1,x↦0⟧, Σ⟦1↦22,0↦11⟧)"
       resultOf execConcrete "((fn g.(fn x.(g x))) 3)" `shouldBe` "(λx.(g x)⟦g↦0⟧, Σ⟦0↦3⟧)"
@@ -67,9 +68,12 @@ main = hspec $ do
     it "can't divide by zero" $ do
       resultOf execConcrete "(1 / 0)" `shouldBe` "(Exception: Division by zero. 1/0, Σ⟦⟧)"
       resultOf execConcrete "let x = 2 in let y = 0 in (x / y)" `shouldBe` "(Exception: Division by zero. 2/0, Σ⟦1↦0,0↦2⟧)"
+    it "correctly shadows bindings" $ do
+      resultOf execConcrete "let x = 1 in let x = 2 in x" `shouldBe` "(2, Σ⟦1↦2,0↦1⟧)"
+      resultOf execConcrete "let myvar = 1 in ((fn myvar.(myvar + myvar)) 3)" `shouldBe` "(6, Σ⟦1↦3,0↦1⟧)"
 
-  describe "execTrace" $ do
-    it "is correct for simple examples" $ do
+  describe "Concrete.execTrace" $ do
+    it "is correct for a few simple examples" $ do
       resultOf execTrace "((3 + 4) * 9)" `shouldBe'` [
         "1. (((3+4)*9), ⟦⟧, Σ⟦⟧)", 
         "2. ((3+4), ⟦⟧, Σ⟦⟧)", 
@@ -95,15 +99,24 @@ main = hspec $ do
         "1. ((f x), ⟦⟧, Σ⟦⟧)",
         "2. (f, ⟦⟧, Σ⟦⟧)"]
 
-  describe "execNotCovered" $ do
-    it "is correct for simple examples" $ do
-      resultOf execNotCovered "(if 0 then 2 else 1)" `shouldBe'` ["2"]
-      resultOf execNotCovered "(fn x.(x))" `shouldBe'` ["x"]
-      resultOf execNotCovered "(if (1 / 0) then 2 else 3)" `shouldBe'` ["2", "3"]
+  describe "Concrete.execNotCovered" $ do
+    it "is correct for a few simple examples" $ do
+      resultOf execNotCovered "(if 0 then 2 else 1)" `shouldMatchList'` ["2"]
+      resultOf execNotCovered "(fn x.(x))" `shouldMatchList'` ["x"]
+      resultOf execNotCovered "(if (1 / 0) then 2 else 3)" `shouldMatchList'` ["2", "3"]
+
+  describe "Abstract.execPowerSet" $ do
+    it "is correct for a few simple examples" $ do
+      resultOf execPowerSet "((3 + 4) * 9)" `shouldMatchList'` ["(Undefined: op2 on Numbers, Σ⟦⟧)"]
+      resultOf execPowerSet "(5 / (1 + 2))" `shouldMatchList'` ["(Undefined: op2 on Numbers, Σ⟦⟧)", "(Undefined: Division by zero, Σ⟦⟧)"]
+      resultOf execPowerSet "(if (1 + 0) then 3 else 4)" `shouldMatchList'` ["(4, Σ⟦⟧)", "(3, Σ⟦⟧)"]
+      
 
   where
     resultOf exec' str = fmt $ exec' $ either (error . show) id (parser str)
     shouldBe' a b = shouldBe a (unlines b)
+    shouldMatchList' = shouldMatchList . lines
+
 
 
 -- | Invalid programs.

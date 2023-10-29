@@ -1,36 +1,24 @@
 module Stanly.Eval (eval) where
 
 import Control.Monad.Reader (ask, local, asks, MonadReader(..))
-import Control.Monad ( void, liftM2, join )
+import Control.Monad ( liftM2, join, (>=>) )
 import Stanly.Expr (Expr (..))
 import Stanly.Fmt(fmt)
 import Stanly.Interpreter
+import Data.Bool (bool)
 
 eval :: (Interpreter l m) => Expr -> m (Val l)
 eval expression = case expression of
-  (Num n) -> return $ NumV n
-  (Lam x e) -> asks (LamV x e)
-  (Vbl variable) -> do
-    (Env environment) <- ask
-    case lookup variable environment of
-      Just address -> find address
-      Nothing -> exc $ show variable ++ " not found in environment. " ++ fmt expression ++ fmt (Env environment)
-  (If test tru fls) -> do result <- ev test; t <- truthy result; ev (if t then tru else fls)
+  (Num n)            -> return $ NumV n
+  (Lam x e)          -> asks (LamV x e)
+  (Vbl vbl)          -> ask >>= \(Env mr) -> maybe (varNotFound vbl mr) find (lookup vbl mr)
+  (If test tru fls)  -> ev test >>= (truthy >=> (ev . bool fls tru))
   (Op2 o left right) -> join $ liftM2 (op2 o) (ev left) (ev right)
-  (Rec fname body) -> do
-    scope <- ask
-    addr <- alloc fname
-    ext addr $ withBinding scope (fname, addr) $ ev body
-  (App fn arg) -> do
-    fn' <- ev fn
-    case fn' of
-      (LamV argname body r) -> do
-        arg' <- ev arg
-        addr <- alloc argname
-        void $ ext addr $ return arg'
-        withBinding r (argname, addr) $ ev body
-      _ -> do
-        r <- ask
-        exc $ "\"" ++ fmt fn' ++ "\" is not a function. " ++ fmt expression ++ fmt r
+  (Rec fname body)   -> ask >>= \(Env mr) -> alloc fname >>= \ml -> ext ml (local' body mr fname ml)
+  (App function arg) -> ev function >>= \mf -> case mf of
+      (LamV f body (Env r)) -> ev arg >>= \mx -> alloc f >>= \ml -> ext ml (pure mx) >> local' body r f ml
+      _                     -> ask >>= notAFunction mf
   where
-    withBinding (Env environment) binding = local (\_ -> Env (binding : environment))
+    local' body r vbl addr = (local . const . Env) ((vbl, addr) : r) (ev body)
+    varNotFound vbl r = exc $ show vbl ++ " not found in environment. " ++ fmt expression ++ fmt (Env r)
+    notAFunction e r = exc $ "\"" ++ fmt e ++ "\" is not a function. " ++ fmt expression ++ fmt r
