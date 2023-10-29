@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 module Stanly.Abstract where
 
 import Stanly.Interpreter
@@ -20,33 +21,32 @@ runAbstractT (AbstractT m) = (flip runStateT (Store_ []) . runIdentityT) (runRea
 instance (MonadPlus m) => Exc (AbstractT m) where
     exc = error
 
-top why = return $ Undefined why
-bot why = return $ Undefined why
+top why = pure $ Undefined why
+bot why = pure $ Undefined why
 
 instance (MonadPlus m) => Primops Var (AbstractT m) where
     op2 o lhs rhs 
-      | o `notElem` ["+", "-", "*", "/"] = exc $ "Invalid operation: " <> o
+      | o `notElem` ["+", "-", "*", "/"] = bot $ "Invalid operation: " <> o
       | otherwise = case (o, lhs, rhs) of
-        ("/", _, t@(Undefined _)) -> mplus (bot "Division by zero") (return t)
+        ("/", _, Undefined t) -> mplus (bot "Division by zero") (top t)
         ("/", _, NumV 0) -> bot "Division by zero"
-        (_, lam@(LamV {}), _) -> exc ("Op2 on lambda: " <> fmt lam <> " " <> o <> " " <> fmt rhs)
-        (_, _, lam@(LamV {})) -> exc ("Op2 on lambda: " <> fmt lhs <> " " <> o <> " " <> fmt lam)
+        (_, NumV _, NumV _) -> top "op2 on Numbers"
         (_, Undefined t, _) -> top t
         (_, _, Undefined t) -> top t
-        (_, _, _) -> top "op2 on Numbers"
+        (_, _, _) -> top "Invalid operands top op2"
 
-    truthy (Undefined _) = mplus (return True) (return False)
-    truthy (NumV n) = return (n /= 0)
-    truthy (LamV {}) = exc "Can't compute truthiness of lambda"
+    branch fls tru condition = case condition of
+        NumV n -> if n /= 0 then tru else fls
+        Undefined _ -> mplus tru fls
+        LamV {} -> exc "Can't branch on function."
+
 
 
 instance (Monad m) => Store Var (AbstractT m) where
-    alloc = return
+    alloc = pure
     deref l = do
         (Store_ store) <- get
-        case lookup l store of
-            Just val -> return val
-            Nothing -> error $ show l ++ " not found in store. " ++ fmt (Store_ store)
+        maybe (error $ show l ++ " not found in store. " ++ fmt (Store_ store)) pure (lookup l store)
     ext l m = m >>= (\s -> modify (\(Store_ store) -> Store_ ((l, s) : store))) >> m
 
 instance (MonadPlus m) => Interpreter Var (AbstractT m) where

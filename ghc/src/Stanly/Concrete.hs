@@ -42,8 +42,9 @@ instance (Monad m) => Primops Int (ConcreteT m) where
         else return $ NumV (n0 `div` n1)
     _ -> exc $ unknownOp o
   op2 o _ _ = exc $ invalidArgs o
-  truthy (NumV n) = return (n /= 0)
-  truthy _ = return False
+  branch fls tru condition = case condition of
+    NumV n -> if n /= 0 then tru else fls
+    _ -> pure $ Undefined "Branching on non-numeric value"
 
 instance (Monad m) => Store Int (ConcreteT m) where
   alloc _ = gets length

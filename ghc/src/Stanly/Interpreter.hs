@@ -1,4 +1,5 @@
 {-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE LambdaCase #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Use >=>" #-}
 module Stanly.Interpreter where
@@ -6,22 +7,19 @@ module Stanly.Interpreter where
 import Control.Monad.Reader (MonadReader(..), ReaderT)
 import Stanly.Expr(Expr (..), Var)
 import Stanly.Fmt
-import Control.Monad (liftM2, join)
-import Data.Bool (bool)
+import Control.Monad (liftM2, join, ap)
 
 eval :: (Interpreter l m) => Expr -> m (Val l)
-eval expression = case expression of
-  (Num n)            -> pure (NumV n)
-  (Lam x e)          -> fmap (LamV x e) env
-  (Vbl vbl)          -> search exc vbl >>= deref
-  (If test tru fls)  -> ev test >>= \t -> truthy t >>= ev . bool fls tru
-  (Op2 o left right) -> join $ liftM2 (op2 o) (ev left) (ev right)
-  (Rec f e)          -> env >>= \mr    -> alloc f   >>= \ml -> ext ml (assign (f, ml) mr (ev e))
-  (App lamV x)       -> ev lamV >>= \mlamV -> case mlamV of
-      (LamV mx' me mr) -> ev x >>= \mx -> alloc mx' >>= \ml -> ext ml (pure mx) >> assign (mx', ml) mr (ev me)
-      _                -> env >>= exc . notAFunction mlamV
-  where
-    notAFunction lamV r = "\"" <> fmt lamV <> "\" is not a function. " <> fmt expression <> fmt r
+eval = \case
+  Num n        -> pure $ NumV n
+  Lam v e      -> fmap (LamV v e) env
+  Vbl vbl      -> search exc vbl >>= deref
+  If b tru fls -> ev b >>= branch (ev fls) (ev tru)
+  Op2 o e0 e1  -> join $ liftM2 (op2 o) (ev e0) (ev e1)
+  Rec f e      -> env >>= \mr -> alloc f >>= \ml -> ext ml $ assign (f, ml) mr (ev e)
+  App lamV x   -> ev lamV >>= \case
+      LamV mv me mr -> ev x >>= \mx -> alloc mv >>= \ml -> ext ml (pure mx) >> assign (mv, ml) mr (ev me)
+      _             -> exc $ "\"" <> fmt lamV <> "\" is not a function"
 
 newtype Store_ l = Store_ [(l, Val l)] deriving (Eq, Show, Foldable)
 newtype Env l = Env { unEnv :: [(Var, l)] } deriving (Eq, Show, Foldable)
@@ -47,7 +45,7 @@ class Exc m where
 
 class Primops l m where
   op2    :: String -> Val l -> Val l -> m (Val l)
-  truthy :: Val l -> m Bool
+  branch :: m (Val l) -> m (Val l) -> Val l -> m (Val l)
 
 instance (Monad m, Show l) => Environment (Env l) l (ReaderT (Env l) m) where
   search f v = ask >>= \(Env r) -> maybe (f $ show v <> " not found in environment: " <> fmt (Env r)) return (lookup v r)
@@ -73,10 +71,12 @@ instance (Show l) => Fmt (Store_ l) where
       fmt' (Store_ []) _ = start ""
 
 instance (Show l) => Fmt (Val l) where
-  ansiFmt (LamV x body r) = start "λ" <> bold >+ x <> start "." <> ansiFmt body <> ansiFmt r
-  ansiFmt (NumV n) = start $ show n
-  ansiFmt (Undefined s) = start ("Undefined: " ++ s)
+  ansiFmt = \case
+    LamV x body r -> start "λ" <> bold >+ x <> start "." <> ansiFmt body <> ansiFmt r
+    NumV n -> start $ show n
+    Undefined s -> start $ "Undefined: " <> s
 
 instance (Show l) => Fmt (Either String (Val l)) where
-  ansiFmt (Left err) = start err
-  ansiFmt (Right val) = ansiFmt val
+  ansiFmt = \case
+    Left err -> start err
+    Right val -> ansiFmt val

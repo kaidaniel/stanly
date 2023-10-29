@@ -59,9 +59,9 @@ main = hspec $ do
       resultOf execConcrete "((fn g.(fn x.(g x))) 3)" `shouldBe` "(λx.(g x)⟦g↦0⟧, Σ⟦0↦3⟧)"
       resultOf execConcrete "let f = (fn g.(g 0)) in ((fn y.(fn g.y)) f)" `shouldBe` "(λg.y⟦y↦1,f↦0⟧, Σ⟦1↦λg.(g 0)⟦⟧,0↦λg.(g 0)⟦⟧⟧)"
     it "can't apply numbers" $ do
-      resultOf execConcrete "(0 1)" `shouldBe` "(Exception: \"0\" is not a function. (0 1)⟦⟧, Σ⟦⟧)"
-      resultOf execConcrete "let x = 1 in (x 0)" `shouldBe` "(Exception: \"1\" is not a function. (x 0)⟦x↦0⟧, Σ⟦0↦1⟧)"
-      resultOf execConcrete "let f = (fn x.(1 + x)) in ((f 2) 4)" `shouldBe` "(Exception: \"3\" is not a function. ((f 2) 4)⟦f↦0⟧, Σ⟦1↦2,0↦λx.(1+x)⟦⟧⟧)"
+      resultOf execConcrete "(0 1)" `shouldBe` "(Exception: \"0\" is not a function, Σ⟦⟧)"
+      resultOf execConcrete "let x = 1 in (x 0)" `shouldBe` "(Exception: \"x\" is not a function, Σ⟦0↦1⟧)"
+      resultOf execConcrete "let f = (fn x.(1 + x)) in ((f 2) 4)" `shouldBe` "(Exception: \"(f 2)\" is not a function, Σ⟦1↦2,0↦λx.(1+x)⟦⟧⟧)"
     it "can't use undefined variables" $ do
       resultOf execConcrete "(x + 1)" `shouldBe` "(Exception: \"x\" not found in environment: ⟦⟧, Σ⟦⟧)"
       resultOf execConcrete "let f = (fn y.(y + 1)) in (f z)" `shouldBe` "(Exception: \"z\" not found in environment: ⟦f↦0⟧, Σ⟦0↦λy.(y+1)⟦⟧⟧)"
