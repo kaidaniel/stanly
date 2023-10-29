@@ -18,19 +18,21 @@ import Data.List ((\\))
 -- ConcreteT l v e m :: * -> *
 -- = \a::*.{C} {R} Env l -> {E} {S} Store_ l v -> m (Either e a, Store_ l)
 -- type ConcreteT l e m = ReaderT (Env l) (ExceptT e (StateT (Store_ l) m))
-newtype ConcreteT m a = ConcreteT (ReaderT (Env Int) (ExceptT String (StateT (Store_ Int) m)) a)
-  deriving (Functor, Applicative, Monad, MonadReader (Env Int), MonadState (Store_ Int), MonadError String, MonadWriter r, Environment (Env Int) Int)
+type Addr = Int
+type Store' = Store_ Int
+newtype ConcreteT m a = ConcreteT (ReaderT (Env Int) (ExceptT String (StateT Store' m)) a)
+  deriving (Functor, Applicative, Monad, MonadReader (Env Int), MonadState Store', MonadError String, MonadWriter r, Environment Int)
 
-runConcreteT :: ConcreteT m a -> m (Either String a, Store_ Int)
+runConcreteT :: ConcreteT m a -> m (Either String a, Store')
 runConcreteT (ConcreteT m) = (flip runStateT (Store_ []) . runExceptT) (runReaderT m (Env []))
 
-execConcrete :: Expr -> (Either String (Val Int), Store_ Int)
+execConcrete :: Expr -> (Either String (Val Int), Store')
 execConcrete = runIdentity . runConcreteT . ev
 
 instance (Monad m) => Exc (ConcreteT m) where
   exc er = throwError $ "Exception: " ++ er
 
-instance (Monad m) => Primops Int (ConcreteT m) where
+instance (Monad m) => Primops Addr (ConcreteT m) where
   op2 o (NumV n0) (NumV n1) = case o of
     "+" -> return $ NumV (n0 + n1)
     "-" -> return $ NumV (n0 - n1)
@@ -45,7 +47,7 @@ instance (Monad m) => Primops Int (ConcreteT m) where
     NumV n -> if n /= 0 then tru else fls
     _ -> pure $ Undefined "Branching on non-numeric value"
 
-instance (Monad m) => Store Int (ConcreteT m) where
+instance (Monad m) => Store Addr (ConcreteT m) where
   alloc _ = gets length
   deref l = do
     (Store_ store) <- get
@@ -54,7 +56,7 @@ instance (Monad m) => Store Int (ConcreteT m) where
       Nothing -> error $ show l ++ " not found in store. " ++ fmt (Store_ store)
   ext l m = m >>= (\s -> modify (\(Store_ store) -> Store_ ((l, s) : store))) >> m
 
-instance Interpreter Int (ConcreteT Identity) where
+instance Interpreter Addr (ConcreteT Identity) where
   ev :: Expr -> ConcreteT Identity (Val Int)
   ev = eval
 
@@ -62,7 +64,7 @@ invalidArgs, unknownOp :: String -> String
 invalidArgs o = "Invalid arguments to operator '" ++ o ++ "'"
 unknownOp o = "Unknown operator '" ++ o ++ "'"
 
-newtype ProgramTrace = ProgramTrace [(Expr, Env Int, Store_ Int)] deriving (Eq, Show, Semigroup, Monoid)
+newtype ProgramTrace = ProgramTrace [(Expr, Env Int, Store')] deriving (Eq, Show, Semigroup, Monoid)
 
 instance Fmt ProgramTrace where
   ansiFmt :: ProgramTrace -> ANSI
@@ -79,15 +81,15 @@ instance (Monad m) => Interpreter Int (ConcreteT (WriterT ProgramTrace m)) where
     tell $ ProgramTrace [(e, r, store)]
     eval e
 
-runTraceT :: ConcreteT (WriterT w m) a -> m ((Either String a, Store_ Int), w)
+runTraceT :: ConcreteT (WriterT w m) a -> m ((Either String a, Store'), w)
 runTraceT m = runWriterT (runConcreteT m)
 
 execTrace :: Expr -> ProgramTrace
-execTrace e = snd ((runIdentity . runTraceT . ev) e)
+execTrace e = snd ((runIdentity . runTraceT . ev @Addr) e)
 
 newtype NotCovered = NotCovered [Expr] deriving (Eq, Show, Semigroup, Monoid)
 instance Fmt NotCovered where
   ansiFmt (NotCovered li) = foldr ((\a b -> a <> start "\n" <> b) . ansiFmt) mempty li
 
 execNotCovered :: Expr -> NotCovered
-execNotCovered e = NotCovered $ let ProgramTrace t = execTrace e in (e : strictSubexprs e) \\ map (\(e', _, _) -> e') t
+execNotCovered e = NotCovered $ let ProgramTrace t = execTrace e in (e : subexprs e) \\ map (\(e', _, _) -> e') t

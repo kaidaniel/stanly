@@ -1,7 +1,6 @@
-{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE LambdaCase #-}
 module Stanly.Interpreter(
-  parser, eval, strictSubexprs, Var, Expr(..), Env(..), Store_(..), Val(..), Interpreter(..), Store(..), Environment(..), Exc(..), Primops(..)
+  parser, eval, subexprs, Var, Expr(..), Env(..), Store_(..), Val(..), Interpreter(..), Store(..), Environment(..), Exc(..), Primops(..)
   ) where
 
 import Control.Monad.Reader (MonadReader(..), ReaderT)
@@ -9,8 +8,11 @@ import Control.Monad (liftM2, join)
 import Text.Parsec
 import Stanly.Fmt
 import Data.Function((&))
+import qualified Control.Applicative as A
 
-type Var  = String
+type Var = String
+
+newtype Env l = Env { unEnv :: [(Var, l)] } deriving (Eq, Show, Foldable)
 
 data Expr
   = Vbl Var
@@ -45,10 +47,10 @@ class Store l m where
   ext   :: l -> m (Val l) -> m (Val l)
   alloc :: Var -> m l
 
-class (Monad m) => Environment env l m | m -> l, m -> env where
+class Environment l m where
   search :: Var -> (l -> m (Val l)) -> (String -> m (Val l)) -> m (Val l)
-  assign :: Var -> l -> env -> m (Val l) -> m (Val l)
-  env    :: m env
+  assign :: Var -> l -> Env l -> m (Val l) -> m (Val l)
+  env    :: m (Env l)
 
 class Primops l m where
   op2    :: String -> Val l -> Val l -> m (Val l)
@@ -57,10 +59,9 @@ class Primops l m where
 class Exc m where
   exc :: String -> m (Val l)
 
-class (Exc m, Primops l m, Store l m, Environment (Env l) l m) => Interpreter l m where
+class (Exc m, Primops l m, Store l m, Environment l m, Monad m) => Interpreter l m where
   ev :: Expr -> m (Val l)
 
--- | Turn program text into an AST.
 parser :: String -> String -> Either ParseError Expr
 parser = parse (expr <* eof)
   where
@@ -86,27 +87,26 @@ parser = parse (expr <* eof)
   ws e = spaces *> e <* spaces
   ident = many1 letter
 
-instance (Monad m, Show l) => Environment (Env l) l (ReaderT (Env l) m) where
+instance (Monad m, Show l) => Environment l (ReaderT (Env l) m) where
   search variable iffound ifnotfound = ask >>= \r -> lookup variable (unEnv r) & \case 
     Just l -> iffound l
     _ -> ifnotfound (show variable <> " not found in environment: " <> fmt r)
   assign v l r = local (const (Env ((v, l) : unEnv r)))
   env = ask
 
-strictSubexprs :: Expr -> [Expr]
-strictSubexprs = f
+subexprs :: (A.Alternative g) => Expr -> g Expr
+subexprs = f
   where
   f = \case
-    Lam _ e -> e : f e
-    Num _ -> []
-    App fn x -> fn : x : f fn ++ f x
-    Op2 _ l r -> l : r : f l ++ f r
-    If b tru fls -> b : tru : fls : f b ++ f tru ++ f fls
-    Rec _ e -> e : f e
-    Vbl _ -> []
+    Lam _ e -> pure e A.<|> f e
+    Num _ -> A.empty
+    App fn x -> pure fn A.<|> pure x A.<|> f fn A.<|> f x
+    Op2 _ l r -> pure l A.<|> pure r A.<|> f l A.<|> f r
+    If b tru fls -> pure b A.<|> pure tru A.<|> pure fls A.<|> f b A.<|> f tru A.<|> f fls
+    Rec _ e -> pure e A.<|> f e
+    Vbl _ -> A.empty
 
 newtype Store_ l = Store_ [(l, Val l)] deriving (Eq, Show, Foldable)
-newtype Env l = Env { unEnv :: [(Var, l)] } deriving (Eq, Show, Foldable)
 
 instance (Show l) => Fmt (Env l) where
   ansiFmt r = green >+ "⟦" <> fmt' r "" <> green >+ "⟧"

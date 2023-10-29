@@ -6,15 +6,16 @@ import Stanly.Fmt
 import Control.Monad.Except
 import Control.Monad.State
 import Control.Monad.Reader
-import Control.Monad.Identity
 import Control.Applicative (Alternative)
 import Data.List (nub)
 
--- \m::*->* a::*.{A} {R} Env Var -> {E} {S} Store_ Var -> m (Either e a, Store_ Var)
-newtype AbstractT m a = AbstractT (ReaderT (Env Var) (StateT (Store_ Var) m) a)
-    deriving (Functor, Applicative, Monad, Alternative, MonadPlus, MonadReader (Env Var), MonadState (Store_ Var), Environment (Env Var) Var)
+type Addr = Var
+type Store' = Store_ Var
+-- \m::*->* a::*.{A} {R} Env Var -> {E} {S} Store' -> m (Either e a, Store')
+newtype AbstractT m a = AbstractT (ReaderT (Env Var) (StateT Store' m) a)
+    deriving (Functor, Applicative, Monad, Alternative, MonadPlus, MonadReader (Env Var), MonadState Store', Environment Var)
 
-runAbstractT :: AbstractT m a -> m (a, Store_ Var)
+runAbstractT :: AbstractT m a -> m (a, Store')
 runAbstractT (AbstractT m) = runStateT (runReaderT m (Env [])) (Store_ [])
 
 instance (MonadPlus m) => Exc (AbstractT m) where
@@ -23,7 +24,7 @@ instance (MonadPlus m) => Exc (AbstractT m) where
 top :: Applicative f => String -> f (Val l)
 top why = pure $ Undefined ("Top: " <> why)
 
-instance (MonadPlus m) => Primops Var (AbstractT m) where
+instance (MonadPlus m) => Primops Addr (AbstractT m) where
     op2 o lhs rhs
       | o `notElem` ["+", "-", "*", "/"] = exc $ "Invalid operation: " <> o
       | otherwise = case (o, lhs, rhs) of
@@ -41,20 +42,20 @@ instance (MonadPlus m) => Primops Var (AbstractT m) where
         Undefined _ -> mplus tru fls
         LamV {} -> exc "Can't branch on function."
 
-instance (Monad m) => Store Var (AbstractT m) where
+instance (Monad m) => Store Addr (AbstractT m) where
     alloc = pure
     deref l = do
         (Store_ store) <- get
         maybe (error $ show l ++ " not found in store. " ++ fmt (Store_ store)) pure (lookup l store)
     ext l m = m >>= (\s -> modify (\(Store_ store) -> Store_ ((l, s) : store))) >> m
 
-instance (MonadPlus m) => Interpreter Var (AbstractT m) where
+instance (MonadPlus m) => Interpreter Addr (AbstractT m) where
     ev = eval
 
 
 newtype PowerSetT a = PowerSet { unPowerSet :: [a] } deriving (Eq, Show, Foldable, Functor, Applicative, Monad, Alternative, MonadPlus)
 
-execPowerSet :: Expr -> PowerSetT (Val Var, Store_ Var)
+execPowerSet :: Expr -> PowerSetT (Val Var, Store')
 execPowerSet e = PowerSet $ nub $ (unPowerSet . runAbstractT) (ev e)
 
 instance (Fmt a) => Fmt (PowerSetT a) where
