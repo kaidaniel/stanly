@@ -24,12 +24,12 @@ data Expr
 strictSubexprs :: Expr -> [Expr]
 strictSubexprs = f
   where
-  f (Lam _ e0) = e0 : f e0
+  f (Lam _ e) = e : f e
   f (Num _) = []
-  f (App e0 e1) = e0 : e1 : f e0 ++ f e1
-  f (Op2 _ e0 e1) = e0 : e1 : f e0 ++ f e1
-  f (If e0 e1 e2) = e0 : e1 : e2 : f e0 ++ f e1 ++ f e2
-  f (Rec _ e0) = e0 : f e0
+  f (App fn x) = fn : x : f fn ++ f x
+  f (Op2 _ l r) = l : r : f l ++ f r
+  f (If b tru fls) = b : tru : fls : f b ++ f tru ++ f fls
+  f (Rec _ e) = e : f e
   f (Vbl _) = []
 
 expr :: Parsec String st Expr

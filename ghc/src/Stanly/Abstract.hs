@@ -13,7 +13,7 @@ import Data.List (nub)
 
 -- \m::*->* a::*.{A} {R} Env Var -> {E} {S} Store_ Var -> m (Either e a, Store_ Var)
 newtype AbstractT m a = AbstractT (ReaderT (Env Var) (IdentityT (StateT (Store_ Var) m)) a)
-    deriving (Functor, Applicative, Monad, Alternative, MonadPlus, MonadReader (Env Var), MonadState (Store_ Var))
+    deriving (Functor, Applicative, Monad, Alternative, MonadPlus, MonadReader (Env Var), MonadState (Store_ Var), Environment (Env Var) Var)
 
 runAbstractT :: AbstractT m a -> m (a, Store_ Var)
 runAbstractT (AbstractT m) = (flip runStateT (Store_ []) . runIdentityT) (runReaderT m (Env []))
@@ -43,7 +43,7 @@ instance (MonadPlus m) => Primops Var (AbstractT m) where
 
 instance (Monad m) => Store Var (AbstractT m) where
     alloc = return
-    find l = do
+    deref l = do
         (Store_ store) <- get
         case lookup l store of
             Just val -> return val

@@ -21,7 +21,7 @@ import Data.List ((\\))
 -- = \a::*.{C} {R} Env l -> {E} {S} Store_ l v -> m (Either e a, Store_ l)
 -- type ConcreteT l e m = ReaderT (Env l) (ExceptT e (StateT (Store_ l) m))
 newtype ConcreteT m a = ConcreteT (ReaderT (Env Int) (ExceptT String (StateT (Store_ Int) m)) a)
-  deriving (Functor, Applicative, Monad, MonadReader (Env Int), MonadState (Store_ Int), MonadError String, MonadWriter r)
+  deriving (Functor, Applicative, Monad, MonadReader (Env Int), MonadState (Store_ Int), MonadError String, MonadWriter r, Environment (Env Int) Int)
 
 runConcreteT :: ConcreteT m a -> m (Either String a, Store_ Int)
 runConcreteT (ConcreteT m) = (flip runStateT (Store_ []) . runExceptT) (runReaderT m (Env []))
@@ -48,15 +48,15 @@ instance (Monad m) => Primops Int (ConcreteT m) where
 
 instance (Monad m) => Store Int (ConcreteT m) where
   alloc _ = gets length
-  find l = do
+  deref l = do
     (Store_ store) <- get
     case lookup l store of
       Just val -> return val
       Nothing -> error $ show l ++ " not found in store. " ++ fmt (Store_ store)
   ext l m = m >>= (\s -> modify (\(Store_ store) -> Store_ ((l, s) : store))) >> m
-    -- memkpy binding = modify (\(Store_ store) -> Store_ (binding : store))
 
 instance Interpreter Int (ConcreteT Identity) where
+  ev :: Expr -> ConcreteT Identity (Val Int)
   ev = eval
 
 invalidArgs, unknownOp :: String -> String
@@ -75,9 +75,9 @@ instance Fmt ProgramTrace where
 
 instance (Monad m) => Interpreter Int (ConcreteT (WriterT ProgramTrace m)) where
   ev e = do
-    env <- ask
+    r <- env
     store <- get
-    tell $ ProgramTrace [(e, env, store)]
+    tell $ ProgramTrace [(e, r, store)]
     eval e
 
 runTraceT :: ConcreteT (WriterT w m) a -> m ((Either String a, Store_ Int), w)

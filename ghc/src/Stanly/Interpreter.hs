@@ -1,6 +1,7 @@
+{-# LANGUAGE FunctionalDependencies #-}
 module Stanly.Interpreter where
 
-import Control.Monad.Reader (MonadReader)
+import Control.Monad.Reader (MonadReader(..), ReaderT)
 import Stanly.Expr(Expr, Var)
 import Stanly.Fmt
 
@@ -14,20 +15,29 @@ data Val l
   deriving (Eq, Show, Foldable)
 
 class Store l m where
-    find :: l -> m (Val l)
-    ext :: l -> m (Val l) -> m (Val l)
-    alloc :: Var -> m l
+  deref :: l -> m (Val l)
+  ext   :: l -> m (Val l) -> m (Val l)
+  alloc :: Var -> m l
+
+class Environment env l m | m -> l, m -> env where
+  search :: (forall a. String -> m a) -> Var -> m l
+  assign :: (Var, l) -> env -> m (Val l) -> m (Val l)
+  env    :: m env
 
 class Exc m where
-    exc :: String -> m a
+  exc :: String -> m a
 
 class Primops l m where
-    op2 :: String -> Val l -> Val l -> m (Val l)
-    truthy :: Val l -> m Bool
+  op2    :: String -> Val l -> Val l -> m (Val l)
+  truthy :: Val l -> m Bool
 
+instance (Monad m, Show l) => Environment (Env l) l (ReaderT (Env l) m) where
+  search f v = ask >>= \(Env r) -> maybe (f $ show v <> " not found in environment: " <> fmt (Env r)) return (lookup v r)
+  assign (v, l) r = local (const (Env ((v, l) : unEnv r)))
+  env = ask
 
-class (Exc m, Show l, Eq l, Primops l m, Store l m, MonadReader (Env l) m) => Interpreter l m where
-    ev :: Expr -> m (Val l)
+class (Exc m, Show l, Eq l, Primops l m, Store l m, Environment (Env l) l m, Monad m) => Interpreter l m where
+  ev :: Expr -> m (Val l)
 
 
 instance (Show l) => Fmt (Env l) where
