@@ -1,13 +1,12 @@
 import Data.Char (isSpace)
 import Stanly.Concrete (execConcrete, execTrace, execNotCovered)
 import Stanly.Abstract (execPowerSet)
-import Stanly.Expr (expr, parse)
 import Stanly.Fmt (Fmt (..))
 
 main :: IO ()
 main = do
   str <- getContents
-  ast <- either (error . show) return (parse expr "<stdin>" str)
+  ast <- either (error . show) return (parser "<stdin>" str)
   putStrLn "Input"
   prnt $ (reverse . dropWhile isSpace . reverse) str
   putStrLn "Desugared"

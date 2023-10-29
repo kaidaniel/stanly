@@ -8,7 +8,6 @@ import Control.Monad.Reader(MonadReader, ReaderT, runReaderT)
 import Control.Monad.State(gets, get, MonadState, modify, StateT, runStateT)
 import Control.Monad.Except ( throwError , MonadError, ExceptT, runExceptT)
 import Stanly.Interpreter
-import Stanly.Expr
 import Stanly.Fmt
 import Control.Monad.Writer(WriterT, runWriterT, tell, MonadWriter)
 import Data.List ((\\))

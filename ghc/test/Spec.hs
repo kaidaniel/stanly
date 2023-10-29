@@ -5,10 +5,12 @@
 import GHC.Generics (Generic)
 import Stanly.Concrete (execConcrete, execTrace, execNotCovered)
 import Stanly.Abstract (execPowerSet)
-import Stanly.Expr (Expr (..), parser)
 import Stanly.Fmt (fmt)
+import Stanly.Interpreter (Expr (..), parser)
 import Test.Hspec
 import Test.QuickCheck
+
+parser' = parser "<test>"
 
 newtype TestExpr = TestExpr {unTestExpr :: Expr}
   deriving (Generic, Eq, Show)
@@ -41,16 +43,16 @@ main :: IO ()
 main = hspec $ do
   describe "parser" $ do
     it "parses some edge cases" $ do
-      fmt <$> parser "(if(λs.1)then(ifxthenyelsez)else(2))" `shouldBe` Right "(if (\955s.1) then ifxthenyelsez else 2)"
-      fmt <$> parser "((f)    (a))" `shouldBe` Right "(f a)"
-      fmt <$> parser "(if ifx then theny else (if thenx then elsey else ifz))" `shouldBe` Right "(if ifx then theny else (if thenx then elsey else ifz))"
-      fmt <$> parser "let x = (μ f. (f x)) in z" `shouldBe` Right "((\955x.z) (\956f.(f x)))"
-      fmt <$> parser "(mu f.((f f) 3))" `shouldBe` Right "(\956f.((f f) 3))"
-      fmt <$> parser "(fn x.x)" `shouldBe` Right "(\955x.x)"
+      fmt <$> parser' "(if(λs.1)then(ifxthenyelsez)else(2))" `shouldBe` Right "(if (\955s.1) then ifxthenyelsez else 2)"
+      fmt <$> parser' "((f)    (a))" `shouldBe` Right "(f a)"
+      fmt <$> parser' "(if ifx then theny else (if thenx then elsey else ifz))" `shouldBe` Right "(if ifx then theny else (if thenx then elsey else ifz))"
+      fmt <$> parser' "let x = (μ f. (f x)) in z" `shouldBe` Right "((\955x.z) (\956f.(f x)))"
+      fmt <$> parser' "(mu f.((f f) 3))" `shouldBe` Right "(\956f.((f f) 3))"
+      fmt <$> parser' "(fn x.x)" `shouldBe` Right "(\955x.x)"
 
     it "is inverted by fmt" $
       property $
-        \(e :: Expr) -> (fmt <$> (parser . fmt) e) === Right (fmt e)
+        \(e :: Expr) -> (fmt <$> (parser' . fmt) e) === Right (fmt e)
 
   describe "Concrete.execConcrete" $ do
     it "is correct for a few some examples" $ do
@@ -107,13 +109,13 @@ main = hspec $ do
 
   describe "Abstract.execPowerSet" $ do
     it "is correct for a few simple examples" $ do
-      resultOf execPowerSet "((3 + 4) * 9)" `shouldMatchList'` ["(Undefined: op2 on Numbers, Σ⟦⟧)"]
-      resultOf execPowerSet "(5 / (1 + 2))" `shouldMatchList'` ["(Undefined: op2 on Numbers, Σ⟦⟧)", "(Undefined: Division by zero, Σ⟦⟧)"]
+      resultOf execPowerSet "((3 + 4) * 9)" `shouldMatchList'` ["(Undefined: Top: op2 on Numbers, Σ⟦⟧)"]
+      resultOf execPowerSet "(5 / (1 + 2))" `shouldMatchList'` ["(Undefined: Top: op2 on Numbers, Σ⟦⟧)", "(Undefined: Bottom: Division by zero, Σ⟦⟧)"]
       resultOf execPowerSet "(if (1 + 0) then 3 else 4)" `shouldMatchList'` ["(4, Σ⟦⟧)", "(3, Σ⟦⟧)"]
       
 
   where
-    resultOf exec' str = fmt $ exec' $ either (error . show) id (parser str)
+    resultOf exec' str = fmt $ exec' $ either (error . show) id (parser' str)
     shouldBe' a b = shouldBe a (unlines b)
     shouldMatchList' = shouldMatchList . lines
 
@@ -121,9 +123,9 @@ main = hspec $ do
 
 -- | Invalid programs.
 -- >>> import Stanly.Fmt(fmt)
--- >>> fmt <$> parser "(ifx theny elsez)"
--- >>> fmt <$> parser "(if(λs.1)then2else3)"
--- >>> fmt <$> parser "(if(λs.1)thenABCelseDEF)"
+-- >>> fmt <$> parser' "(ifx theny elsez)"
+-- >>> fmt <$> parser' "(if(λs.1)then2else3)"
+-- >>> fmt <$> parser' "(if(λs.1)thenABCelseDEF)"
 -- Left "<string>" (line 1, column 12):
 -- unexpected "e"
 -- expecting space, white space or ")"
@@ -135,16 +137,16 @@ main = hspec $ do
 -- expecting white space or ")"
 
 -- | Valid programs.
--- >>> fmt <$> parser "(if(λs.1)then(ifxthenyelsez)else(2))"
--- >>> fmt <$> parser "((f)    (a))"
--- >>> fmt <$> parser "(f(a))"
--- >>> fmt <$> parser "(if ifx then theny else (if thenx then elsey else ifz))"
--- >>> fmt <$> parser "(      if x then     y    else   z     )"
--- >>> fmt <$> parser "(x)"
--- >>> fmt <$> parser "let x = (μ f. (f x)) in z"
--- >>> fmt <$> parser "( λ x. ((x) (1)) )"
--- >>> fmt <$> parser "(fn x.x)"
--- >>> fmt <$> parser "(mu f.((f f) 3))"
+-- >>> fmt <$> parser' "(if(λs.1)then(ifxthenyelsez)else(2))"
+-- >>> fmt <$> parser' "((f)    (a))"
+-- >>> fmt <$> parser' "(f(a))"
+-- >>> fmt <$> parser' "(if ifx then theny else (if thenx then elsey else ifz))"
+-- >>> fmt <$> parser' "(      if x then     y    else   z     )"
+-- >>> fmt <$> parser' "(x)"
+-- >>> fmt <$> parser' "let x = (μ f. (f x)) in z"
+-- >>> fmt <$> parser' "( λ x. ((x) (1)) )"
+-- >>> fmt <$> parser' "(fn x.x)"
+-- >>> fmt <$> parser' "(mu f.((f f) 3))"
 -- Right "(if (\955s.1) then ifxthenyelsez else 2)"
 -- Right "(f a)"
 -- Right "(f a)"
