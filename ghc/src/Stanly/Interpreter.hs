@@ -7,7 +7,7 @@ module Stanly.Interpreter where
 import Control.Monad.Reader (MonadReader(..), ReaderT)
 import Stanly.Expr(Expr (..), Var)
 import Stanly.Fmt
-import Control.Monad (liftM2, join, ap)
+import Control.Monad (liftM2, join)
 
 eval :: (Interpreter l m) => Expr -> m (Val l)
 eval = \case

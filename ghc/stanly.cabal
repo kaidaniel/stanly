@@ -18,7 +18,6 @@ common shared-properties
 library stanly-lib
     import:          shared-properties
     exposed-modules: Stanly.Concrete, Stanly.Expr, Stanly.Fmt, Stanly.Interpreter, Stanly.Abstract
-    other-modules:   Stanly.IdiomBrackets
     hs-source-dirs:  src
     build-depends:   haskell-src-meta, template-haskell, QuickCheck, text
       
