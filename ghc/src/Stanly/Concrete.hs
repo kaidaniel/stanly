@@ -4,10 +4,9 @@
 module Stanly.Concrete(execConcrete, execTrace, execNotCovered) where
 
 import Control.Monad.Identity (Identity, runIdentity)
-import Control.Monad.Reader(ask, MonadReader, ReaderT, runReaderT)
+import Control.Monad.Reader(MonadReader, ReaderT, runReaderT)
 import Control.Monad.State(gets, get, MonadState, modify, StateT, runStateT)
 import Control.Monad.Except ( throwError , MonadError, ExceptT, runExceptT)
-import Stanly.Eval(eval)
 import Stanly.Interpreter
 import Stanly.Expr
 import Stanly.Fmt

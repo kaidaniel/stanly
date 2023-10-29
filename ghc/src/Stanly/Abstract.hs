@@ -3,7 +3,6 @@ module Stanly.Abstract where
 import Stanly.Interpreter
 import Stanly.Fmt
 import Stanly.Expr
-import Stanly.Eval(eval)
 import Control.Monad.Except
 import Control.Monad.State
 import Control.Monad.Reader
