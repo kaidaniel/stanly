@@ -1,7 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
-module Stanly.Interpreter(
-  parser, eval, subexprs, Var, Expr(..), Env(..), Store_(..), Val(..), Interpreter(..), Store(..), Environment(..), Exc(..), Primops(..)
-  ) where
+module Stanly.Interpreter where
 
 import Control.Monad.Reader (MonadReader(..), ReaderT)
 import Control.Monad (liftM2, join)
@@ -37,9 +35,9 @@ eval = \case
   Vbl vbl      -> search vbl deref exc
   If b tru fls -> ev b >>= branch (ev fls) (ev tru)
   Op2 o e0 e1  -> join $ liftM2 (op2 o) (ev e0) (ev e1)
-  Rec f e      -> env >>= \mr -> alloc f >>= \ml -> ext ml $ assign f ml mr (ev e)
+  Rec f e      -> env >>= \r' -> alloc f >>= \l' -> ext l' $ assign f l' r' (ev e)
   App lamV x   -> ev lamV >>= \case
-      LamV mv me mr -> ev x >>= \mx -> alloc mv >>= \ml -> ext ml (pure mx) >> assign mv ml mr (ev me)
+      LamV v' e' r' -> ev x >>= \x' -> alloc v' >>= \l' -> ext l' (pure x') >> assign v' l' r' (ev e')
       _             -> exc ("\"" <> fmt lamV <> "\" is not a function")
 
 class Store l m where
@@ -106,7 +104,7 @@ subexprs = f
     Rec _ e -> pure e A.<|> f e
     Vbl _ -> A.empty
 
-newtype Store_ l = Store_ [(l, Val l)] deriving (Eq, Show, Foldable)
+newtype Store_ l = Store_ { unStore :: [(l, Val l)] } deriving (Eq, Show, Foldable)
 
 instance (Show l) => Fmt (Env l) where
   ansiFmt r = green >+ "⟦" <> fmt' r "" <> green >+ "⟧"

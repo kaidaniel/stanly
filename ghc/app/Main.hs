@@ -2,6 +2,7 @@ import Data.Char (isSpace)
 import Stanly.Concrete (execConcrete, execTrace, execNotCovered)
 import Stanly.Abstract (execPowerSet)
 import Stanly.Fmt (Fmt (..))
+import Stanly.Interpreter(parser)
 
 main :: IO ()
 main = do

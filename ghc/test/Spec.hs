@@ -112,6 +112,8 @@ main = hspec $ do
       resultOf execPowerSet "((3 + 4) * 9)" `shouldMatchList'` ["(Undefined: Top: op2 on Numbers, Σ⟦⟧)"]
       resultOf execPowerSet "(5 / (1 + 2))" `shouldMatchList'` ["(Undefined: Top: op2 on Numbers, Σ⟦⟧)", "(Undefined: Bottom: Division by zero, Σ⟦⟧)"]
       resultOf execPowerSet "(if (1 + 0) then 3 else 4)" `shouldMatchList'` ["(4, Σ⟦⟧)", "(3, Σ⟦⟧)"]
+      -- resultOf execPowerSet "let g = 1 in ((fn g.(fn f.(f))) (g + 1))" `shouldMatchList'` ["(λf.f⟦g↦\"g\",g↦\"g\"⟧, Σ⟦\"g\"↦Undefined: Top: op2 on Numbers⟧)"]
+      -- resultOf execPowerSet "let g = 1 in ((fn g.g) 2)" `shouldMatchList'` ""
       
 
   where

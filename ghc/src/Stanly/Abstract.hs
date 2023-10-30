@@ -45,9 +45,12 @@ instance (MonadPlus m) => Primops Addr (AbstractT m) where
 instance (Monad m) => Store Addr (AbstractT m) where
     alloc = pure
     deref l = do
-        (Store_ store) <- get
-        maybe (error $ show l ++ " not found in store. " ++ fmt (Store_ store)) pure (lookup l store)
+        store <- get
+        maybe (error $ show l ++ " not found in store. " ++ fmt store) pure (lookup l $ unStore store)
     ext l m = m >>= (\s -> modify (\(Store_ store) -> Store_ ((l, s) : store))) >> m
+    -- ext l mx = mx >>= (modify . insert) >> mx
+    --     where
+    --     insert x = Store_ . ((l, x):) . filter (\(key, _) -> key /= l) . unStore
 
 instance (MonadPlus m) => Interpreter Addr (AbstractT m) where
     ev = eval
