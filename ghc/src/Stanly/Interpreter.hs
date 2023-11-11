@@ -1,4 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
+{-# OPTIONS_GHC -Wno-unused-do-bind #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Use <$>" #-}
 module Stanly.Interpreter where
 
 import Control.Monad.Reader (MonadReader(..), ReaderT)
@@ -7,6 +10,13 @@ import Text.Parsec
 import Stanly.Fmt
 import Data.Function((&))
 import qualified Control.Applicative as A
+import Text.Parsec.Language (emptyDef)
+import qualified Text.Parsec.Token as Token
+import qualified Text.Parsec.Token as Token
+import qualified Control.Category as Token
+import Control.Monad (liftM3)
+import Control.Monad (msum)
+import Control.Applicative (asum)
 
 type Var = String
 
@@ -18,13 +28,13 @@ data Expr
   | Lam Var Expr
   | Rec Var Expr
   | Op2 String Expr Expr
-  | Num Int
+  | Num Integer
   | If Expr Expr Expr
   deriving (Eq, Show)
 
 data Val l
   = LamV Var Expr (Env l)
-  | NumV Int
+  | NumV Integer
   | Undefined String
   deriving (Eq, Show, Foldable)
 
@@ -61,32 +71,39 @@ class (Exc m, Primops l m, Store l m, Environment l m, Monad m) => Interpreter l
   ev :: Expr -> m (Val l)
 
 parser :: String -> String -> Either ParseError Expr
-parser = parse (expr <* eof)
+parser = parse $ expr <* eof
   where
-  expr =
-    try ((\x v k -> App (Lam x k) v) <$> kw "let" ident <*> kw "=" expr <*> kw "in" expr)
-    <|> between (char '(') (char ')') (ws exprNoParens)
-    <|> ws atom
-  exprNoParens =
-    try (Lam <$> binder ["λ", "fn "] <*> expr)
-    </> (Rec <$> binder ["μ", "mu "] <*> expr)
-    </> (If <$> kw "if" expr <*> kw "then" expr <*> kw "else" expr)
-    </> (App <$> ws expr <*> expr)
-    </> (flip Op2 <$> expr <*> op <*> expr)
-    <|> atom
-  atom =
-        (Num <$> integer)
-    <|> (Vbl <$> ident)
-  op = ws (choice [string x | x <- ["+", "-", "*", "/"]])
-  binder c = (choice [string x | x <- c]) *> ws (ident <* char '.')
-  (</>) l r = l <|> try r
-  kw w e = string w >> (lookAhead (char '(') <|> space) >> ws e
-  integer = read <$> many1 digit
-  ws e = spaces *> e <* spaces
-  ident = many1 letter
+  expr = ws *>
+    parens (
+      try (liftM3 (flip Op2) expr op expr)
+      </> liftM2 App expr expr
+      </> expr)
+    <|> do kw "let"; x <- iden; kw "="; v <- expr; kw "in"; e <- expr;  pure $ App (Lam x e) v
+    </> do symbol "λ" <|> symbol "fn "; liftM2 Lam iden (dot >> expr)
+    </> do symbol "μ" <|> symbol "mu "; liftM2 Rec iden (dot >> expr)
+    <|> do kw "if" ; b <- expr; kw "then"; x <- expr; kw "else"; y <- expr; pure $ If b x y
+    <|> fmap Num nat
+    <|> fmap Vbl iden
+  lexer = Token.makeTokenParser emptyDef
+    { Token.commentStart = "/*" 
+    , Token.commentEnd = "*/" 
+    , Token.commentLine = "//"
+    , Token.opStart = oneOf "+-/*"
+    , Token.opLetter = oneOf "+-/*"
+    , Token.reservedNames = ["let", "in", "if", "then", "else", "λ", "fn ", "μ", "mu "]}
+  a </> b = a <|> try b
+  parens = Token.parens lexer
+  iden = Token.identifier lexer
+  ws = Token.whiteSpace lexer
+  symbol = Token.symbol lexer
+  nat = Token.natural lexer
+  dot = Token.dot lexer
+  op = Token.operator lexer
+  kw = Token.reserved lexer
+
 
 instance (Monad m, Show l) => Environment l (ReaderT (Env l) m) where
-  search variable iffound ifnotfound = ask >>= \r -> lookup variable (unEnv r) & \case 
+  search variable iffound ifnotfound = ask >>= \r -> lookup variable (unEnv r) & \case
     Just l -> iffound l
     _ -> ifnotfound (show variable <> " not found in environment: " <> fmt r)
   assign v l r = local (const (Env ((v, l) : unEnv r)))
