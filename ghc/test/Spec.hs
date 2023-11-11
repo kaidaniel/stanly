@@ -21,7 +21,10 @@ instance Arbitrary TestExpr where
   arbitrary = sized (fmap TestExpr . arbitrary')
     where
       word :: Gen String
-      word = oneof [listOf1 $ elements ['a' .. 'z'], pure "letx", pure "fnx", pure "recx", pure "ifx", pure "thenx", pure "elsex", pure "mux"]
+      word = oneof (char : almost_kw)
+      almost_kw = [pure (x ++ "x") | x <- kw]
+      char = suchThat (listOf1 $ elements ['a' .. 'z']) (`notElem` kw)
+      kw = ["let", "fn", "rec", "if", "then", "else", "mu", "in"]
       arbitrary' 0 = pure $ Num 1
       arbitrary' n =
         let rec' = resize (n `div` 2) (fmap unTestExpr arbitrary)
@@ -34,6 +37,9 @@ instance Arbitrary TestExpr where
                 Rec <$> word <*> rec',
                 If <$> rec' <*> rec' <*> rec'
               ]
+
+
+
 
 instance Arbitrary Expr where
   arbitrary = unTestExpr <$> arbitrary
@@ -49,7 +55,7 @@ main = hspec $ do
       fmt <$> parser' "((f)    (a))" `shouldBe` Right "(f a)"
       fmt <$> parser' "(if ifx then theny else (if thenx then elsey else ifz))" `shouldBe` Right "(if ifx then theny else (if thenx then elsey else ifz))"
       fmt <$> parser' "let x = (μ f. (f x)) in z" `shouldBe` Right "((\955x.z) (\956f.(f x)))"
-      fmt <$> parser' "(mu f.((f f) 3))" `shouldBe` Right "(\956f.((f f) 3))"
+      fmt <$> parser' "(mu f.((((((f a) b) c) d) e) f))" `shouldBe` Right "(\956f.(f a b c d e f))"
       fmt <$> parser' "(fn x.x)" `shouldBe` Right "(\955x.x)"
 
     it "is inverted by fmt" $
@@ -79,10 +85,10 @@ main = hspec $ do
   describe "Concrete.execTrace" $ do
     it "is correct for a few simple examples" $ do
       resultOf execTrace "((3 + 4) * 9)" `shouldBe'` [
-        "1. (((3+4)*9), ⟦⟧, Σ⟦⟧)", 
-        "2. ((3+4), ⟦⟧, Σ⟦⟧)", 
-        "3. (3, ⟦⟧, Σ⟦⟧)", 
-        "4. (4, ⟦⟧, Σ⟦⟧)", 
+        "1. (((3+4)*9), ⟦⟧, Σ⟦⟧)",
+        "2. ((3+4), ⟦⟧, Σ⟦⟧)",
+        "3. (3, ⟦⟧, Σ⟦⟧)",
+        "4. (4, ⟦⟧, Σ⟦⟧)",
         "5. (9, ⟦⟧, Σ⟦⟧)"]
       resultOf execTrace "((fn x.((x + 4) * 9)) 3)" `shouldBe'` [
         "1. (((λx.((x+4)*9)) 3), ⟦⟧, Σ⟦⟧)",
@@ -116,7 +122,7 @@ main = hspec $ do
       resultOf execPowerSet "(if (1 + 0) then 3 else 4)" `shouldMatchList'` ["(4, Σ⟦⟧)", "(3, Σ⟦⟧)"]
       -- resultOf execPowerSet "let g = 1 in ((fn g.(fn f.(f))) (g + 1))" `shouldMatchList'` ["(λf.f⟦g↦\"g\",g↦\"g\"⟧, Σ⟦\"g\"↦Undefined: Top: op2 on Numbers⟧)"]
       -- resultOf execPowerSet "let g = 1 in ((fn g.g) 2)" `shouldMatchList'` ""
-      
+
 
   where
     resultOf exec' str = fmt $ exec' $ either (error . show) id (parser' str)

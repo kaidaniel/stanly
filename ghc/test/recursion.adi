@@ -1,0 +1,24 @@
+let fibonacci = mu f.λn.
+
+    if (n - 1) then 
+        if (n - 2) then 
+            ((f (n - 1)) + (f (n - 2))) 
+        else 1
+    else 1 
+;
+let factorial = mu f.λn.
+
+    if (n - 1) then
+        (n * (f (n - 1)))
+    else 1
+;
+
+let result = λa.λb.λc.λd.λf.(f a b c d);
+
+(
+    result 
+        (fibonacci 4) 
+        (fibonacci 5) 
+        (factorial 6) 
+        (factorial 7)
+)

@@ -47,10 +47,7 @@ instance (Monad m) => Store Addr (AbstractT m) where
     deref l = do
         store <- get
         maybe (error $ show l ++ " not found in store. " ++ fmt store) pure (lookup l $ unStore store)
-    ext l m = m >>= (\s -> modify (\(Store_ store) -> Store_ ((l, s) : store))) >> m
-    -- ext l mx = mx >>= (modify . insert) >> mx
-    --     where
-    --     insert x = Store_ . ((l, x):) . filter (\(key, _) -> key /= l) . unStore
+    ext l s = modify (\(Store_ store) -> Store_ ((l, s) : store))
 
 instance (MonadPlus m) => Interpreter Addr (AbstractT m) where
     ev = eval

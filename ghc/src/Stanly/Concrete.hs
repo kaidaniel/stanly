@@ -54,7 +54,7 @@ instance (Monad m) => Store Addr (ConcreteT m) where
     case lookup l store of
       Just val -> return val
       Nothing -> error $ show l ++ " not found in store. " ++ fmt (Store_ store)
-  ext l m = m >>= (\s -> modify (\(Store_ store) -> Store_ ((l, s) : store))) >> m
+  ext l s = modify (\(Store_ store) -> Store_ ((l, s) : store))
 
 instance Interpreter Addr (ConcreteT Identity) where
   ev :: Expr -> ConcreteT Identity (Val Int)

@@ -1,0 +1,17 @@
+let square   = λx.(x * x);
+let cube     = λx.((square x) * x);
+let quadric  = λx.(square (square x));
+let quintic  = λx.(cube (square x));
+
+let polynomial = λx.(
+    // x + x^2 + x^3 + x^4 + x^5
+    (((((x + (square x)) + (cube x)) + (quadric x)) + (quintic x)))
+);
+
+let result = λa.λb.λc.λf.(f a b c);
+(
+    result
+        (polynomial 1)   // 5
+        (polynomial 2)   // 2 + 4 + 8 + 16 + 32 = 62
+        (polynomial 10)  // 111110
+)

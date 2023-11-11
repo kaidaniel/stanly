@@ -1,1 +1,0 @@
-let sum = (λa.(λb.(a + b))) in ((sum 1) 2)
