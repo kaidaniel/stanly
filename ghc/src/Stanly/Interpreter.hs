@@ -5,18 +5,13 @@
 module Stanly.Interpreter where
 
 import Control.Monad.Reader (MonadReader(..), ReaderT)
-import Control.Monad (liftM2, join)
+import Control.Monad (liftM3, liftM2, join)
 import Text.Parsec
 import Stanly.Fmt
 import Data.Function((&))
 import qualified Control.Applicative as A
 import Text.Parsec.Language (emptyDef)
-import qualified Text.Parsec.Token as Token
-import qualified Text.Parsec.Token as Token
-import qualified Control.Category as Token
-import Control.Monad (liftM3)
-import Control.Monad (msum)
-import Control.Applicative (asum)
+import qualified Text.Parsec.Token as Tn
 
 type Var = String
 
@@ -40,15 +35,19 @@ data Val l
 
 eval :: (Interpreter l m) => Expr -> m (Val l)
 eval = \case
-  Num n        -> pure $ NumV n
+  Num n        -> pure (NumV n)
   Lam v e      -> fmap (LamV v e) env
   Vbl vbl      -> search vbl deref exc
-  If b tru fls -> ev b >>= branch (ev fls) (ev tru)
-  Op2 o e0 e1  -> join $ liftM2 (op2 o) (ev e0) (ev e1)
-  Rec f e      -> env >>= \r' -> alloc f >>= \l' -> ext l' $ assign f l' r' (ev e)
+  If b tru fls -> plug3 branch (ev fls) (ev tru) (ev b)
+  Op2 o e0 e1  -> bind2 (op2 o) (ev e0) (ev e1)
+  Rec f e      -> (env, alloc f) >>== \r' l' -> ext l' (assign f l' r' (ev e))
   App lamV x   -> ev lamV >>= \case
-      LamV v' e' r' -> ev x >>= \x' -> alloc v' >>= \l' -> ext l' (pure x') >> assign v' l' r' (ev e')
+      LamV v' e' r' -> (ev x, alloc v') >>== \x' l' -> do ext l' (pure x'); assign v' l' r' (ev e')
       _             -> exc ("\"" <> fmt lamV <> "\" is not a function")
+  where
+    (x, y) >>== f = x >>= \a -> y >>= \b -> f a b
+    plug3 f a b c = f a b =<< c
+    bind2 f a b = join $ liftM2 f a b
 
 class Store l m where
   deref :: l -> m (Val l)
@@ -78,28 +77,19 @@ parser = parse $ expr <* eof
       try (liftM3 (flip Op2) expr op expr)
       </> liftM2 App expr expr
       </> expr)
-    <|> do kw "let"; x <- iden; kw "="; v <- expr; kw "in"; e <- expr;  pure $ App (Lam x e) v
-    </> do symbol "λ" <|> symbol "fn "; liftM2 Lam iden (dot >> expr)
-    </> do symbol "μ" <|> symbol "mu "; liftM2 Rec iden (dot >> expr)
-    <|> do kw "if" ; b <- expr; kw "then"; x <- expr; kw "else"; y <- expr; pure $ If b x y
-    <|> fmap Num nat
-    <|> fmap Vbl iden
-  lexer = Token.makeTokenParser emptyDef
-    { Token.commentStart = "/*" 
-    , Token.commentEnd = "*/" 
-    , Token.commentLine = "//"
-    , Token.opStart = oneOf "+-/*"
-    , Token.opLetter = oneOf "+-/*"
-    , Token.reservedNames = ["let", "in", "if", "then", "else", "λ", "fn ", "μ", "mu "]}
+    </> liftM2 Lam (do symbol "λ" <|> symbol "fn "; iden) (do dot; expr)
+    </> liftM2 Rec (do symbol "μ" <|> symbol "mu "; iden) (do dot; expr)
+    <|> liftM3 If     (do kw "if" ; expr) (do kw "then"; expr) (do kw "else"; expr)
+    <|> liftM3 letApp (do kw "let"; iden) (do kw "="   ; expr) (do kw "in"  ; expr)
+    <|> fmap   Num nat
+    <|> fmap   Vbl iden
+  letApp x arg body = App (Lam x body) arg
+  lx = Tn.makeTokenParser emptyDef { Tn.commentStart = "/*", Tn.commentEnd = "*/"
+    , Tn.commentLine = "//", Tn.opStart = oneOf "+-/*" , Tn.opLetter = oneOf "+-/*"
+    , Tn.reservedNames = ["let", "in", "if", "then", "else"]}
   a </> b = a <|> try b
-  parens = Token.parens lexer
-  iden = Token.identifier lexer
-  ws = Token.whiteSpace lexer
-  symbol = Token.symbol lexer
-  nat = Token.natural lexer
-  dot = Token.dot lexer
-  op = Token.operator lexer
-  kw = Token.reserved lexer
+  parens = Tn.parens lx; iden = Tn.identifier lx; ws = Tn.whiteSpace lx; symbol = Tn.symbol lx
+  nat = Tn.natural lx; dot = Tn.dot lx; op = Tn.operator lx; kw = Tn.reserved lx
 
 
 instance (Monad m, Show l) => Environment l (ReaderT (Env l) m) where

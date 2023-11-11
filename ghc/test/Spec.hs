@@ -9,7 +9,9 @@ import Stanly.Fmt (fmt)
 import Stanly.Interpreter (Expr (..), parser)
 import Test.Hspec
 import Test.QuickCheck
+import qualified Text.Parsec.Error
 
+parser' :: String -> Either Text.Parsec.Error.ParseError Expr
 parser' = parser "<test>"
 
 newtype TestExpr = TestExpr {unTestExpr :: Expr}

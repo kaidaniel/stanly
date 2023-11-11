@@ -1,0 +1,12 @@
+let fib = rec fib = λn. 
+    if  n - 1 
+    then (if n - 2 
+          then fib (n - 1) + fib (n - 2) 
+          else 1) 
+    else 1
+in
+    let fib1 = fib 1 in
+    let fib2 = fib 2 in
+    let fib3 = fib 3 in
+    let pair = λx. λy. λf. f x y in
+    pair (pair fib1 fib2) fib3
