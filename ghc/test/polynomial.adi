@@ -1,17 +1,19 @@
 let square   = λx.(x * x);
 let cube     = λx.((square x) * x);
-let quadric  = λx.(square (square x));
-let quintic  = λx.(cube (square x));
 
-let polynomial = λx.(
-    // x + x^2 + x^3 + x^4 + x^5
-    (((((x + (square x)) + (cube x)) + (quadric x)) + (quintic x)))
-);
+let quintic = λa.λb.λc.λd.λe.λx.
+    ((((((a*x) + (b*(square x))) + (c*(cube x))) + (d*(square (square (x))))) + (e*(cube (square x)))))
+;
 
-let result = λa.λb.λc.λf.(f a b c);
+let polynomial1 = (quintic 0 0 0 0 1);
+let polynomial2 = (quintic 1 1 1 1 1);
+let polynomial3 = (quintic 1 2 3 4 5);
+
+let result = λa.λb.λc.λd.λf.(f a b c d);
 (
     result
-        (polynomial 1)   // 5
-        (polynomial 2)   // 2 + 4 + 8 + 16 + 32 = 62
-        (polynomial 10)  // 111110
+        (polynomial1 10)   // 100000
+        (polynomial1  2)   //     32
+        (polynomial2  1)   //      5
+        (polynomial3  0)   //      0
 )
