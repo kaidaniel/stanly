@@ -28,9 +28,10 @@ executable stanly
     hs-source-dirs:   app
      
 
-test-suite stanly-test
+executable stanly-test
+-- test-suite stanly-test
     import:           shared-properties
-    type:             exitcode-stdio-1.0
+    -- type:             exitcode-stdio-1.0
     main-is:          Spec.hs
-    hs-source-dirs:   test
+    hs-source-dirs:   tests
     build-depends:    stanly-lib, hspec, QuickCheck

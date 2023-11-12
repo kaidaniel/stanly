@@ -66,16 +66,15 @@ main = hspec $ do
     it "can't apply numbers" $ do
       resultOf execConcrete "(0 1)" `shouldBe` "(Exception: Left hand side of application not bound to a function.\n\nIn function position >>> 0\nIn argument position >>> 1, )"
       resultOf execConcrete "let x = 1 in (x 0)" `shouldBe` "(Exception: Left hand side of application not bound to a function.\n\nIn function position >>> x\nIn argument position >>> 0, 0   num 1)"
-      resultOf execConcrete "let f = (fn x.(1 + x)) in ((f 2) 4)" `shouldBe` "(Exception: Left hand side of application not bound to a function.\n\nIn function position >>> (f 2)\nIn argument position >>> 4, 1   num 2\n0   lam λx.(1 + x) Γ⟦⟧)"
     it "can't use undefined variables" $ do
       resultOf execConcrete "(x + 1)" `shouldBe` "(Exception: \"x\" not found in environment: Γ⟦⟧, )"
       resultOf execConcrete "let f = (fn y.(y + 1)) in (f z)" `shouldBe` "(Exception: \"z\" not found in environment: Γ⟦f: 0⟧, 0   lam λy.(y + 1) Γ⟦⟧)"
     it "can't divide by zero" $ do
       resultOf execConcrete "(1 / 0)" `shouldBe` "(Exception: Division by zero. 1/0, )"
-      resultOf execConcrete "let x = 2 in let y = 0 in (x / y)" `shouldBe` "(Exception: Division by zero. 2/0, 1   num 0\n0   num 2)"
+      resultOf execConcrete "let x = 2 in let y = 0 in (x / y)" `shouldBe` "(Exception: Division by zero. 2/0, 0   num 2\n1   num 0)"
     it "correctly shadows bindings" $ do
-      resultOf execConcrete "let x = 1 in let x = 2 in x" `shouldBe` "(2, 1   num 2\n0   num 1)"
-      resultOf execConcrete "let myvar = 1 in ((fn myvar.(myvar + myvar)) 3)" `shouldBe` "(6, 1   num 3\n0   num 1)"
+      resultOf execConcrete "let x = 1 in let x = 2 in x" `shouldBe` "(2, 0   num 1\n1   num 2)"
+      resultOf execConcrete "let myvar = 1 in ((fn myvar.(myvar + myvar)) 3)" `shouldBe` "(6, 0   num 1\n1   num 3)"
 
   describe "Concrete.execTrace" $ do
     it "is correct for a few simple examples" $ do

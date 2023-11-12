@@ -11,10 +11,9 @@ import Control.Monad.Except ( throwError , MonadError, ExceptT, runExceptT)
 import Stanly.Interpreter
 import Stanly.Fmt
 import Data.Function(fix)
-import Control.Monad.Writer(WriterT, runWriterT, tell, MonadWriter)
+import Control.Monad.Writer(runWriterT, tell, MonadWriter)
 import Data.List ((\\))
 import qualified Stanly.Interpreter as S
-import Control.Arrow((>>>))
 
 -- newtype ReaderT r m a = ReaderT { runReaderT :: r -> m a       }
 -- newtype ExceptT e m a = ExceptT { runExceptT :: m (Either e a) }
@@ -34,7 +33,7 @@ execConcrete' :: (Expr -> ConcreteT Identity (S.Val Int)) -> Expr -> (Either Str
 execConcrete' ev' = runIdentity . runConcreteT . ev'
 
 execConcrete :: Expr -> (Either String (Val Int), Store')
-execConcrete = execConcrete' (fix S.eval')
+execConcrete = execConcrete' (fix S.eval)
 
 instance (Monad m) => Exc (ConcreteT m) where
   exc er = throwError $ "Exception: " ++ er
@@ -65,10 +64,6 @@ instance (Monad m) => Store Addr (ConcreteT m) where
       Nothing -> error $ show l ++ " not found in store. " ++ fmt (Store_ store)
   ext l s = modify (\(Store_ store) -> Store_ ((l, s) : store))
 
-instance Interpreter Addr (ConcreteT Identity) where
-  ev :: Expr -> ConcreteT Identity (Val Int)
-  ev = eval
-
 unknownOp :: String -> String
 unknownOp o = "Unknown operator '" ++ o ++ "'"
 
@@ -93,23 +88,14 @@ instance Fmt ProgramTrace where
       join' :: [(ANSI, Integer)] -> ANSI
       join' = foldr (\(a, n) b -> start (show @Integer n ++ ". ") <> a <> start "\n" <> b) mempty
 
-
-instance (Monad m) => Interpreter Int (ConcreteT (WriterT ProgramTrace m)) where
-  ev e = do
-    r <- env
-    store <- get
-    tell $ ProgramTrace [(e, r, store)]
-    eval e
-
-evTrace :: (MonadState Store' m, MonadWriter ProgramTrace m, Interpreter Addr m,  Environment Int m) => Expr -> m (Val Addr)
-evTrace e = do
-    r <- env
-    store <- get
-    tell $ ProgramTrace [(e, r, store)]
-    S.eval' evTrace e
-
 execTrace :: Expr -> ProgramTrace
-execTrace = snd . runIdentity . runWriterT . runConcreteT . evTrace
+execTrace = snd . runIdentity . runWriterT . runConcreteT . ev
+  where
+    ev e = do
+      r <- env
+      store <- get
+      tell $ ProgramTrace [(e, r, store)]
+      S.eval @Addr ev e
 
 newtype NotCovered = NotCovered [Expr] deriving (Eq, Show, Semigroup, Monoid)
 instance Fmt NotCovered where
@@ -119,8 +105,9 @@ execNotCovered :: Expr -> NotCovered
 execNotCovered e = NotCovered $ let ProgramTrace t = execTrace e in (e : subexprs e) \\ map (\(e', _, _) -> e') t
 
 
-evPruned :: S.Expr -> ConcreteT Identity (S.Val Int)
-evPruned e = S.eval' evPruned e >>= \case S.LamV x body r -> return (S.LamV x body (S.pruneEnv body r)); v -> return v
-
 execPruned :: Expr -> (Either String (Val Int), Store')
-execPruned = execConcrete' evPruned
+execPruned = execConcrete' ev
+  where
+    ev e = S.eval ev e >>= \case 
+      S.LamV x body r -> return (S.LamV x body (S.pruneEnv body r))
+      v -> return v

@@ -50,14 +50,11 @@ instance (Monad m) => Store Addr (AbstractT m) where
         maybe (error $ show l ++ " not found in store. " ++ fmt store) pure (lookup l $ unStore store)
     ext l s = modify (\(Store_ store) -> Store_ ((l, s) : store))
 
-instance (MonadPlus m) => Interpreter Addr (AbstractT m) where
-    ev = eval
-
 
 newtype PowerSetT a = PowerSet { unPowerSet :: [a] } deriving (Eq, Show, Foldable, Functor, Applicative, Monad, Alternative, MonadPlus)
 
 execPowerSet :: Expr -> PowerSetT (Val Var, Store')
-execPowerSet e = PowerSet $ nub $ (unPowerSet . runAbstractT) (ev e)
+execPowerSet e = PowerSet $ nub $ (unPowerSet . runAbstractT) (fix eval e)
 
 instance (Fmt a) => Fmt (PowerSetT a) where
     ansiFmt (PowerSet xs) = foldr ((\a b -> a <> start "\n" <> b) . ansiFmt) (start "") xs

@@ -9,7 +9,7 @@ import qualified Control.Monad.Reader as R
 import qualified Control.Monad as M
 import qualified Text.Parsec as P
 import qualified Stanly.Fmt as F
-import Data.Function((&), fix)
+import Data.Function((&))
 import qualified Control.Applicative as A
 import Text.Parsec.Language (emptyDef)
 import qualified Text.Parsec.Token as Tn
@@ -39,11 +39,8 @@ data Val l
   | Undefined String
   deriving (Eq, Show, Foldable)
 
-eval :: (Interpreter l m) => Expr -> m (Val l)
-eval = eval' ev
-
-eval' :: (Interpreter l m) => (Expr -> m (Val l)) -> Expr -> m (Val l)
-eval' ev = \case
+eval :: Interpreter l m => (Expr -> m (Val l)) -> Expr -> m (Val l)
+eval ev = \case
   Num n        -> pure  (NumV n)
   Txt s        -> pure  (TxtV s)
   Lam v e      -> fmap  (LamV v e) env
@@ -70,25 +67,24 @@ eval' ev = \case
       <> "\n\nIn function position >>> " <> F.fmt lamV
       <> "\nIn argument position >>> " <> F.fmt arg
 
-class Store l m where
+class (Environment l m) => Store l m where
   deref :: l -> m (Val l)
   ext   :: l -> Val l -> m ()
   alloc :: Var -> m l
 
-class Environment l m where
+class (Monad m) => Environment l m where
   search :: Var -> (l -> m (Val l)) -> (String -> m (Val l)) -> m (Val l)
   assign :: Var -> l -> Env l -> m (Val l) -> m (Val l)
   env    :: m (Env l)
 
-class Primops l m where
+class (Monad m) => Primops l m where
   op2    :: String -> Val l -> Val l -> m (Val l)
   branch :: m (Val l) -> m (Val l) -> Val l -> m (Val l)
 
-class Exc m where
+class (Monad m) => Exc m where
   exc :: String -> m (Val l)
 
-class (Exc m, Primops l m, Store l m, Environment l m, Monad m) => Interpreter l m where
-  ev :: Expr -> m (Val l)
+type Interpreter l m = (Exc m, Primops l m, Store l m)
 
 parser :: String -> String -> Either P.ParseError Expr
 parser = P.parse $ expr <* P.eof
