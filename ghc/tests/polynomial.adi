@@ -6,7 +6,7 @@ let unreachable-subtree = mu f.fn x.
 ;
 
 let quintic = λa.λb.λc.λd.λe.λx.
-    ((((((a*x) + (b*(square x))) + (c*(cube x))) + (d*(square (square (x))))) + (e*(cube (square x)))))
+    ((((((a*x) + (b*(square x))) + (c*(cube x))) + (d*(square (square (x))))) + (e*(x * (x * (x * (x * x)))))))
 ;
 
 let polynomial1 = (quintic 0 0 0 0 1);
@@ -16,8 +16,8 @@ let polynomial3 = (quintic 1 2 3 4 5);
 let join = λa.λf.λb.(f (("" + a) + (", " + b)));
 let tail = fn x.("" + x);
 (
-    join (polynomial1 10)   // 100000
-    join (polynomial1  2)   //     64
-    join (polynomial2  1)   //      5
-    tail (polynomial3  0)   //      0
+    join (polynomial1 10)
+    join (polynomial1  2)
+    join (polynomial2  1)
+    tail (polynomial3  0)
 )

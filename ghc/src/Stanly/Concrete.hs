@@ -1,6 +1,7 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
 {-# HLINT ignore "Eta reduce" #-}
+{-# LANGUAGE LambdaCase #-}
 module Stanly.Concrete(execConcrete, execTrace, execNotCovered) where
 
 import Control.Monad.Identity (Identity, runIdentity)
@@ -61,6 +62,7 @@ instance (Monad m) => Store Addr (ConcreteT m) where
 instance Interpreter Addr (ConcreteT Identity) where
   ev :: Expr -> ConcreteT Identity (Val Int)
   ev = eval
+  -- ev e = eval e >>= \case LamV x body r -> return (LamV x body (pruneEnv body r)); v -> return v
 
 unknownOp :: String -> String
 unknownOp o = "Unknown operator '" ++ o ++ "'"

@@ -1,9 +1,11 @@
+{-# LANGUAGE LambdaCase #-}
 import Stanly.Concrete (execConcrete, execTrace, execNotCovered)
 import Stanly.Abstract (execPowerSet)
 import Stanly.Fmt (Fmt (..))
 import qualified Stanly.Interpreter as S
 import qualified Options.Applicative as O
 import qualified Control.Monad as M
+import qualified Data.List as L
 import Data.Bool (bool)
 
 data Options = Options
@@ -43,16 +45,17 @@ main = do
   str <- getContents
   ast <- either (error . show) return (S.parser "<stdin>" str)
   let c = optNoColour cli_opts
-  M.when (optValue cli_opts)      $ do either putStrLn (putStrLn . fmt' c) (fst $ execConcrete ast)
+  M.when (optValue cli_opts)      $ do either putStrLn (putVal c) (fst $ execConcrete ast)
   M.when (optEcho cli_opts)       $ do putStrLn str
-  M.when (optDesugared cli_opts)  $ do putStrLn $ fmt' c ast
+  M.when (optDesugared cli_opts)  $ do putFmt c ast
   M.when (optAst cli_opts)        $ do print ast
-  M.when (optConcrete cli_opts)   $ do putStrLn (putStore (snd $ execConcrete ast) c)
-  M.when (optTrace cli_opts)      $ do putStrLn $ fmt' c (execTrace ast)
-  M.when (optNotCovered cli_opts) $ do putStrLn $ fmt' c (execNotCovered ast)
-  M.when (optAbstract cli_opts)   $ do putStrLn $ fmt' c (execPowerSet ast)
+  M.when (optConcrete cli_opts)   $ do putFmt c (snd $ execConcrete ast)
+  M.when (optTrace cli_opts)      $ do putFmt c (execTrace ast)
+  M.when (optNotCovered cli_opts) $ do putFmt c (execNotCovered ast)
+  M.when (optAbstract cli_opts)   $ do putFmt c (execPowerSet ast)
   
   where
-    fmt' :: forall a. Fmt a => Bool -> a -> String
-    fmt' = bool termFmt fmt
-    putStore (S.Store_ s) c = foldr (\(k, v) a -> a <> show k <> ": " <> fmt' c v <> "\n") "" s
+    putFmt :: forall a. Fmt a => Bool -> a -> IO ()
+    putFmt b = putStrLn . bool termFmt fmt b
+    putVal :: Show l => Bool -> S.Val l -> IO()
+    putVal b = \case (S.TxtV s) -> putStrLn s; e -> putFmt b e

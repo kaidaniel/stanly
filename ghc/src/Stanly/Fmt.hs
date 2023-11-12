@@ -26,14 +26,14 @@ dim = ansi 2
 italic = ansi 3
 underline = ansi 4
 black = ansi 90
-red = ansi 91
-green = ansi 92
-yellow = ansi 93
-blue = ansi 94
-magenta = ansi 95
-cyan = ansi 96
-white = ansi 97
-dflt = ansi 99
+red = ansi 31
+green = ansi 32
+yellow = ansi 33
+blue = ansi 34
+magenta = ansi 35
+cyan = ansi 36
+white = ansi 37
+dflt = ansi 39
 
 class Fmt a where
   fmt :: a -> String

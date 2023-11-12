@@ -13,6 +13,8 @@ import Data.Function((&))
 import qualified Control.Applicative as A
 import Text.Parsec.Language (emptyDef)
 import qualified Text.Parsec.Token as Tn
+import qualified Text.Printf as Pr
+import qualified Control.Arrow as Arr
 
 type Var = String
 
@@ -59,7 +61,7 @@ eval = \case
       _             -> exc (notAFunction lamV arg)
   where
     bind2 f a b   = M.join $ M.liftM2 f a b
-    notAFunction lamV arg = 
+    notAFunction lamV arg =
       "Left hand side of application not bound to a function."
       <> "\n\nIn function position >>> " <> F.fmt lamV
       <> "\nIn argument position >>> " <> F.fmt arg
@@ -131,26 +133,33 @@ subexprs = f
   p = map pure
 
 
+pruneEnv :: Expr -> Env l -> Env l
+pruneEnv e = Env . filter (flip elem (do Vbl v <- subexprs e; [v]) . fst) . unEnv
+
 newtype Store_ l = Store_ { unStore :: [(l, Val l)] } deriving (Eq, Show, Foldable)
 
-instance (Show l) =>F.Fmt(Env l) where
-  ansiFmt r = F.green F.>+ "⟦" <> fmt' r "" <> F.green F.>+ "⟧"
+instance (Show l) => F.Fmt(Env l) where
+  ansiFmt (Env r) = F.yellow F.>+ "Γ⟦" <> fmt' r "" <> F.yellow F.>+ "⟧"
     where
-      fmt' (Env ((v, a) : r')) sep = F.start sep <> F.green F.>+ v <> F.start ": " <> F.green F.>+ show a <> fmt' (Env r') ", "
-      fmt' (Env []) _ = F.start ""
+      fmt' ((v, a) : r') sep = F.start (sep <> v <> ": ") <> F.yellow F.>+ show a <> fmt' r' ", "
+      fmt' [] _ = F.start ""
 
 instance (Show l) => F.Fmt(Store_ l) where
-  ansiFmt s = F.yellow F.>+ "Σ⟦" <> fmt' s "" <> F.yellow F.>+ "⟧"
+  ansiFmt = unStore Arr.>>> \case
+      [] -> mempty
+      (x:xs) -> f' x <> mconcat (map f xs)
     where
-      fmt' (Store_ ((a, v) : r)) sep = F.start sep <> F.green F.>+ show a <> F.start ": " <> F.ansiFmt v <> fmt' (Store_ r) ", "
-      fmt' (Store_ []) _ = F.start ""
+      prefix = (F.dim F.>+) . \case LamV {} -> "lam "; NumV {} -> "num "; TxtV {} -> "txt "; Undefined {} -> "und "
+      f (k, v)  = F.start "\n" <> f' (k, v)
+      f' (k, v) = F.yellow F.>+ Pr.printf "%-4s" (show k) <> prefix v <> F.ansiFmt v
+
 
 instance (Show l) => F.Fmt(Val l) where
   ansiFmt = \case
-    LamV x body r -> F.start "λ" <> F.bold F.>+ x <> F.start "." <> F.ansiFmt body <> F.ansiFmt r
+    LamV x body r -> F.start "λ" <> F.bold F.>+ x <> F.start "." <> F.ansiFmt body <> F.start " " <> F.ansiFmt r
     NumV n        -> F.dim F.>+ show n
     TxtV s        -> F.dim F.>+ show s
-    Undefined s   -> F.start $ "Undefined: " <> s
+    Undefined s   -> F.start ("Undefined: " <> s)
 
 instance (Show l) => F.Fmt(Either String (Val l)) where
   ansiFmt = \case
@@ -159,8 +168,8 @@ instance (Show l) => F.Fmt(Either String (Val l)) where
 
 instance F.Fmt Expr where
   ansiFmt = \case
-    Vbl x            -> F.green F.>+ x
-    App fn arg       -> F.red F.>+ "("  <> appParen fn    <> F.start " " <> F.ansiFmt arg    <> F.red F.>+ ")"
+    Vbl x            -> F.start x
+    App fn arg       -> (F.dim <> F.magenta) F.>+ "("  <> appParen fn    <> F.start " " <> F.ansiFmt arg    <> (F.dim <> F.magenta) F.>+ ")"
     Lam x body       -> F.dim F.>+ "(λ" <> F.bold F.>+ x  <> F.start "." <> binderParen body <> F.dim F.>+ ")"
     Rec f body       -> F.dim F.>+ "(μ" <> F.bold F.>+ f  <> F.start "." <> binderParen body <> F.dim F.>+ ")"
     Op2 o left right -> F.dim F.>+ "("  <> F.ansiFmt left <> opFmt o     <> F.ansiFmt right  <> F.dim F.>+ ")"
@@ -172,7 +181,7 @@ instance F.Fmt Expr where
                         F.start " else " <> F.ansiFmt efalse <> F.start ")"
     where
       appParen = \case
-          App fn arg -> appParen fn <> F.red F.>+ " " <> F.ansiFmt arg
+          App fn arg -> appParen fn <> (F.dim <> F.magenta) F.>+ " " <> F.ansiFmt arg
           e -> F.ansiFmt e
       binderParen = \case
           Rec f body -> F.start "μ" <> F.bold F.>+ f <> F.start "." <> binderParen body
