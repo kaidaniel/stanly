@@ -13,12 +13,13 @@ let factorial = mu f.λn.
     else 1
 ;
 
-let result = λa.λb.λc.λd.λf.(f a b c d);
-
+let join = λa.λf.λb.(f (([] + a) + ([,] + b)));
+let tail = fn x.([ ] + x);
 (
-    result 
-        (fibonacci 4) 
-        (fibonacci 5) 
-        (factorial 6) 
-        (factorial 7)
+   join (fibonacci  4) 
+   join (fibonacci  6)
+   join (fibonacci  8) 
+   join (factorial  7) 
+   join (factorial  6)
+   tail (factorial  1)
 )

@@ -1,5 +1,9 @@
-let square   = λx.(x * x);
-let cube     = λx.((square x) * x);
+let square  = λx.(x * x);
+let cube    = λx.((square x) * x);
+
+let unreachable-subtree = mu f.fn x.
+(1 2 3 4 5 5)
+;
 
 let quintic = λa.λb.λc.λd.λe.λx.
     ((((((a*x) + (b*(square x))) + (c*(cube x))) + (d*(square (square (x))))) + (e*(cube (square x)))))
@@ -9,11 +13,11 @@ let polynomial1 = (quintic 0 0 0 0 1);
 let polynomial2 = (quintic 1 1 1 1 1);
 let polynomial3 = (quintic 1 2 3 4 5);
 
-let result = λa.λb.λc.λd.λf.(f a b c d);
+let join = λa.λf.λb.(f (([] + a) + ([,] + b)));
+let tail = fn x.([ ] + x);
 (
-    result
-        (polynomial1 10)   // 100000
-        (polynomial1  2)   //     32
-        (polynomial2  1)   //      5
-        (polynomial3  0)   //      0
+    join (polynomial1 10)   // 100000
+    join (polynomial1  2)   //     64
+    join (polynomial2  1)   //      5
+    tail (polynomial3  0)   //      0
 )

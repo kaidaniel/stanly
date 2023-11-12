@@ -41,6 +41,7 @@ instance (MonadPlus m) => Primops Addr (AbstractT m) where
         NumV n -> if n /= 0 then tru else fls
         Undefined _ -> mplus tru fls
         LamV {} -> exc "Can't branch on function."
+        TxtV {} -> exc "Can't branch on text."
 
 instance (Monad m) => Store Addr (AbstractT m) where
     alloc = pure

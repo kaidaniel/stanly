@@ -30,6 +30,7 @@ instance Arbitrary TestExpr where
         let rec' = resize (n `div` 2) (fmap unTestExpr arbitrary)
          in oneof
               [ Num <$> choose (0, 1000),
+                Txt <$> listOf1 (elements ['a' .. 'z']),
                 Vbl <$> word,
                 Op2 <$> elements ["+", "-", "*", "/"] <*> rec' <*> rec',
                 App <$> rec' <*> rec',

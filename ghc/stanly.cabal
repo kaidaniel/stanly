@@ -24,7 +24,7 @@ library stanly-lib
 executable stanly
     import:           shared-properties
     main-is:          Main.hs
-    build-depends:    stanly-lib, pretty-simple, text
+    build-depends:    stanly-lib, text, optparse-applicative
     hs-source-dirs:   app
      
 

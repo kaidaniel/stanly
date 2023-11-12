@@ -42,7 +42,9 @@ instance (Monad m) => Primops Addr (ConcreteT m) where
         then exc $ "Division by zero. " ++ show n0 ++ "/" ++ show n1
         else return $ NumV (n0 `div` n1)
     _ -> exc $ unknownOp o
-  op2 o _ _ = exc $ invalidArgs o
+  op2 "+" (TxtV t0) (TxtV t1) = return $ TxtV (t0 ++ t1)
+  op2 "+" (TxtV t0) (NumV n1) = return $ TxtV (t0 ++ show n1)
+  op2 o a b = exc (invalidOperands o a b)
   branch fls tru condition = case condition of
     NumV n -> if n /= 0 then tru else fls
     _ -> pure $ Undefined "Branching on non-numeric value"
@@ -60,9 +62,20 @@ instance Interpreter Addr (ConcreteT Identity) where
   ev :: Expr -> ConcreteT Identity (Val Int)
   ev = eval
 
-invalidArgs, unknownOp :: String -> String
-invalidArgs o = "Invalid arguments to operator '" ++ o ++ "'"
+unknownOp :: String -> String
 unknownOp o = "Unknown operator '" ++ o ++ "'"
+
+invalidOperands :: (Fmt a1, Fmt a2) => String -> a1 -> a2 -> String
+invalidOperands o a b = 
+  "Invalid arguments to operator '" 
+  <> o 
+  <> "':\n"
+  <> "\nleft operand  >>> " 
+  <> termFmt a 
+  <> "\noperation     >>> " 
+  <> o 
+  <> "\nright operand >>> "
+  <> termFmt b
 
 newtype ProgramTrace = ProgramTrace [(Expr, Env Int, Store')] deriving (Eq, Show, Semigroup, Monoid)
 
