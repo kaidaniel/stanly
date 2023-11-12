@@ -1,11 +1,9 @@
-{-# LANGUAGE LambdaCase #-}
 import Stanly.Concrete (execConcrete, execTrace, execNotCovered)
 import Stanly.Abstract (execPowerSet)
 import Stanly.Fmt (Fmt (..))
 import qualified Stanly.Interpreter as S
 import qualified Options.Applicative as O
 import qualified Control.Monad as M
-import qualified System.IO as IO
 import Data.Bool (bool)
 
 data Options = Options

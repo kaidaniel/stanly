@@ -13,8 +13,8 @@ let polynomial1 = (quintic 0 0 0 0 1);
 let polynomial2 = (quintic 1 1 1 1 1);
 let polynomial3 = (quintic 1 2 3 4 5);
 
-let join = λa.λf.λb.(f (([] + a) + ([,] + b)));
-let tail = fn x.([ ] + x);
+let join = λa.λf.λb.(f (("" + a) + (", " + b)));
+let tail = fn x.("" + x);
 (
     join (polynomial1 10)   // 100000
     join (polynomial1  2)   //     64

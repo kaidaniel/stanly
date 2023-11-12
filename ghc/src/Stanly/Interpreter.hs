@@ -61,8 +61,8 @@ eval = \case
     bind2 f a b   = M.join $ M.liftM2 f a b
     notAFunction lamV arg = 
       "Left hand side of application not bound to a function."
-      <> "\n\nIn function position >>> " <> F.termFmt lamV
-      <> "\nIn argument position >>> " <> F.termFmt arg
+      <> "\n\nIn function position >>> " <> F.fmt lamV
+      <> "\nIn argument position >>> " <> F.fmt arg
 
 class Store l m where
   deref :: l -> m (Val l)
@@ -89,7 +89,7 @@ parser = P.parse $ expr <* P.eof
   where
   expr = ws *> expr'
   expr' = parens (P.try op2' P.<|> P.try app P.<|> expr)
-    P.<|> A.liftA  Txt  strLit
+    P.<|> A.liftA  Txt  stringLiteral
     P.<|> A.liftA2 Lam  (do try' "λ" P.<|> try' "fn "; iden) (do dot; expr)
     P.<|> A.liftA2 Rec  (do try' "μ" P.<|> try' "mu "; iden) (do dot; expr)
     P.<|> A.liftA3 If   (do kw "if" ; expr) (do kw "then"; expr) (do kw "else"; expr)
@@ -106,10 +106,8 @@ parser = P.parse $ expr <* P.eof
     , Tn.reservedNames = ["let", "in", "if", "then", "else", ";"]}
   kw     = Tn.reserved lx; try'     = P.try . Tn.symbol lx;   ws = Tn.whiteSpace lx
   parens = Tn.parens   lx; iden     = Tn.identifier lx; dot      = Tn.dot      lx
-  nat    = Tn.natural  lx; operator = Tn.operator   lx; brackets = Tn.brackets lx
-  strLit = let strChr =      fmap Just (P.satisfy (A.liftA2 (&&) (/= ']') (/= '\\')))
-                       P.<|> fmap Just (do P.char '\\'; P.anyChar)
-           in Tn.lexeme lx $ fmap (foldr (maybe id (:)) "") (brackets (P.many strChr))
+  nat    = Tn.natural  lx; operator = Tn.operator   lx;
+  stringLiteral = Tn.stringLiteral lx
 
 instance (Monad m, Show l) => Environment l (R.ReaderT (Env l) m) where
   search variable iffound ifnotfound = R.ask >>= \r -> lookup variable (unEnv r) & \case
@@ -165,9 +163,9 @@ instance F.Fmt Expr where
     App fn arg       -> F.red F.>+ "("  <> appParen fn    <> F.start " " <> F.ansiFmt arg    <> F.red F.>+ ")"
     Lam x body       -> F.dim F.>+ "(λ" <> F.bold F.>+ x  <> F.start "." <> binderParen body <> F.dim F.>+ ")"
     Rec f body       -> F.dim F.>+ "(μ" <> F.bold F.>+ f  <> F.start "." <> binderParen body <> F.dim F.>+ ")"
-    Op2 o left right -> F.dim F.>+ "("  <> F.ansiFmt left <> F.start o   <> F.ansiFmt right  <> F.dim F.>+ ")"
+    Op2 o left right -> F.dim F.>+ "("  <> F.ansiFmt left <> opFmt o     <> F.ansiFmt right  <> F.dim F.>+ ")"
     Num n            -> F.start $ show n
-    Txt s            -> (F.dim <> F.italic) F.>+ ("[" <> s <> "]")
+    Txt s            -> F.dim F.>+ show s
     If etest etrue efalse ->
                         F.start "(if "   <> F.ansiFmt etest  <>
                         F.start " then " <> F.ansiFmt etrue  <>
@@ -180,3 +178,4 @@ instance F.Fmt Expr where
           Rec f body -> F.start "μ" <> F.bold F.>+ f <> F.start "." <> binderParen body
           Lam x body -> F.start "λ" <> F.bold F.>+ x <> F.start "." <> binderParen body
           e -> F.ansiFmt e
+      opFmt o = F.start (" " <> o <> " ")
