@@ -2,7 +2,7 @@
 
 {-# HLINT ignore "Eta reduce" #-}
 {-# LANGUAGE LambdaCase #-}
-module Stanly.Concrete(execConcrete, execTrace, execNotCovered) where
+module Stanly.Concrete(execConcrete, execTrace, execNotCovered, execPruned) where
 
 import Control.Monad.Identity (Identity, runIdentity)
 import Control.Monad.Reader(MonadReader, ReaderT, runReaderT)
@@ -10,8 +10,11 @@ import Control.Monad.State(gets, get, MonadState, modify, StateT, runStateT)
 import Control.Monad.Except ( throwError , MonadError, ExceptT, runExceptT)
 import Stanly.Interpreter
 import Stanly.Fmt
+import Data.Function(fix)
 import Control.Monad.Writer(WriterT, runWriterT, tell, MonadWriter)
 import Data.List ((\\))
+import qualified Stanly.Interpreter as S
+import Control.Arrow((>>>))
 
 -- newtype ReaderT r m a = ReaderT { runReaderT :: r -> m a       }
 -- newtype ExceptT e m a = ExceptT { runExceptT :: m (Either e a) }
@@ -27,8 +30,11 @@ newtype ConcreteT m a = ConcreteT (ReaderT (Env Int) (ExceptT String (StateT Sto
 runConcreteT :: ConcreteT m a -> m (Either String a, Store')
 runConcreteT (ConcreteT m) = (flip runStateT (Store_ []) . runExceptT) (runReaderT m (Env []))
 
+execConcrete' :: (Expr -> ConcreteT Identity (S.Val Int)) -> Expr -> (Either String (Val Int), Store')
+execConcrete' ev' = runIdentity . runConcreteT . ev'
+
 execConcrete :: Expr -> (Either String (Val Int), Store')
-execConcrete = runIdentity . runConcreteT . ev
+execConcrete = execConcrete' (fix S.eval')
 
 instance (Monad m) => Exc (ConcreteT m) where
   exc er = throwError $ "Exception: " ++ er
@@ -62,20 +68,19 @@ instance (Monad m) => Store Addr (ConcreteT m) where
 instance Interpreter Addr (ConcreteT Identity) where
   ev :: Expr -> ConcreteT Identity (Val Int)
   ev = eval
-  -- ev e = eval e >>= \case LamV x body r -> return (LamV x body (pruneEnv body r)); v -> return v
 
 unknownOp :: String -> String
 unknownOp o = "Unknown operator '" ++ o ++ "'"
 
 invalidOperands :: (Fmt a1, Fmt a2) => String -> a1 -> a2 -> String
-invalidOperands o a b = 
-  "Invalid arguments to operator '" 
-  <> o 
+invalidOperands o a b =
+  "Invalid arguments to operator '"
+  <> o
   <> "':\n"
-  <> "\nleft operand  >>> " 
-  <> termFmt a 
-  <> "\noperation     >>> " 
-  <> o 
+  <> "\nleft operand  >>> "
+  <> termFmt a
+  <> "\noperation     >>> "
+  <> o
   <> "\nright operand >>> "
   <> termFmt b
 
@@ -96,11 +101,15 @@ instance (Monad m) => Interpreter Int (ConcreteT (WriterT ProgramTrace m)) where
     tell $ ProgramTrace [(e, r, store)]
     eval e
 
-runTraceT :: ConcreteT (WriterT w m) a -> m ((Either String a, Store'), w)
-runTraceT m = runWriterT (runConcreteT m)
+evTrace :: (MonadState Store' m, MonadWriter ProgramTrace m, Interpreter Addr m,  Environment Int m) => Expr -> m (Val Addr)
+evTrace e = do
+    r <- env
+    store <- get
+    tell $ ProgramTrace [(e, r, store)]
+    S.eval' evTrace e
 
 execTrace :: Expr -> ProgramTrace
-execTrace e = snd ((runIdentity . runTraceT . ev @Addr) e)
+execTrace = snd . runIdentity . runWriterT . runConcreteT . evTrace
 
 newtype NotCovered = NotCovered [Expr] deriving (Eq, Show, Semigroup, Monoid)
 instance Fmt NotCovered where
@@ -108,3 +117,10 @@ instance Fmt NotCovered where
 
 execNotCovered :: Expr -> NotCovered
 execNotCovered e = NotCovered $ let ProgramTrace t = execTrace e in (e : subexprs e) \\ map (\(e', _, _) -> e') t
+
+
+evPruned :: S.Expr -> ConcreteT Identity (S.Val Int)
+evPruned e = S.eval' evPruned e >>= \case S.LamV x body r -> return (S.LamV x body (S.pruneEnv body r)); v -> return v
+
+execPruned :: Expr -> (Either String (Val Int), Store')
+execPruned = execConcrete' evPruned

@@ -9,12 +9,13 @@ import qualified Control.Monad.Reader as R
 import qualified Control.Monad as M
 import qualified Text.Parsec as P
 import qualified Stanly.Fmt as F
-import Data.Function((&))
+import Data.Function((&), fix)
 import qualified Control.Applicative as A
 import Text.Parsec.Language (emptyDef)
 import qualified Text.Parsec.Token as Tn
 import qualified Text.Printf as Pr
-import qualified Control.Arrow as Arr
+import qualified Data.List as L
+import Control.Arrow((>>>))
 
 type Var = String
 
@@ -39,7 +40,10 @@ data Val l
   deriving (Eq, Show, Foldable)
 
 eval :: (Interpreter l m) => Expr -> m (Val l)
-eval = \case
+eval = eval' ev
+
+eval' :: (Interpreter l m) => (Expr -> m (Val l)) -> Expr -> m (Val l)
+eval' ev = \case
   Num n        -> pure  (NumV n)
   Txt s        -> pure  (TxtV s)
   Lam v e      -> fmap  (LamV v e) env
@@ -121,7 +125,7 @@ instance (Monad m, Show l) => Environment l (R.ReaderT (Env l) m) where
 subexprs :: (A.Alternative g) => Expr -> g Expr
 subexprs = f
   where
-  f expression = A.asum $ case expression of
+  f = A.asum . \case
     Lam _ e        -> p [e] <> [f e]
     Num _          -> []
     Txt _          -> []
@@ -134,7 +138,7 @@ subexprs = f
 
 
 pruneEnv :: Expr -> Env l -> Env l
-pruneEnv e = Env . filter (flip elem (do Vbl v <- subexprs e; [v]) . fst) . unEnv
+pruneEnv e = unEnv >>> filter (flip elem (do Vbl v <- subexprs e; [v]) . fst) >>> Env
 
 newtype Store_ l = Store_ { unStore :: [(l, Val l)] } deriving (Eq, Show, Foldable)
 
@@ -145,13 +149,12 @@ instance (Show l) => F.Fmt(Env l) where
       fmt' [] _ = F.start ""
 
 instance (Show l) => F.Fmt(Store_ l) where
-  ansiFmt = unStore Arr.>>> \case
+  ansiFmt = unStore >>> L.reverse >>> \case
       [] -> mempty
-      (x:xs) -> f' x <> mconcat (map f xs)
+      (x:xs) -> line x <> mconcat (map (line >>> (F.start "\n" <>)) xs)
     where
       prefix = (F.dim F.>+) . \case LamV {} -> "lam "; NumV {} -> "num "; TxtV {} -> "txt "; Undefined {} -> "und "
-      f (k, v)  = F.start "\n" <> f' (k, v)
-      f' (k, v) = F.yellow F.>+ Pr.printf "%-4s" (show k) <> prefix v <> F.ansiFmt v
+      line (k, v) = F.yellow F.>+ Pr.printf "%-4s" (show k) <> prefix v <> F.ansiFmt v
 
 
 instance (Show l) => F.Fmt(Val l) where
