@@ -1,39 +1,72 @@
 {-# LANGUAGE LambdaCase #-}
-import Stanly.Concrete (execConcrete, execTrace, execNotCovered, execPruned)
-import Stanly.Abstract (execPowerSet)
+{-# LANGUAGE OverloadedRecordDot #-}
+{-# LANGUAGE RecordWildCards #-}
+import Stanly.Concrete (execConcrete, execTrace, execNotCovered)
+import qualified Stanly.Abstract as Abs
 import Stanly.Fmt (Fmt (..))
 import qualified Stanly.Interpreter as S
 import qualified Options.Applicative as O
-import qualified Control.Monad as M
 import Data.Bool (bool)
-
-
+import qualified Stanly.Fmt as F
+import Control.Arrow((>>>))
+import qualified Control.Monad as M
 
 data Options = Options
-  { optValue :: Bool
-  , optEcho :: Bool
+  { optValue :: String
+  , optStore :: String
   , optDesugared :: Bool
   , optAst :: Bool
-  , optConcrete :: Bool
-  , optPruned :: Bool
   , optTrace :: Bool
   , optNotCovered :: Bool
-  , optAbstract :: Bool
   , optNoColour :: Bool
   } deriving (Show)
 
 options :: O.Parser Options
 options = Options
-      <$> O.switch (O.long "value"       <> O.short 'v' <> O.help "Show the concrete value obtained when the interpreter halts.")
-      <*> O.switch (O.long "echo"        <> O.short 'p' <> O.help "Echo the input program.")
-      <*> O.switch (O.long "desugared"   <> O.short 'd' <> O.help "Show the program after syntax transformation.")
-      <*> O.switch (O.long "ast"         <> O.short 't' <> O.help "Show the abstract syntax tree used by the interpreter.")
-      <*> O.switch (O.long "concrete"    <> O.short 'c' <> O.help "Show full detail of the concrete store when the interpreter halts.")
-      <*> O.switch (O.long "pruned"      <> O.short 'r' <> O.help "Prune environments for names occurring the value subtree.")
-      <*> O.switch (O.long "trace"       <> O.short 't' <> O.help "Show how the interpreter state changes while the program is being evaluated.")
-      <*> O.switch (O.long "not-covered" <> O.short 'n' <> O.help "Show subexpressions that weren't reached covered during interpretation.")
-      <*> O.switch (O.long "abstract"    <> O.short 'a' <> O.help "Show full detail of the abstract store when the interpreter halts.")
-      <*> O.switch (O.long "no-colour"   <> O.short 'w' <> O.help "Don't colourise output.")
+      <$> O.strOption (O.long "value"       <> O.short 'v' <> O.help "Show the value obtained when the interpreter halts."
+                       <> O.metavar "{concrete|abstract}" <> O.showDefault <> O.value "concrete" <> O.completer (O.listCompleter ["concrete", "abstract"]))
+      <*> O.strOption (O.long "store"       <> O.short 's' <> O.help "Show the final state of the store after the program halts."
+                       <> O.metavar "{none|pruned-envs|full-envs}" <> O.showDefault <> O.value "none" <> O.completer (O.listCompleter ["none", "full", "pruned"]))
+      <*> O.switch    (O.long "desugared"   <> O.short 'd' <> O.help "Show the program after syntax transformation.")
+      <*> O.switch    (O.long "ast"         <> O.short 't' <> O.help "Show the abstract syntax tree used by the interpreter.")
+      <*> O.switch    (O.long "trace"       <> O.short 't' <> O.help "Show how the interpreter state changes while the program is being evaluated.")
+      <*> O.switch    (O.long "dead-code"   <> O.short 'n' <> O.help "Show subexpressions that weren't reached during interpretation.")
+      <*> O.switch    (O.long "no-colour"   <> O.short 'w' <> O.help "Don't colourise output.")
+
+fmtVal :: (Show l) => Fns -> S.Val l -> String
+fmtVal Fns{..} = \case (S.TxtV s) -> s; e -> fmt_ e
+
+data Fns = Fns
+  { fs :: forall l. Show l => S.Store_ l -> String
+  , fmt_ :: forall a. Fmt a => a -> String
+  }
+
+concreteOutput :: Fns -> S.Expr -> String
+concreteOutput Fns{..} expr =
+  let (v, s) = execConcrete expr
+  in  either id (fmtVal Fns{..}) v <> "\n" <> fs s
+
+abstractOutput :: Fns -> S.Expr -> String
+abstractOutput Fns{..} expr = do
+  (v, s) <- Abs.unPowerSet $ Abs.execPowerSet expr
+  fmtVal Fns{..} v <> "\n" <> fs s
+
+produceOutput :: Options -> S.Expr -> String
+produceOutput Options{..} expr =
+  let
+    f = case optValue of
+      "concrete" -> concreteOutput
+      "abstract" -> abstractOutput
+      _          -> concreteOutput
+    pruneEnv = \case (l, S.LamV x e r) -> (l, S.LamV x e (S.pruneEnv e r)); x -> x
+    fmt_ :: forall a. Fmt a => a -> String
+    fmt_ = if optNoColour then F.fmt else F.termFmt
+    fs s = case optStore of
+      "none"       -> ""
+      "full"       -> fmt_ s <> "\n"
+      "pruned"     -> (S.unStore >>> map pruneEnv >>> S.Store_ >>> fmt >>> (<> "\n")) s
+      _            -> ""
+  in f Fns {..} expr
 
 main :: IO ()
 main = do
@@ -47,19 +80,11 @@ main = do
           )
   str <- getContents
   ast <- either (error . show) return (S.parser "<stdin>" str)
-  let c = optNoColour cli_opts
-  M.when (optValue cli_opts)      $ do either putStrLn (putVal c) (fst $ execConcrete ast)
-  M.when (optEcho cli_opts)       $ do putStrLn str
-  M.when (optDesugared cli_opts)  $ do putFmt c ast
-  M.when (optAst cli_opts)        $ do print ast
-  M.when (optConcrete cli_opts)   $ do putFmt c (snd $ execConcrete ast)
-  M.when (optPruned cli_opts)     $ do putFmt c (snd $ execPruned ast)
-  M.when (optTrace cli_opts)      $ do putFmt c (execTrace ast)
-  M.when (optNotCovered cli_opts) $ do putFmt c (execNotCovered ast)
-  M.when (optAbstract cli_opts)   $ do putFmt c (execPowerSet ast)
-  
+  putStr (produceOutput cli_opts ast)
+  M.when cli_opts.optDesugared  $ do putFmt (optNoColour cli_opts) ast
+  M.when cli_opts.optAst        $ do print ast
+  M.when cli_opts.optTrace      $ do putFmt (optNoColour cli_opts) (execTrace ast)
+  M.when cli_opts.optNotCovered $ do putFmt (optNoColour cli_opts) (execNotCovered ast)
   where
     putFmt :: forall a. Fmt a => Bool -> a -> IO ()
     putFmt b = putStrLn . bool termFmt fmt b
-    putVal :: Show l => Bool -> S.Val l -> IO()
-    putVal b = \case (S.TxtV s) -> putStrLn s; e -> putFmt b e
