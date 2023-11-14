@@ -10,8 +10,8 @@ cabal:
 
 test: build/stanly build/stanly-test
 	stanly-test --qc-max-success=2000 --color
-	stanly -v < tests/polynomial.adi | tee >(grep "100000, 32, 5, 0" -q)
-	stanly -v < tests/recursion.adi  | tee >(grep "3, 8, 21, 5040, 720, 1" -q)
+	./tests/test.sh
 	touch test
 
-.PHONY: cabal 
+
+.PHONY: cabal

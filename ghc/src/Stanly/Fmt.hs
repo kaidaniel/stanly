@@ -4,9 +4,9 @@
 module Stanly.Fmt where
 
 import qualified Data.Text as T
+import qualified Data.Bifunctor as BF
 
 newtype ANSI = ANSI {unANSI :: [(ESC, T.Text)]} deriving (Eq, Show, Semigroup, Monoid)
-
 
 newtype ESC = ESC {unESC :: T.Text} deriving (Eq, Show, Semigroup, Monoid)
 

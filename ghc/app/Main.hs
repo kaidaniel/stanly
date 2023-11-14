@@ -17,21 +17,21 @@ data Options = Options
   , optDesugared :: Bool
   , optAst :: Bool
   , optTrace :: Bool
-  , optNotCovered :: Bool
+  , optDeadCode :: Bool
   , optNoColour :: Bool
   } deriving (Show)
 
 options :: O.Parser Options
 options = Options
       <$> O.strOption (O.long "value"       <> O.short 'v' <> O.help "Show the value obtained when the interpreter halts."
-                       <> O.metavar "{concrete|abstract}" <> O.showDefault <> O.value "concrete" <> O.completer (O.listCompleter ["concrete", "abstract"]))
+                       <> O.metavar "{none|concrete|abstract}" <> O.showDefault <> O.value "concrete" <> O.completer (O.listCompleter ["none", "concrete", "abstract"]))
       <*> O.strOption (O.long "store"       <> O.short 's' <> O.help "Show the final state of the store after the program halts."
-                       <> O.metavar "{none|pruned-envs|full-envs}" <> O.showDefault <> O.value "none" <> O.completer (O.listCompleter ["none", "full", "pruned"]))
-      <*> O.switch    (O.long "desugared"   <> O.short 'd' <> O.help "Show the program after syntax transformation.")
-      <*> O.switch    (O.long "ast"         <> O.short 't' <> O.help "Show the abstract syntax tree used by the interpreter.")
-      <*> O.switch    (O.long "trace"       <> O.short 't' <> O.help "Show how the interpreter state changes while the program is being evaluated.")
-      <*> O.switch    (O.long "dead-code"   <> O.short 'n' <> O.help "Show subexpressions that weren't reached during interpretation.")
-      <*> O.switch    (O.long "no-colour"   <> O.short 'w' <> O.help "Don't colourise output.")
+                       <> O.metavar "{none|pruned-envs|full-envs}" <> O.showDefault <> O.value "none" <> O.completer (O.listCompleter ["none", "full-envs", "pruned-envs"]))
+      <*> O.switch    (O.long "desugared"   <> O.help "Show the program after syntax transformation.")
+      <*> O.switch    (O.long "ast"         <> O.help "Show the abstract syntax tree used by the interpreter.")
+      <*> O.switch    (O.long "trace"       <> O.help "Show how the interpreter state changes while the program is being evaluated.")
+      <*> O.switch    (O.long "dead-code"   <> O.help "Show parts of the program that weren't reached during interpretation.")
+      <*> O.switch    (O.long "no-colour"   <> O.help "Don't colourise output.")
 
 fmtVal :: (Show l) => Fns -> S.Val l -> String
 fmtVal Fns{..} = \case (S.TxtV s) -> s; e -> fmt_ e
@@ -57,16 +57,17 @@ produceOutput Options{..} expr =
     f = case optValue of
       "concrete" -> concreteOutput
       "abstract" -> abstractOutput
-      _          -> concreteOutput
+      "none"     -> \_ _ -> ""
+      _          -> error "Invalid --value option."
     pruneEnv = \case (l, S.LamV x e r) -> (l, S.LamV x e (S.pruneEnv e r)); x -> x
     fmt_ :: forall a. Fmt a => a -> String
     fmt_ = if optNoColour then F.fmt else F.termFmt
     fs s = case optStore of
-      "none"       -> ""
-      "full"       -> fmt_ s <> "\n"
-      "pruned"     -> (S.unStore >>> map pruneEnv >>> S.Store_ >>> fmt >>> (<> "\n")) s
-      _            -> ""
-  in f Fns {..} expr
+      "none"         -> ""
+      "full-envs"    -> fmt_ s <> "\n"
+      "pruned-envs"  -> (S.unStore >>> map pruneEnv >>> S.Store_ >>> fmt_ >>> (<> "\n")) s
+      _              -> error "Invalid --store option."
+  in f Fns{..} expr
 
 main :: IO ()
 main = do
@@ -84,7 +85,7 @@ main = do
   M.when cli_opts.optDesugared  $ do putFmt (optNoColour cli_opts) ast
   M.when cli_opts.optAst        $ do print ast
   M.when cli_opts.optTrace      $ do putFmt (optNoColour cli_opts) (execTrace ast)
-  M.when cli_opts.optNotCovered $ do putFmt (optNoColour cli_opts) (execNotCovered ast)
+  M.when cli_opts.optDeadCode   $ do putFmt (optNoColour cli_opts) (execNotCovered ast)
   where
     putFmt :: forall a. Fmt a => Bool -> a -> IO ()
-    putFmt b = putStrLn . bool termFmt fmt b
+    putFmt b = (\s->if s == "" then putStr "" else putStrLn s)  . bool termFmt fmt b

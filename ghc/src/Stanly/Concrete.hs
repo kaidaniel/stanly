@@ -11,7 +11,7 @@ import Control.Monad.Except ( throwError , MonadError, ExceptT, runExceptT)
 import Stanly.Interpreter
 import Stanly.Fmt
 import Data.Function(fix)
-import Control.Monad.Writer(runWriterT, tell, MonadWriter)
+import Control.Monad.Writer.Strict(runWriterT, tell, MonadWriter)
 import Data.List ((\\))
 import qualified Stanly.Interpreter as S
 
@@ -83,10 +83,28 @@ newtype ProgramTrace = ProgramTrace [(Expr, Env Int, Store')] deriving (Eq, Show
 
 instance Fmt ProgramTrace where
   ansiFmt :: ProgramTrace -> ANSI
-  ansiFmt (ProgramTrace li) = join' (zip (map ansiFmt li) [1 ..])
+  ansiFmt (ProgramTrace li) = join' (zip (map f li) [1 ..])
     where
       join' :: [(ANSI, Integer)] -> ANSI
-      join' = foldr (\(a, n) b -> start (show @Integer n ++ ". ") <> a <> start "\n" <> b) mempty
+      join' [] = mempty
+      join' [x] = h x
+      join' (x:xs) =  h x <> start "\n" <> join' xs
+      h (a, i) = dim>+ show i <> a
+
+      -- join' = foldr (\(a, n) b -> a <> dim >+ ("\n" <> show n) <> b) mempty
+      f :: (Expr, Env Int, Store') -> ANSI
+      f (e, r, s) = dim >+ ("\n" <> name e <> " ") <> ansiFmt e <> dim >+ "\nenvr " <> ansiFmt r <> g s
+      g (Store_ []) = start ""
+      g x = start "\n" <> ansiFmt x
+      name = \case
+          S.Num{} -> "num "
+          S.Txt{} -> "txt "
+          S.Lam{} -> "lam "
+          S.Rec{} -> "rec "
+          S.Vbl{} -> "vbl "
+          S.Op2 o _ _ -> "op2" <> o
+          S.App{} -> "app"
+          S.If{}  -> "if "
 
 execTrace :: Expr -> ProgramTrace
 execTrace = snd . runIdentity . runWriterT . runConcreteT . ev
@@ -99,15 +117,25 @@ execTrace = snd . runIdentity . runWriterT . runConcreteT . ev
 
 newtype NotCovered = NotCovered [Expr] deriving (Eq, Show, Semigroup, Monoid)
 instance Fmt NotCovered where
-  ansiFmt (NotCovered li) = foldr ((\a b -> a <> start "\n" <> b) . ansiFmt) mempty li
+  ansiFmt (NotCovered li) = f li
+    where f = \case
+            []     -> mempty
+            [x]    -> ansiFmt x
+            (x:xs) -> ansiFmt x <> start "\n" <> f xs
 
 execNotCovered :: Expr -> NotCovered
-execNotCovered e = NotCovered $ let ProgramTrace t = execTrace e in (e : subexprs e) \\ map (\(e', _, _) -> e') t
+execNotCovered e = NotCovered $ let ProgramTrace t = execTrace e in removeNested $ (e : subexprs e) \\ map (\(e', _, _) -> e') t
+
+isNested :: Expr -> Expr -> Bool
+isNested e1 e2 = e1 `elem` S.subexprs @[] e2
+
+removeNested :: [Expr] -> [Expr]
+removeNested exprs = filter (\e -> not $ any (isNested e) exprs) exprs
 
 
 execPruned :: Expr -> (Either String (Val Int), Store')
 execPruned = execConcrete' ev
   where
-    ev e = S.eval ev e >>= \case 
+    ev e = S.eval ev e >>= \case
       S.LamV x body r -> return (S.LamV x body (S.pruneEnv body r))
       v -> return v

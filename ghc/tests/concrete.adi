@@ -1,0 +1,17 @@
+// RUN: stanly < %s | FileCheck %s
+
+let a = (0 1);
+let x = 1 in 
+let u = (x 0);
+let b = (x + 1);
+let f = (fn y.(y + 1));
+let f = (f z);
+let c = (1 / 0);
+let x = 2 in let y = 0 in 
+let d = (x / y);
+let x = 1 in let x = 2 in
+let myvar = 1 in ((fn myvar.(myvar + myvar)) 3)
+
+// CHECK: Exception: Left hand side of application not bound to a function.
+// CHECK: In function position >>> 0
+// CHECK: In argument position >>> 1

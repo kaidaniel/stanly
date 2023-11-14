@@ -150,7 +150,7 @@ instance (Show l) => F.Fmt(Store_ l) where
       (x:xs) -> line x <> mconcat (map (line >>> (F.start "\n" <>)) xs)
     where
       prefix = (F.dim F.>+) . \case LamV {} -> "lam "; NumV {} -> "num "; TxtV {} -> "txt "; Undefined {} -> "und "
-      line (k, v) = F.yellow F.>+ Pr.printf "%-4s" (show k) <> prefix v <> F.ansiFmt v
+      line (k, v) = F.dim F.>+ "stor " <> F.yellow F.>+ Pr.printf "%-4s" (show k) <> prefix v <> F.ansiFmt v
 
 
 instance (Show l) => F.Fmt(Val l) where

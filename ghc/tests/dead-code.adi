@@ -1,0 +1,9 @@
+// RUN: stanly --dead-code --no-colour < %s | FileCheck %s 
+
+let f = fn y.(y + 1);
+
+let h = fn u.(this is dead code);
+
+(f 3)
+
+// CHECK: (this is dead code)
