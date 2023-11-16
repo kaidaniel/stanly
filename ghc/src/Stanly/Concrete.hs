@@ -1,19 +1,19 @@
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-
 {-# HLINT ignore "Eta reduce" #-}
 {-# LANGUAGE LambdaCase #-}
-module Stanly.Concrete(execConcrete, execTrace, execNotCovered, execPruned) where
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
+module Stanly.Concrete (execConcrete, execTrace, execNotCovered, execPruned) where
+
+import Control.Monad.Except (ExceptT, MonadError, runExceptT, throwError)
 import Control.Monad.Identity (Identity, runIdentity)
-import Control.Monad.Reader(MonadReader, ReaderT, runReaderT)
-import Control.Monad.State(gets, get, MonadState, modify, StateT, runStateT)
-import Control.Monad.Except ( throwError , MonadError, ExceptT, runExceptT)
-import Stanly.Interpreter
-import Stanly.Fmt
-import Data.Function(fix)
-import Control.Monad.Writer.Strict(runWriterT, tell, MonadWriter)
+import Control.Monad.Reader (MonadReader, ReaderT, runReaderT)
+import Control.Monad.State (MonadState, StateT, get, gets, modify, runStateT)
+import Control.Monad.Writer.Strict (MonadWriter, runWriterT, tell)
+import Data.Function (fix)
 import Data.List ((\\))
-import qualified Stanly.Interpreter as S
+import Stanly.Fmt
+import Stanly.Interpreter
+import Stanly.Interpreter qualified as S
 
 -- newtype ReaderT r m a = ReaderT { runReaderT :: r -> m a       }
 -- newtype ExceptT e m a = ExceptT { runExceptT :: m (Either e a) }
@@ -22,7 +22,9 @@ import qualified Stanly.Interpreter as S
 -- = \a::*.{C} {R} Env l -> {E} {S} Store_ l v -> m (Either e a, Store_ l)
 -- type ConcreteT l e m = ReaderT (Env l) (ExceptT e (StateT (Store_ l) m))
 type Addr = Int
+
 type Store' = Store_ Int
+
 newtype ConcreteT m a = ConcreteT (ReaderT (Env Int) (ExceptT String (StateT Store' m)) a)
   deriving (Functor, Applicative, Monad, MonadReader (Env Int), MonadState Store', MonadError String, MonadWriter r, Environment Int)
 
@@ -70,14 +72,14 @@ unknownOp o = "Unknown operator '" ++ o ++ "'"
 invalidOperands :: (Fmt a1, Fmt a2) => String -> a1 -> a2 -> String
 invalidOperands o a b =
   "Invalid arguments to operator '"
-  <> o
-  <> "':\n"
-  <> "\nleft operand  >>> "
-  <> termFmt a
-  <> "\noperation     >>> "
-  <> o
-  <> "\nright operand >>> "
-  <> termFmt b
+    <> o
+    <> "':\n"
+    <> "\nleft operand  >>> "
+    <> termFmt a
+    <> "\noperation     >>> "
+    <> o
+    <> "\nright operand >>> "
+    <> termFmt b
 
 newtype ProgramTrace = ProgramTrace [(Expr, Env Int, Store')] deriving (Eq, Show, Semigroup, Monoid)
 
@@ -88,8 +90,8 @@ instance Fmt ProgramTrace where
       join' :: [(ANSI, Integer)] -> ANSI
       join' [] = mempty
       join' [x] = h x
-      join' (x:xs) =  h x <> start "\n" <> join' xs
-      h (a, i) = dim>+ show i <> a
+      join' (x : xs) = h x <> start "\n" <> join' xs
+      h (a, i) = dim >+ show i <> a
 
       -- join' = foldr (\(a, n) b -> a <> dim >+ ("\n" <> show n) <> b) mempty
       f :: (Expr, Env Int, Store') -> ANSI
@@ -97,14 +99,14 @@ instance Fmt ProgramTrace where
       g (Store_ []) = start ""
       g x = start "\n" <> ansiFmt x
       name = \case
-          S.Num{} -> "num "
-          S.Txt{} -> "txt "
-          S.Lam{} -> "lam "
-          S.Rec{} -> "rec "
-          S.Vbl{} -> "vbl "
-          S.Op2 o _ _ -> "op2" <> o
-          S.App{} -> "app"
-          S.If{}  -> "if "
+        S.Num {} -> "num "
+        S.Txt {} -> "txt "
+        S.Lam {} -> "lam "
+        S.Rec {} -> "rec "
+        S.Vbl {} -> "vbl "
+        S.Op2 o _ _ -> "op2" <> o
+        S.App {} -> "app"
+        S.If {} -> "if "
 
 execTrace :: Expr -> ProgramTrace
 execTrace = snd . runIdentity . runWriterT . runConcreteT . ev
@@ -116,12 +118,14 @@ execTrace = snd . runIdentity . runWriterT . runConcreteT . ev
       S.eval @Addr ev e
 
 newtype NotCovered = NotCovered [Expr] deriving (Eq, Show, Semigroup, Monoid)
+
 instance Fmt NotCovered where
   ansiFmt (NotCovered li) = f li
-    where f = \case
-            []     -> mempty
-            [x]    -> ansiFmt x
-            (x:xs) -> ansiFmt x <> start "\n" <> f xs
+    where
+      f = \case
+        [] -> mempty
+        [x] -> ansiFmt x
+        (x : xs) -> ansiFmt x <> start "\n" <> f xs
 
 execNotCovered :: Expr -> NotCovered
 execNotCovered e = NotCovered $ let ProgramTrace t = execTrace e in removeNested $ (e : subexprs e) \\ map (\(e', _, _) -> e') t
@@ -132,10 +136,10 @@ isNested e1 e2 = e1 `elem` S.subexprs @[] e2
 removeNested :: [Expr] -> [Expr]
 removeNested exprs = filter (\e -> not $ any (isNested e) exprs) exprs
 
-
 execPruned :: Expr -> (Either String (Val Int), Store')
 execPruned = execConcrete' ev
   where
-    ev e = S.eval ev e >>= \case
-      S.LamV x body r -> return (S.LamV x body (S.pruneEnv body r))
-      v -> return v
+    ev e =
+      S.eval ev e >>= \case
+        S.LamV x body r -> return (S.LamV x body (S.pruneEnv body r))
+        v -> return v

@@ -13,7 +13,7 @@ import Stanly.Fmt qualified as F
 import Stanly.Interpreter qualified as S
 
 data Options = Options
-  { optValue :: String,
+  { optValue :: OptValue,
     optStore :: String,
     optDesugared :: Bool,
     optAst :: Bool,
@@ -21,18 +21,21 @@ data Options = Options
     optDeadCode :: Bool,
     optNoColour :: Bool
   }
-  deriving (Show)
+  deriving (Read, Show, Eq)
+
+data OptValue = None | Concrete | Abstract deriving (Show, Eq)
+instance Read OptValue where
 
 options :: O.Parser Options
 options =
   Options
-    <$> O.strOption
+    <$> O.option O.auto
       ( O.long "value"
           <> O.short 'v'
           <> O.help "Show the value obtained when the interpreter halts."
-          <> O.metavar "{none|concrete|abstract}"
+          -- <> O.metavar "{none|concrete|abstract}"
           <> O.showDefault
-          <> O.value "concrete"
+          <> O.value Concrete
           <> O.completer (O.listCompleter ["none", "concrete", "abstract"])
       )
     <*> O.strOption
@@ -71,9 +74,9 @@ abstractOutput Fns {..} expr = do
 produceOutput :: Options -> S.Expr -> String
 produceOutput Options {..} expr =
   let f = case optValue of
-        "concrete" -> concreteOutput
-        "abstract" -> abstractOutput
-        "none" -> \_ _ -> ""
+        Concrete -> concreteOutput
+        Abstract -> abstractOutput
+        None -> \_ _ -> ""
         _ -> error "Invalid --value option."
       pruneEnv = \case (l, S.LamV x e r) -> (l, S.LamV x e (S.pruneEnv e r)); x -> x
       fmt_ :: forall a. (Fmt a) => a -> String
