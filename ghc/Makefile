@@ -8,10 +8,9 @@ all: cabal test
 cabal:
 	cabal v2-build -j4
 
-test: build/stanly build/stanly-test
+test: cabal
 	stanly-test --qc-max-success=2000 --color
 	./tests/test.sh
-	touch test
 
 
-.PHONY: cabal
+.PHONY: cabal test

@@ -2,8 +2,8 @@
 
 let f = fn y.(y + 1);
 
-let h = fn u.(this is dead code);
+let h = fn u.(this is dead code (this also));
 
 (f 3)
 
-// CHECK: (this is dead code)
+// CHECK: (this is dead code (this also))

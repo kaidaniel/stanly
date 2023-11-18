@@ -1,110 +1,101 @@
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE RecordWildCards #-}
 
 import Control.Arrow ((>>>))
 import Control.Monad qualified as M
-import Data.Bool (bool)
+import Data.List qualified as L
 import Options.Applicative qualified as O
 import Stanly.Abstract qualified as Abs
 import Stanly.Concrete (execConcrete, execNotCovered, execTrace)
-import Stanly.Fmt (Fmt (..))
 import Stanly.Fmt qualified as F
 import Stanly.Interpreter qualified as S
-
-data Options = Options
-  { optValue :: OptValue,
-    optStore :: String,
-    optDesugared :: Bool,
-    optAst :: Bool,
-    optTrace :: Bool,
-    optDeadCode :: Bool,
-    optNoColour :: Bool
-  }
-  deriving (Read, Show, Eq)
-
-data OptValue = None | Concrete | Abstract deriving (Show, Eq)
-instance Read OptValue where
 
 options :: O.Parser Options
 options =
   Options
-    <$> O.option O.auto
-      ( O.long "value"
-          <> O.short 'v'
-          <> O.help "Show the value obtained when the interpreter halts."
-          -- <> O.metavar "{none|concrete|abstract}"
+    <$> choice "value" [NoneV, Concrete, Abstract] 
+        "Show the value obtained when the interpreter halts."
+    <*> choice "store" [NoneS, Full, Pruned] "Show the final state of the store after the program halts."
+    <*> flag "desugared" "Show the program after syntax transformation."
+    <*> flag "ast" "Show the abstract syntax tree used by the interpreter."
+    <*> flag "trace" "Show how the interpreter state changes while the program is being evaluated."
+    <*> flag "dead-code" "Show parts of the program that weren't reached during interpretation."
+    <*> flag "no-colour" "Don't colourise output."
+  where
+    choice long li help =
+      O.option O.auto $
+        O.long long
+          <> O.short (head long)
           <> O.showDefault
-          <> O.value Concrete
-          <> O.completer (O.listCompleter ["none", "concrete", "abstract"])
-      )
-    <*> O.strOption
-      ( O.long "store"
-          <> O.short 's'
-          <> O.help "Show the final state of the store after the program halts."
-          <> O.metavar "{none|pruned-envs|full-envs}"
-          <> O.showDefault
-          <> O.value "none"
-          <> O.completer (O.listCompleter ["none", "full-envs", "pruned-envs"])
-      )
-    <*> O.switch (O.long "desugared" <> O.help "Show the program after syntax transformation.")
-    <*> O.switch (O.long "ast" <> O.help "Show the abstract syntax tree used by the interpreter.")
-    <*> O.switch (O.long "trace" <> O.help "Show how the interpreter state changes while the program is being evaluated.")
-    <*> O.switch (O.long "dead-code" <> O.help "Show parts of the program that weren't reached during interpretation.")
-    <*> O.switch (O.long "no-colour" <> O.help "Don't colourise output.")
-
-fmtVal :: (Show l) => Fns -> S.Val l -> String
-fmtVal Fns {..} = \case (S.TxtV s) -> s; e -> fmt_ e
+          <> O.value (head li)
+          <> O.metavar ("{" <> L.intercalate "|" (map show li) <> "}")
+          <> O.help help
+    flag long help = O.switch (O.long long <> O.help help)
 
 data Fns = Fns
-  { fs :: forall l. (Show l) => S.Store_ l -> String,
-    fmt_ :: forall a. (Fmt a) => a -> String
+  { show_store :: forall l. (Show l) => S.Store_ l -> String,
+    fmt' :: forall a. (F.Fmt a) => a -> String
   }
-
-concreteOutput :: Fns -> S.Expr -> String
-concreteOutput Fns {..} expr =
-  let (v, s) = execConcrete expr
-   in either id (fmtVal Fns {..}) v <> "\n" <> fs s
-
-abstractOutput :: Fns -> S.Expr -> String
-abstractOutput Fns {..} expr = do
-  (v, s) <- Abs.unPowerSet $ Abs.execPowerSet expr
-  fmtVal Fns {..} v <> "\n" <> fs s
-
-produceOutput :: Options -> S.Expr -> String
-produceOutput Options {..} expr =
-  let f = case optValue of
-        Concrete -> concreteOutput
-        Abstract -> abstractOutput
-        None -> \_ _ -> ""
-        _ -> error "Invalid --value option."
-      pruneEnv = \case (l, S.LamV x e r) -> (l, S.LamV x e (S.pruneEnv e r)); x -> x
-      fmt_ :: forall a. (Fmt a) => a -> String
-      fmt_ = if optNoColour then F.fmt else F.termFmt
-      fs s = case optStore of
-        "none" -> ""
-        "full-envs" -> fmt_ s <> "\n"
-        "pruned-envs" -> (S.unStore >>> map pruneEnv >>> S.Store_ >>> fmt_ >>> (<> "\n")) s
-        _ -> error "Invalid --store option."
-   in f Fns {..} expr
 
 main :: IO ()
 main = do
-  cli_opts <-
-    O.execParser $
-      O.info
-        (options O.<**> O.helper)
-        ( O.fullDesc
-            <> O.progDesc "Discover something interesting about your source code."
-            <> O.header "stanly - static analyser"
-        )
-  str <- getContents
-  ast <- either (error . show) return (S.parser "<stdin>" str)
-  putStr (produceOutput cli_opts ast)
-  M.when cli_opts.optDesugared $ do putFmt (optNoColour cli_opts) ast
-  M.when cli_opts.optAst $ do print ast
-  M.when cli_opts.optTrace $ do putFmt (optNoColour cli_opts) (execTrace ast)
-  M.when cli_opts.optDeadCode $ do putFmt (optNoColour cli_opts) (execNotCovered ast)
+  Options {..} <- opts
+  ast <- either (error . show) pure . S.parser "<stdin>" =<< getContents
+  value Options {..} ast
+  flags Options {..} ast
   where
-    putFmt :: forall a. (Fmt a) => Bool -> a -> IO ()
-    putFmt b = (\s -> if s == "" then putStr "" else putStrLn s) . bool termFmt fmt b
+    flags :: Options -> S.Expr -> IO ()
+    flags Options {..} ast = do
+      M.when desugaredO (putFmt ast)
+      M.when astO (print ast)
+      M.when traceO (putFmt (execTrace ast))
+      M.when deadCodeO (putFmt (execNotCovered ast))
+      where
+        fmt_ :: forall a. (F.Fmt a) => a -> String
+        fmt_ = if noColourO then F.fmt else F.termFmt
+        putFmt x = if fmt_ x == "" then putStr "" else putStrLn $ fmt_ x
+    value Options {..} =
+      putStr . case valueO of
+        Concrete -> concreteOutput Fns {..}
+        Abstract -> abstractOutput Fns {..}
+        NoneV -> const ""
+      where
+        pruneEnv = \case (l, S.LamV x e r) -> (l, S.LamV x e (S.pruneEnv e r)); x -> x
+        fmt' :: forall a. (F.Fmt a) => a -> String
+        fmt' = if noColourO then F.fmt else F.termFmt
+        show_store s = case storeO of
+          NoneS -> ""
+          Full -> fmt' s <> "\n"
+          Pruned -> (S.unStore >>> map pruneEnv >>> S.Store_ >>> fmt' >>> (<> "\n")) s
+    fmtVal Fns {..} = \case (S.TxtV s) -> s; e -> fmt' e
+    abstractOutput Fns {..} expr = do (v, s) <- Abs.unPowerSet $ Abs.execPowerSet expr; fmtVal Fns {..} v <> "\n" <> show_store s
+    concreteOutput Fns {..} expr = do (v, s) <- [execConcrete expr]; either id (fmtVal Fns {..}) v <> "\n" <> show_store s
+    opts = O.execParser $ O.info (O.helper <*> options) desc
+      where
+        desc = O.fullDesc <> progDesc <> header
+        progDesc = O.progDesc "Discover something interesting about your source code."
+        header = O.header "stanly - static analyser"
+
+data Options = Options
+  {valueO :: ValueO, storeO :: StoreO, desugaredO, astO, traceO, deadCodeO, noColourO :: Bool}
+  deriving (Read, Show, Eq)
+
+data ValueO = NoneV | Concrete | Abstract deriving (Eq)
+
+data StoreO = NoneS | Full | Pruned deriving (Eq)
+
+instance Show ValueO where
+  show :: ValueO -> String
+  show = \case NoneV -> "none"; Concrete -> "concrete"; Abstract -> "abstract"
+
+instance Show StoreO where
+  show :: StoreO -> String
+  show = \case NoneS -> "none"; Full -> "full"; Pruned -> "pruned"
+
+instance Read ValueO where
+  readsPrec :: Int -> ReadS ValueO
+  readsPrec _ = \case "none" -> [(NoneV, "")]; "concrete" -> [(Concrete, "")]; "abstract" -> [(Abstract, "")]; _ -> []
+
+instance Read StoreO where
+  readsPrec :: Int -> ReadS StoreO
+  readsPrec _ = \case "none" -> [(NoneS, "")]; "full" -> [(Full, "")]; "pruned" -> [(Pruned, "")]; _ -> []
