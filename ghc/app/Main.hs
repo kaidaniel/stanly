@@ -13,7 +13,7 @@ import Stanly.Interpreter qualified as S
 options :: O.Parser Options
 options =
   Options
-    <$> choice "value" [NoneV, Concrete, Abstract] 
+    <$> choice "value" [Concrete, NoneV, Abstract] 
         "Show the value obtained when the interpreter halts."
     <*> choice "store" [NoneS, Full, Pruned] "Show the final state of the store after the program halts."
     <*> flag "desugared" "Show the program after syntax transformation."

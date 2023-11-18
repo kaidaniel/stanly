@@ -9,6 +9,8 @@ import Control.Monad.Identity (Identity, runIdentity)
 import Control.Monad.Reader (MonadReader, ReaderT, runReaderT)
 import Control.Monad.State (MonadState, StateT, get, gets, modify, runStateT)
 import Control.Monad.Writer.Strict (MonadWriter, runWriterT, tell)
+import qualified Data.Char as C
+import qualified Data.List as L
 import Data.Function (fix)
 import Data.List ((\\))
 import Stanly.Fmt
@@ -29,7 +31,7 @@ newtype ConcreteT m a = ConcreteT (ReaderT (Env Int) (ExceptT String (StateT Sto
   deriving (Functor, Applicative, Monad, MonadReader (Env Int), MonadState Store', MonadError String, MonadWriter r, Environment Int)
 
 runConcreteT :: ConcreteT m a -> m (Either String a, Store')
-runConcreteT (ConcreteT m) = (flip runStateT (Store_ []) . runExceptT) (runReaderT m (Env []))
+runConcreteT (ConcreteT m) = (flip runStateT S.emptyS . runExceptT) (runReaderT m S.emptyE)
 
 execConcrete' :: (Expr -> ConcreteT Identity (S.Val Int)) -> Expr -> (Either String (Val Int), Store')
 execConcrete' ev' = runIdentity . runConcreteT . ev'
@@ -89,24 +91,15 @@ instance Fmt ProgramTrace where
     where
       join' :: [(ANSI, Integer)] -> ANSI
       join' [] = mempty
-      join' [x] = h x
-      join' (x : xs) = h x <> start "\n" <> join' xs
-      h (a, i) = dim >+ show i <> a
+      join' [(a,i)] = dim >+ show i <> a <> start "\n"
+      join' (x : xs) = join' [x] <> join' xs
 
-      -- join' = foldr (\(a, n) b -> a <> dim >+ ("\n" <> show n) <> b) mempty
       f :: (Expr, Env Int, Store') -> ANSI
       f (e, r, s) = dim >+ ("\n" <> name e <> " ") <> ansiFmt e <> dim >+ "\nenvr " <> ansiFmt r <> g s
       g (Store_ []) = start ""
       g x = start "\n" <> ansiFmt x
-      name = \case
-        S.Num {} -> "num "
-        S.Txt {} -> "txt "
-        S.Lam {} -> "lam "
-        S.Rec {} -> "rec "
-        S.Vbl {} -> "vbl "
-        S.Op2 o _ _ -> "op2" <> o
-        S.App {} -> "app"
-        S.If {} -> "if "
+      name = map C.toLower . L.take 3 . show
+
 
 execTrace :: Expr -> ProgramTrace
 execTrace = snd . runIdentity . runWriterT . runConcreteT . ev

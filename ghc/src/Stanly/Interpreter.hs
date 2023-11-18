@@ -20,6 +20,10 @@ import Control.Arrow((>>>))
 type Var = String
 
 newtype Env l = Env { unEnv :: [(Var, l)] } deriving (Eq, Show, Foldable)
+emptyE :: Env l
+emptyE = Env []
+emptyS :: Store_ l
+emptyS = Store_ []
 
 data Expr
   = Vbl Var
