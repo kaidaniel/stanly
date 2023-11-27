@@ -12,12 +12,13 @@ common shared-properties
   build-depends:
     parsec, base, mtl
   ghc-options:
-    -Wall
+    -Wall -Wno-star-is-type -Wno-unused-do-bind
+  default-extensions: UnicodeSyntax, LambdaCase, StarIsType
 
 
 library stanly-lib
     import:          shared-properties
-    exposed-modules: Stanly.Concrete, Stanly.Fmt, Stanly.Interpreter, Stanly.Abstract
+    exposed-modules: Stanly.Concrete, Stanly.Fmt, Stanly.Interpreter, Stanly.Abstract, Stanly.Unicode
     hs-source-dirs:  src
     build-depends:   haskell-src-meta, template-haskell, QuickCheck, text
       
