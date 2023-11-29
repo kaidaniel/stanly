@@ -5,7 +5,7 @@ import Control.Monad qualified as M
 import Data.List qualified as L
 import Options.Applicative qualified as O
 import Stanly.Abstract qualified as Abs
-import Stanly.Concrete (execConcrete, execNotCovered, execTrace)
+import Stanly.Concrete (execConcrete, deadCode)
 import Stanly.Fmt qualified as F
 import Stanly.Interpreter qualified as S
 
@@ -49,9 +49,11 @@ main = do
     flags Options{..} ast = do
         M.when desugaredO (putFmt ast)
         M.when astO (print ast)
-        M.when traceO (putFmt (execTrace ast))
-        M.when deadCodeO (putFmt (execNotCovered ast))
+        M.when deadCodeO ()
       where
+        -- M.when traceO (putFmt (execTrace concreteInterpreter ast))
+        -- M.when deadCodeO (putFmt (execNotCovered concreteInterpreter ast))
+
         fmt_ ∷ ∀ a. (F.Fmt a) ⇒ a → String
         fmt_ = if noColourO then F.fmt else F.termFmt
         putFmt x = if fmt_ x == "" then putStr "" else putStrLn $ fmt_ x
@@ -86,17 +88,13 @@ data ValueO = NoneV | Concrete | Abstract deriving (Eq)
 data StoreO = NoneS | Full | Pruned deriving (Eq)
 
 instance Show ValueO where
-    show ∷ ValueO → String
     show = \case NoneV → "none"; Concrete → "concrete"; Abstract → "abstract"
 
 instance Show StoreO where
-    show ∷ StoreO → String
     show = \case NoneS → "none"; Full → "full"; Pruned → "pruned"
 
 instance Read ValueO where
-    readsPrec ∷ Int → ReadS ValueO
     readsPrec _ = \case "none" → [(NoneV, "")]; "concrete" → [(Concrete, "")]; "abstract" → [(Abstract, "")]; _ → []
 
 instance Read StoreO where
-    readsPrec ∷ Int → ReadS StoreO
     readsPrec _ = \case "none" → [(NoneS, "")]; "full" → [(Full, "")]; "pruned" → [(Pruned, "")]; _ → []

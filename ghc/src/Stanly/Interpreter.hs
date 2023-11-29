@@ -1,12 +1,14 @@
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module Stanly.Interpreter where
 
 import Control.Applicative qualified as A
 import Control.Arrow ((>>>))
-import Control.Monad.Reader qualified as R
+import Data.Coerce (coerce)
 import Data.Function ((&))
 import Data.List qualified as L
+import GHC.Generics
 import Stanly.Fmt qualified as F
 import Stanly.Unicode
 import Text.Parsec qualified as P
@@ -16,11 +18,9 @@ import Text.Printf qualified as Pr
 
 type Var = String
 
-newtype Env l = Env {unEnv ∷ [(Var, l)]} deriving (Eq, Show, Foldable)
-emptyE ∷ Env l
-emptyE = Env []
-emptyS ∷ Store_ l
-emptyS = Store_ []
+newtype Env l = Env {unEnv ∷ [(Var, l)]} deriving (Eq, Show, Foldable, Semigroup, Monoid)
+
+newtype Store_ l = Store_ {unStore ∷ [(l, Val l)]} deriving (Eq, Show, Foldable, Semigroup, Monoid)
 
 data Expr
     = Vbl Var
@@ -31,7 +31,7 @@ data Expr
     | Num Integer
     | Txt String
     | If Expr Expr Expr
-    deriving (Eq, Show)
+    deriving (Eq, Show, Generic)
 
 data Val l
     = LamV Var Expr (Env l)
@@ -40,27 +40,26 @@ data Val l
     | Undefined String
     deriving (Eq, Show, Foldable)
 
-eval ∷ (Interpreter l m) ⇒ (Expr → m (Val l)) → Expr → m (Val l)
-eval ev = \case
+eval ∷ ∀ m l. (Show l, Monad m) ⇒ Interpreter l m → (Expr → m (Val l)) → Expr → m (Val l)
+eval Interpreter{..} ev = \case
     Num n → 𝖕 (NumV n)
     Txt s → 𝖕 (TxtV s)
-    Lam v e → 𝖋 (LamV v e) env
+    Lam v e → 𝖕 (LamV v e) ⊛ env
     Vbl vbl → search vbl deref exc
     If b tru fls → (=<<) (branch (ev fls) (ev tru)) (ev b)
     Op2 o e0 e1 → 𝖏𝖋𝖋 (op2 o) (ev e0) (ev e1)
     Rec f t → do
-        env' ← env
         l ← alloc f
-        resv ← assign f l env' (ev t)
-        ext l resv
+        resv ← localEnv' ([(f, l)] <>) (ev t)
+        updateStore' ([(l, resv)] <>)
         𝖕 resv
     App lamV arg →
         ev lamV >>= \case
             LamV x body r → do
                 evArg ← ev arg
                 allocX ← alloc x
-                ext allocX evArg
-                assign x allocX r (ev body)
+                updateStore' ([(allocX, evArg)] <>)
+                localEnv (const (coerce [(x, allocX)] <> r)) (ev body)
             _ → exc (notAFunction lamV arg)
   where
     notAFunction lamV arg =
@@ -69,25 +68,25 @@ eval ev = \case
             <> F.fmt lamV
             <> "\nIn argument position >>> "
             <> F.fmt arg
+    search variable iffound ifnotfound =
+        env >>= \r →
+            lookup variable (unEnv r) & \case
+                Just l → iffound l
+                _ → ifnotfound (show variable <> " not found in environment: " <> F.fmt r)
+    localEnv' f = localEnv (coerce f)
+    updateStore' f = updateStore (coerce f)
 
-class (Environment l m) ⇒ Store l m where
-    deref ∷ l → m (Val l)
-    ext ∷ l → Val l → m ()
-    alloc ∷ Var → m l
-
-class (Monad m) ⇒ Environment l m where
-    search ∷ Var → (l → m (Val l)) → (String → m (Val l)) → m (Val l)
-    assign ∷ Var → l → Env l → m (Val l) → m (Val l)
-    env ∷ m (Env l)
-
-class (Monad m) ⇒ Primops l m where
-    op2 ∷ String → Val l → Val l → m (Val l)
-    branch ∷ m (Val l) → m (Val l) → Val l → m (Val l)
-
-class (Monad m) ⇒ Exc m where
-    exc ∷ String → m (Val l)
-
-type Interpreter l m = (Exc m, Primops l m, Store l m)
+data Interpreter l m = Interpreter
+    { deref ∷ l → m (Val l)
+    , env ∷ m (Env l)
+    , localEnv ∷ (Env l → Env l) → m (Val l) → m (Val l)
+    , store ∷ m (Store_ l)
+    , updateStore ∷ (Store_ l → Store_ l) → m ()
+    , alloc ∷ Var → m l
+    , op2 ∷ String → Val l → Val l → m (Val l)
+    , branch ∷ m (Val l) → m (Val l) → Val l → m (Val l)
+    , exc ∷ String → m (Val l)
+    }
 
 parser ∷ String → String → Either P.ParseError Expr
 parser = P.parse $ expr <* P.eof
@@ -95,13 +94,13 @@ parser = P.parse $ expr <* P.eof
     expr = ws *> expr'
     expr' =
         parens (P.try op2' P.<|> P.try app P.<|> expr)
-            P.<|> 𝖋 Txt stringLiteral
-            P.<|> 𝖋𝖋 Lam (do try' "λ" P.<|> try' "fn "; iden) (do dot; expr)
-            P.<|> 𝖋𝖋 Rec (do try' "μ" P.<|> try' "mu "; iden) (do dot; expr)
-            P.<|> 𝖋𝖋𝖋 If (do kw "if"; expr) (do kw "then"; expr) (do kw "else"; expr)
-            P.<|> 𝖋𝖋𝖋 let_ (do kw "let"; iden) (do kw "="; expr) (do kw "in" P.<|> kw ";"; expr)
-            P.<|> 𝖋 Num nat
-            P.<|> 𝖋 Vbl iden
+            P.<|> 𝖕 Txt ⊛ stringLiteral
+            P.<|> 𝖕 Lam ⊛ (do try' "λ" P.<|> try' "fn "; iden) ⊛ (do dot; expr)
+            P.<|> 𝖕 Rec ⊛ (do try' "μ" P.<|> try' "mu "; iden) ⊛ (do dot; expr)
+            P.<|> 𝖕 If ⊛ (do kw "if"; expr) ⊛ (do kw "then"; expr) ⊛ (do kw "else"; expr)
+            P.<|> 𝖕 let_ ⊛ (do kw "let"; iden) ⊛ (do kw "="; expr) ⊛ (do kw "in" P.<|> kw ";"; expr)
+            P.<|> 𝖕 Num ⊛ nat
+            P.<|> 𝖕 Vbl ⊛ iden
     op2' = 𝖋𝖋𝖋 (flip Op2) expr operator expr
     app = 𝖋 (foldl1 App) (P.many1 expr)
     let_ x arg body = App (Lam x body) arg
@@ -126,25 +125,16 @@ parser = P.parse $ expr <* P.eof
     operator = Tn.operator lx
     stringLiteral = Tn.stringLiteral lx
 
-instance (Monad m, Show l) ⇒ Environment l (R.ReaderT (Env l) m) where
-    search variable iffound ifnotfound =
-        R.ask >>= \r →
-            lookup variable (unEnv r) & \case
-                Just l → iffound l
-                _ → ifnotfound (show variable <> " not found in environment: " <> F.fmt r)
-    assign v l r = R.local (const (Env ((v, l) : unEnv r)))
-    env = R.ask
-
 subexprs ∷ (A.Alternative f) ⇒ Expr → f Expr
 subexprs =
     A.asum ∘ \case
-        Lam _ e → (map 𝖕) [e] <> [subexprs e]
+        Lam _ e → [𝖕 e] <> [subexprs e]
         Num _ → []
         Txt _ → []
-        App fn x → (map 𝖕) [fn, x] <> [subexprs fn, subexprs x]
-        Op2 _ l r → (map 𝖕) [l, r] <> [subexprs l, subexprs r]
-        If b tru fls → (map 𝖕) [b, tru, fls] <> [subexprs b, subexprs tru, subexprs fls]
-        Rec _ e → (map 𝖕) [e] <> [subexprs e]
+        App fn x → map 𝖕 [fn, x] <> [subexprs fn, subexprs x]
+        Op2 _ l r → map 𝖕 [l, r] <> [subexprs l, subexprs r]
+        If b tru fls → map 𝖕 [b, tru, fls] <> [subexprs b, subexprs tru, subexprs fls]
+        Rec _ e → [𝖕 e] <> [subexprs e]
         Vbl _ → []
 
 pruneEnv ∷ Expr → Env l → Env l
@@ -152,8 +142,6 @@ pruneEnv e = unEnv >>> filter (flip elem (vbls e) ∘ fst) >>> Env
 
 vbls ∷ Expr → [Var]
 vbls e = do Vbl v ← subexprs e; 𝖕 v
-
-newtype Store_ l = Store_ {unStore ∷ [(l, Val l)]} deriving (Eq, Show, Foldable)
 
 instance (Show l) ⇒ F.Fmt (Env l) where
     ansiFmt (Env r) = F.yellow F.>+ "Γ⟦" <> fmt' r "" <> F.yellow F.>+ "⟧"
