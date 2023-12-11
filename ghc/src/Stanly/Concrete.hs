@@ -13,7 +13,6 @@ import Control.Monad.Writer (MonadWriter (tell))
 import Data.Char qualified as C
 import Data.Function (fix)
 import Data.Functor.Identity (Identity)
-import Data.List ((\\))
 import Data.List qualified as L
 import Stanly.Fmt
 import Stanly.Interpreter
@@ -35,15 +34,15 @@ evTrace (run, interp) e = fst (run (evalTrace' interp e))
         S.eval i (evalTrace' i) expr
 
 evDeadCode ∷ (Show l, MonadWriter (ProgramTrace l) m) ⇒ (m (Val l) → (ProgramTrace l, b), Interpreter l m) → Expr → NotCovered
-evDeadCode tpl e = deadCode (evTrace tpl e)
+evDeadCode tpl expr =
+    NotCovered $
+        let exprs = map (\(e, _, _) → e) (let ProgramTrace li = evTrace tpl expr in li)
+         in [x | x ← exprs, not (any ((x ∈) . S.subexprs) exprs)]
 
-deadCode ∷ ProgramTrace l → NotCovered
-deadCode (ProgramTrace li) = NotCovered $ removeNested (map (\(e, _, _) → e) li \\ map (\(e', _, _) → e') li)
-
-evalPruned ∷ (Monad m, Show l) ⇒ Interpreter l m → ((Expr → m (Val l)) → t) → t
-evalPruned Interpreter{..} f = f ev
-  where
-    ev e = S.eval Interpreter{..} ev e >>= \case S.LamV x body r → 𝖕 (S.LamV x body (S.pruneEnv body r)); v → 𝖕 v
+-- evalPruned ∷ (Monad m, Show l) ⇒ Interpreter l m → ((Expr → m (Val l)) → t) → t
+-- evalPruned i@Interpreter{} f = f ev
+--   where
+--     ev e = S.eval i ev e >>= \case S.LamV x body r → 𝖕 (S.LamV x body (S.pruneEnv body r)); v → 𝖕 v
 
 runConcrete ∷ Concrete m a → m (Either String a, Store_ Int)
 runConcrete m = runStateT (runExceptT (runReaderT m mempty)) mempty
@@ -120,9 +119,3 @@ instance Fmt NotCovered where
             [] → mempty
             [x] → ansiFmt x
             (x : xs) → ansiFmt x <> start "\n" <> f xs
-
-isNested ∷ Expr → Expr → Bool
-isNested e1 e2 = e1 ∈ S.subexprs e2
-
-removeNested ∷ [Expr] → [Expr]
-removeNested exprs = filter (\e → not (any (isNested e) exprs)) exprs

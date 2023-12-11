@@ -5,7 +5,7 @@ import Control.Monad qualified as M
 import Data.List qualified as L
 import Options.Applicative qualified as O
 import Stanly.Abstract qualified as Abs
-import Stanly.Concrete (execConcrete, deadCode)
+import Stanly.Concrete
 import Stanly.Fmt qualified as F
 import Stanly.Interpreter qualified as S
 
@@ -40,24 +40,22 @@ data Fns = Fns
 
 main ∷ IO ()
 main = do
-    Options{..} ← opts
+    o@Options{} ← opts
     ast ← either (error . show) pure . S.parser "<stdin>" =<< getContents
-    value Options{..} ast
-    flags Options{..} ast
+    value o ast
+    flags o ast
   where
     flags ∷ Options → S.Expr → IO ()
-    flags Options{..} ast = do
+    flags Options{desugaredO, astO, deadCodeO, noColourO, traceO} ast = do
         M.when desugaredO (putFmt ast)
         M.when astO (print ast)
-        M.when deadCodeO ()
+        M.when deadCodeO (putFmt (evDeadCode concreteInterpreter ast))
+        M.when traceO (putFmt (evTrace concreteInterpreter ast))
       where
-        -- M.when traceO (putFmt (execTrace concreteInterpreter ast))
-        -- M.when deadCodeO (putFmt (execNotCovered concreteInterpreter ast))
-
         fmt_ ∷ ∀ a. (F.Fmt a) ⇒ a → String
         fmt_ = if noColourO then F.fmt else F.termFmt
         putFmt x = if fmt_ x == "" then putStr "" else putStrLn $ fmt_ x
-    value Options{..} =
+    value Options{valueO, noColourO, storeO} =
         putStr . case valueO of
             Concrete → concreteOutput Fns{..}
             Abstract → abstractOutput Fns{..}
@@ -72,7 +70,7 @@ main = do
             Pruned → (S.unStore >>> map pruneEnv >>> S.Store_ >>> fmt' >>> (<> "\n")) s
     fmtVal Fns{..} = \case (S.TxtV s) → s; e → fmt' e
     abstractOutput Fns{..} expr = do (v, s) ← Abs.unPowerSet $ Abs.execPowerSet expr; fmtVal Fns{..} v <> "\n" <> show_store s
-    concreteOutput Fns{..} expr = do (v, s) ← [execConcrete expr]; either id (fmtVal Fns{..}) v <> "\n" <> show_store s
+    concreteOutput Fns{..} expr = do (v, s) ← [ev concreteInterpreter expr]; either id (fmtVal Fns{..}) v <> "\n" <> show_store s
     opts = O.execParser $ O.info (O.helper <*> options) desc
       where
         desc = O.fullDesc <> progDesc <> header
