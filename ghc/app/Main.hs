@@ -72,7 +72,7 @@ main = do
             Pruned → (coerce @_ @[(l, S.Val l)] >>> map pruneEnv >>> S.Store >>> fmt' >>> (<> "\n")) s
     fmtVal Fns{..} = \case (S.TxtV s) → s; e → fmt' e
     abstractOutput Fns{..} expr = do (v, s) ← Abs.unPowerSet $ Abs.execPowerSet expr; fmtVal Fns{..} v <> "\n" <> show_store s
-    concreteOutput Fns{..} expr = do (v, s) ← [ev concreteInterpreter expr]; either id (fmtVal Fns{..}) v <> "\n" <> show_store s
+    concreteOutput Fns{..} expr = do (v, s) ← [ev' concreteInterpreter expr]; either id (fmtVal Fns{..}) v <> "\n" <> show_store s
     opts = O.execParser $ O.info (O.helper <*> options) desc
       where
         desc = O.fullDesc <> progDesc <> header
