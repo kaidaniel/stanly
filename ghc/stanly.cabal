@@ -10,9 +10,9 @@ category:           Development
 common shared-properties
   default-language: GHC2021
   build-depends:
-    parsec, base, mtl
+    parsec, base, mtl, transformers
   ghc-options:
-    -Wall -Wno-star-is-type -Wno-unused-do-bind
+    -Wall -Wno-star-is-type -Wno-unused-do-bind -fprint-explicit-foralls
   default-extensions: UnicodeSyntax, LambdaCase, StarIsType
 
 

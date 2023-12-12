@@ -1,9 +1,16 @@
-// RUN: stanly --dead-code --no-colour < %s | FileCheck %s 
+// RUN: stanly --dead-code --no-colour -v none < %s | FileCheck %s 
 
-let f = fn y.(y + 1);
+let f = fn y.(if y then (unreachable branch) else (y + 1));
 
-let h = fn u.(this is dead code (this also));
+let h = fn u.(unreachable lambda body (a b c));
+let g = fn x.(dead code);
+let q = fn x.(dead code);
+let h = mu x.fn y.(recursive dead code);
 
-(f 3)
+(f 0)
 
-// CHECK: (this is dead code (this also))
+// CHECK: (unreachable branch)
+// CHECK: (unreachable lambda body (a b c))
+// CHECK: (dead code)
+// CHECK: (dead code)
+// CHECK: (recursive dead code)

@@ -1,4 +1,3 @@
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Stanly.Concrete (ev, evTrace, evDeadCode, concreteInterpreter) where
@@ -11,6 +10,7 @@ import Control.Monad.Trans.Except (ExceptT)
 import Control.Monad.Trans.Reader (ReaderT)
 import Control.Monad.Writer (MonadWriter (tell))
 import Data.Char qualified as C
+import Data.Coerce (coerce)
 import Data.Function (fix)
 import Data.Functor.Identity (Identity)
 import Data.List qualified as L
@@ -24,25 +24,19 @@ type Concrete m = ReaderT (Env Int) (ExceptT String (StateT (Store_ Int) m))
 ev ∷ (Show l, Monad m) ⇒ (m (Val l) → Identity c, Interpreter l m) → Expr → c
 ev (r, i) = runIdentity . r . fix (S.eval i)
 
-evTrace ∷ (Show l, MonadWriter (ProgramTrace l) m) ⇒ (m (Val l) → (ProgramTrace l, b), Interpreter l m) → Expr → ProgramTrace l
+evTrace ∷ ∀ l b m. (Show l, MonadWriter (ProgramTrace l) m) ⇒ (m (Val l) → (ProgramTrace l, b), Interpreter l m) → Expr → ProgramTrace l
 evTrace (run, interp) e = fst (run (evalTrace' interp e))
   where
     evalTrace' i expr = do
         r ← env i
         s ← store i
-        tell (ProgramTrace [(expr, r, s)])
+        tell (coerce [(expr, r, s)])
         S.eval i (evalTrace' i) expr
 
-evDeadCode ∷ (Show l, MonadWriter (ProgramTrace l) m) ⇒ (m (Val l) → (ProgramTrace l, b), Interpreter l m) → Expr → NotCovered
-evDeadCode tpl expr =
-    NotCovered $
-        let exprs = map (\(e, _, _) → e) (let ProgramTrace li = evTrace tpl expr in li)
-         in [x | x ← exprs, not (any ((x ∈) . S.subexprs) exprs)]
-
--- evalPruned ∷ (Monad m, Show l) ⇒ Interpreter l m → ((Expr → m (Val l)) → t) → t
--- evalPruned i@Interpreter{} f = f ev
---   where
---     ev e = S.eval i ev e >>= \case S.LamV x body r → 𝖕 (S.LamV x body (S.pruneEnv body r)); v → 𝖕 v
+evDeadCode ∷ ∀ l b m. (Show l, MonadWriter (ProgramTrace l) m) ⇒ (m (Val l) → (ProgramTrace l, b), Interpreter l m) → Expr → NotCovered
+evDeadCode tpl expr = coerce $ reverse (dead L.\\ (dead >>= S.subexprs))
+  where
+    dead = S.subexprs expr L.\\ [e | let ProgramTrace li = evTrace tpl expr, (e, _, _) ← li]
 
 runConcrete ∷ Concrete m a → m (Either String a, Store_ Int)
 runConcrete m = runStateT (runExceptT (runReaderT m mempty)) mempty

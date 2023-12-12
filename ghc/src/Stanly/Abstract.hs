@@ -4,7 +4,6 @@ import Control.Applicative (Alternative)
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
-import Data.List (nub)
 import Stanly.Fmt
 import Stanly.Interpreter
 import Stanly.Unicode
