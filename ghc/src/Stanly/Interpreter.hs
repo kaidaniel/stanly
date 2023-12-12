@@ -18,9 +18,9 @@ import Text.Printf qualified as Pr
 
 type Var = String
 
-newtype Env l = Env {unEnv ∷ [(Var, l)]} deriving (Eq, Show, Foldable, Semigroup, Monoid)
+newtype Env l = Env [(Var, l)] deriving (Eq, Show, Foldable, Semigroup, Monoid)
 
-newtype Store l = Store {unStore ∷ [(l, Val l)]} deriving (Eq, Show, Foldable, Semigroup, Monoid)
+newtype Store l = Store [(l, Val l)] deriving (Eq, Show, Foldable, Semigroup, Monoid)
 
 data Expr
     = Vbl Var
@@ -40,7 +40,11 @@ data Val l
     | Undefined String
     deriving (Eq, Show, Foldable)
 
-eval ∷ ∀ m l. (Show l, Monad m) ⇒ Interpreter l m → (Expr → m (Val l)) → Expr → m (Val l)
+type Eval m l = Expr → m (Val l)
+type Eval' m l = Eval m l → Eval m l
+type Eval'' m l = Eval' m l → Eval' m l
+
+eval ∷ ∀ m l. (Show l, Monad m) ⇒ Interpreter l m → Eval' m l
 eval Interpreter{..} ev = \case
     Num n → 𝖕 (NumV n)
     Txt s → 𝖕 (TxtV s)
@@ -70,7 +74,7 @@ eval Interpreter{..} ev = \case
             <> F.fmt arg
     search variable iffound ifnotfound =
         env >>= \r →
-            lookup variable (unEnv r) & \case
+            lookup variable (coerce r) & \case
                 Just l → iffound l
                 _ → ifnotfound (show variable <> " not found in environment: " <> F.fmt r)
     localEnv' f = localEnv (coerce f)
@@ -137,8 +141,8 @@ subexprs =
         Rec _ e → [𝖕 e] <> [subexprs e]
         Vbl _ → []
 
-pruneEnv ∷ Expr → Env l → Env l
-pruneEnv e = unEnv >>> filter (flip elem (vbls e) ∘ fst) >>> Env
+pruneEnv ∷ ∀ l. Expr → Env l → Env l
+pruneEnv e = coerce >>> filter (flip elem (vbls e) ∘ fst) >>> coerce @[(Var, l)] @(Env l)
 
 vbls ∷ Expr → [Var]
 vbls e = do Vbl v ← subexprs e; 𝖕 v
@@ -151,7 +155,7 @@ instance (Show l) ⇒ F.Fmt (Env l) where
 
 instance (Show l) ⇒ F.Fmt (Store l) where
     ansiFmt =
-        unStore >>> L.reverse >>> \case
+        coerce @(Store l) @[(l, Val l)] >>> L.reverse >>> \case
             [] → mempty
             (x : xs) → line x <> mconcat (map (line >>> (F.start "\n" <>)) xs)
       where

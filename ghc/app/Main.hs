@@ -2,6 +2,7 @@
 
 import Control.Arrow ((>>>))
 import Control.Monad qualified as M
+import Data.Coerce (coerce)
 import Data.List qualified as L
 import Options.Applicative qualified as O
 import Stanly.Abstract qualified as Abs
@@ -64,10 +65,11 @@ main = do
         pruneEnv = \case (l, S.LamV x e r) → (l, S.LamV x e (S.pruneEnv e r)); x → x
         fmt' ∷ ∀ a. (F.Fmt a) ⇒ a → String
         fmt' = if noColourO then F.fmt else F.termFmt
+        show_store ∷ ∀ l. (Show l) ⇒ S.Store l → String
         show_store s = case storeO of
             NoneS → ""
             Full → fmt' s <> "\n"
-            Pruned → (S.unStore >>> map pruneEnv >>> S.Store >>> fmt' >>> (<> "\n")) s
+            Pruned → (coerce @_ @[(l, S.Val l)] >>> map pruneEnv >>> S.Store >>> fmt' >>> (<> "\n")) s
     fmtVal Fns{..} = \case (S.TxtV s) → s; e → fmt' e
     abstractOutput Fns{..} expr = do (v, s) ← Abs.unPowerSet $ Abs.execPowerSet expr; fmtVal Fns{..} v <> "\n" <> show_store s
     concreteOutput Fns{..} expr = do (v, s) ← [ev concreteInterpreter expr]; either id (fmtVal Fns{..}) v <> "\n" <> show_store s
