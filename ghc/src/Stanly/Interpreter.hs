@@ -20,7 +20,7 @@ type Var = String
 
 newtype Env l = Env {unEnv ∷ [(Var, l)]} deriving (Eq, Show, Foldable, Semigroup, Monoid)
 
-newtype Store_ l = Store_ {unStore ∷ [(l, Val l)]} deriving (Eq, Show, Foldable, Semigroup, Monoid)
+newtype Store l = Store {unStore ∷ [(l, Val l)]} deriving (Eq, Show, Foldable, Semigroup, Monoid)
 
 data Expr
     = Vbl Var
@@ -80,8 +80,8 @@ data Interpreter l m = Interpreter
     { deref ∷ l → m (Val l)
     , env ∷ m (Env l)
     , localEnv ∷ (Env l → Env l) → m (Val l) → m (Val l)
-    , store ∷ m (Store_ l)
-    , updateStore ∷ (Store_ l → Store_ l) → m ()
+    , store ∷ m (Store l)
+    , updateStore ∷ (Store l → Store l) → m ()
     , alloc ∷ Var → m l
     , op2 ∷ String → Val l → Val l → m (Val l)
     , branch ∷ m (Val l) → m (Val l) → Val l → m (Val l)
@@ -149,7 +149,7 @@ instance (Show l) ⇒ F.Fmt (Env l) where
         fmt' ((v, a) : r') sep = F.start (sep <> v <> ": ") <> F.yellow F.>+ show a <> fmt' r' ", "
         fmt' [] _ = F.start ""
 
-instance (Show l) ⇒ F.Fmt (Store_ l) where
+instance (Show l) ⇒ F.Fmt (Store l) where
     ansiFmt =
         unStore >>> L.reverse >>> \case
             [] → mempty

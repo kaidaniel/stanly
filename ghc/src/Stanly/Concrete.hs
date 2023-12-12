@@ -19,7 +19,7 @@ import Stanly.Interpreter
 import Stanly.Interpreter qualified as S
 import Stanly.Unicode
 
-type Concrete m = ReaderT (Env Int) (ExceptT String (StateT (Store_ Int) m))
+type Concrete m = ReaderT (Env Int) (ExceptT String (StateT (Store Int) m))
 
 ev ∷ (Show l, Monad m) ⇒ (m (Val l) → Identity c, Interpreter l m) → Expr → c
 ev (r, i) = runIdentity . r . fix (S.eval i)
@@ -38,21 +38,21 @@ evDeadCode tpl expr = coerce $ reverse (dead L.\\ (dead >>= S.subexprs))
   where
     dead = S.subexprs expr L.\\ [e | let ProgramTrace li = evTrace tpl expr, (e, _, _) ← li]
 
-runConcrete ∷ Concrete m a → m (Either String a, Store_ Int)
+runConcrete ∷ Concrete m a → m (Either String a, Store Int)
 runConcrete m = runStateT (runExceptT (runReaderT m mempty)) mempty
 
-concreteInterpreter ∷ (Monad m) ⇒ (Concrete m a → m (Either String a, Store_ Int), Interpreter Int (Concrete m))
+concreteInterpreter ∷ (Monad m) ⇒ (Concrete m a → m (Either String a, Store Int), Interpreter Int (Concrete m))
 concreteInterpreter = (runConcrete, concreteInterpreter')
 
-concreteInterpreter' ∷ ∀ m. (MonadState (Store_ Int) m, MonadError String m, MonadReader (Env Int) m) ⇒ Interpreter Int m
+concreteInterpreter' ∷ ∀ m. (MonadState (Store Int) m, MonadError String m, MonadReader (Env Int) m) ⇒ Interpreter Int m
 concreteInterpreter' =
     let exc' er = throwError ("Exception: " ++ er)
      in Interpreter
             { deref = \l → do
-                (Store_ store) ← get
+                (Store store) ← get
                 case lookup l store of
                     Just val → 𝖕 val
-                    Nothing → error $ show l ++ " not found in store. " ++ fmt (Store_ store)
+                    Nothing → error $ show l ++ " not found in store. " ++ fmt (Store store)
             , exc = exc'
             , env = ask
             , alloc = \_ → gets length
@@ -87,7 +87,7 @@ invalidOperands o a b =
         <> "\nright operand >>> "
         <> termFmt b
 
-newtype ProgramTrace l = ProgramTrace {unProgramTrace ∷ [(Expr, Env l, Store_ l)]} deriving (Eq, Show, Semigroup, Monoid, Foldable)
+newtype ProgramTrace l = ProgramTrace {unProgramTrace ∷ [(Expr, Env l, Store l)]} deriving (Eq, Show, Semigroup, Monoid, Foldable)
 
 instance (Show l) ⇒ Fmt (ProgramTrace l) where
     ansiFmt ∷ ProgramTrace l → ANSI
@@ -98,9 +98,9 @@ instance (Show l) ⇒ Fmt (ProgramTrace l) where
         join' [(a, i)] = dim >+ show i <> a <> start "\n"
         join' (x : xs) = join' [x] <> join' xs
 
-        f ∷ (Expr, Env l, Store_ l) → ANSI
+        f ∷ (Expr, Env l, Store l) → ANSI
         f (e, r, s) = dim >+ ("\n" <> name e <> " ") <> ansiFmt e <> dim >+ "\nenvr " <> ansiFmt r <> g s
-        g (Store_ []) = start ""
+        g (Store []) = start ""
         g x = start "\n" <> ansiFmt x
         name = map C.toLower ∘ L.take 3 ∘ show
 

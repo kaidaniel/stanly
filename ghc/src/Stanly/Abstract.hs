@@ -10,10 +10,10 @@ import Stanly.Unicode
 
 type Addr = Var
 
-newtype AbstractT m a = AbstractT (ReaderT (Env Var) (StateT (Store_ Var) m) a)
-    deriving (Functor, Applicative, Monad, Alternative, MonadPlus, MonadReader (Env Var), MonadState (Store_ Var))
+newtype AbstractT m a = AbstractT (ReaderT (Env Var) (StateT (Store Var) m) a)
+    deriving (Functor, Applicative, Monad, Alternative, MonadPlus, MonadReader (Env Var), MonadState (Store Var))
 
-runAbstractT ∷ AbstractT m a → m (a, Store_ Var)
+runAbstractT ∷ AbstractT m a → m (a, Store Var)
 runAbstractT (AbstractT m) = runStateT (runReaderT m mempty) mempty
 
 -- instance (MonadPlus m) ⇒ Exc (AbstractT m) where
@@ -46,11 +46,11 @@ top why = 𝖕 $ Undefined ("Top: " <> why)
 --     deref l = do
 --         store ← get
 --         maybe (error $ show l ++ " not found in store. " ++ fmt store) 𝖕 (lookup l $ unStore store)
---     ext l s = modify (\(Store_ store) → Store_ ((l, s) : store))
+--     ext l s = modify (\(Store store) → Store ((l, s) : store))
 
 newtype PowerSetT a = PowerSet {unPowerSet ∷ [a]} deriving (Eq, Show, Foldable, Functor, Applicative, Monad, Alternative, MonadPlus)
 
-execPowerSet ∷ Expr → PowerSetT (Val Var, Store_ Var)
+execPowerSet ∷ Expr → PowerSetT (Val Var, Store Var)
 -- execPowerSet e = PowerSet $ nub $ (unPowerSet ∘ runAbstractT) (fix eval e)
 execPowerSet = undefined
 

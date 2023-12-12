@@ -34,7 +34,7 @@ options =
     flag long help = O.switch (O.long long <> O.help help)
 
 data Fns = Fns
-    { show_store ∷ ∀ l. (Show l) ⇒ S.Store_ l → String
+    { show_store ∷ ∀ l. (Show l) ⇒ S.Store l → String
     , fmt' ∷ ∀ a. (F.Fmt a) ⇒ a → String
     }
 
@@ -67,7 +67,7 @@ main = do
         show_store s = case storeO of
             NoneS → ""
             Full → fmt' s <> "\n"
-            Pruned → (S.unStore >>> map pruneEnv >>> S.Store_ >>> fmt' >>> (<> "\n")) s
+            Pruned → (S.unStore >>> map pruneEnv >>> S.Store >>> fmt' >>> (<> "\n")) s
     fmtVal Fns{..} = \case (S.TxtV s) → s; e → fmt' e
     abstractOutput Fns{..} expr = do (v, s) ← Abs.unPowerSet $ Abs.execPowerSet expr; fmtVal Fns{..} v <> "\n" <> show_store s
     concreteOutput Fns{..} expr = do (v, s) ← [ev concreteInterpreter expr]; either id (fmtVal Fns{..}) v <> "\n" <> show_store s
