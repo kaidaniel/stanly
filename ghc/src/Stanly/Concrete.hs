@@ -9,69 +9,69 @@ import Control.Monad.State (MonadState, StateT, get, gets, modify, runStateT)
 import Control.Monad.Trans.Except (ExceptT)
 import Control.Monad.Trans.Reader (ReaderT)
 import Control.Monad.Writer (MonadWriter (tell))
-import Data.Char qualified as C
+import Data.Char qualified as C (toLower)
 import Data.Coerce (coerce)
 import Data.Function (fix)
 import Data.Functor.Identity (Identity)
-import Data.List qualified as L
+import Data.List qualified as L (take, (\\))
 import Stanly.Fmt
-import Stanly.Interpreter qualified as S
+import Stanly.Interpreter qualified as I (Env, Expr, Interpreter (..), Store (..), Val (..), eval, subexprs)
 import Stanly.Unicode
 
-type Concrete m = ReaderT (S.Env Int) (ExceptT String (StateT (S.Store Int) m))
+type Concrete m = ReaderT (I.Env Int) (ExceptT String (StateT (I.Store Int) m))
 
-ev' ∷ (Show l, Monad m) ⇒ (m (S.Val l) → Identity c, S.Interpreter l m) → S.Expr → c
-ev' (r, i) = runIdentity . r . fix (S.eval i)
+ev' ∷ ∀ l m c. (Show l, Monad m) ⇒ (m (I.Val l) → Identity c, I.Interpreter l m) → I.Expr → c
+ev' (r, i) = runIdentity . r . fix (I.eval i)
 
-evTrace ∷ ∀ l b m. (Show l, MonadWriter (ProgramTrace l) m) ⇒ (m (S.Val l) → (ProgramTrace l, b), S.Interpreter l m) → S.Expr → ProgramTrace l
+evTrace ∷ ∀ l b m. (Show l, MonadWriter (ProgramTrace l) m) ⇒ (m (I.Val l) → (ProgramTrace l, b), I.Interpreter l m) → I.Expr → ProgramTrace l
 evTrace (run, interp) e = fst (run (evalTrace' interp e))
   where
     evalTrace' i expr = do
-        r ← S.env i
-        s ← S.store i
+        r ← I.env i
+        s ← I.store i
         tell (coerce [(expr, r, s)])
-        S.eval i (evalTrace' i) expr
+        I.eval i (evalTrace' i) expr
 
-evDeadCode ∷ ∀ l b m. (Show l, MonadWriter (ProgramTrace l) m) ⇒ (m (S.Val l) → (ProgramTrace l, b), S.Interpreter l m) → S.Expr → NotCovered
-evDeadCode tpl expr = coerce $ reverse (dead L.\\ (dead >>= S.subexprs))
+evDeadCode ∷ ∀ l b m. (Show l, MonadWriter (ProgramTrace l) m) ⇒ (m (I.Val l) → (ProgramTrace l, b), I.Interpreter l m) → I.Expr → NotCovered
+evDeadCode tpl expr = coerce (reverse (dead L.\\ (dead >>= I.subexprs)))
   where
-    dead = S.subexprs expr L.\\ [e | let ProgramTrace li = evTrace tpl expr, (e, _, _) ← li]
+    dead = I.subexprs expr L.\\ [e | let ProgramTrace li = evTrace tpl expr, (e, _, _) ← li]
 
-runConcrete ∷ Concrete m a → m (Either String a, S.Store Int)
+runConcrete ∷ Concrete m a → m (Either String a, I.Store Int)
 runConcrete m = runStateT (runExceptT (runReaderT m mempty)) mempty
 
-concreteInterpreter ∷ (Monad m) ⇒ (Concrete m a → m (Either String a, S.Store Int), S.Interpreter Int (Concrete m))
+concreteInterpreter ∷ (Monad m) ⇒ (Concrete m a → m (Either String a, I.Store Int), I.Interpreter Int (Concrete m))
 concreteInterpreter = (runConcrete, concreteInterpreter')
 
-concreteInterpreter' ∷ ∀ m. (MonadState (S.Store Int) m, MonadError String m, MonadReader (S.Env Int) m) ⇒ S.Interpreter Int m
+concreteInterpreter' ∷ ∀ m. (MonadState (I.Store Int) m, MonadError String m, MonadReader (I.Env Int) m) ⇒ I.Interpreter Int m
 concreteInterpreter' =
     let exc' er = throwError ("Exception: " ++ er)
-     in S.Interpreter
-            { S.deref = \l → do
-                (S.Store store) ← get
+     in I.Interpreter
+            { I.deref = \l → do
+                (I.Store store) ← get
                 case lookup l store of
                     Just val → 𝖕 val
-                    Nothing → error $ show l ++ " not found in store. " ++ fmt (S.Store store)
-            , S.exc = exc'
-            , S.env = ask
-            , S.alloc = \_ → gets length
-            , S.localEnv = local
-            , S.store = get
-            , S.updateStore = modify
-            , S.op2 = \o a b → case (o, a, b) of
-                ("+", S.NumV n0, S.NumV n1) → (𝖕 ∘ S.NumV) (n0 + n1)
-                ("-", S.NumV n0, S.NumV n1) → (𝖕 ∘ S.NumV) (n0 - n1)
-                ("*", S.NumV n0, S.NumV n1) → (𝖕 ∘ S.NumV) (mul n0 n1)
-                ("/", S.NumV n0, S.NumV n1) →
+                    Nothing → error $ show l ++ " not found in store. " ++ fmt (I.Store store)
+            , I.exc = exc'
+            , I.env = ask
+            , I.alloc = \_ → gets length
+            , I.localEnv = local
+            , I.store = get
+            , I.updateStore = modify
+            , I.op2 = \o a b → case (o, a, b) of
+                ("+", I.NumV n0, I.NumV n1) → (𝖕 ∘ I.NumV) (n0 + n1)
+                ("-", I.NumV n0, I.NumV n1) → (𝖕 ∘ I.NumV) (n0 - n1)
+                ("*", I.NumV n0, I.NumV n1) → (𝖕 ∘ I.NumV) (mul n0 n1)
+                ("/", I.NumV n0, I.NumV n1) →
                     if n1 == 0
                         then exc' ("Division by zero. " ++ show n0 ++ "/" ++ show n1)
-                        else 𝖕 $ S.NumV (div n0 n1)
-                ("+", S.TxtV t0, S.TxtV t1) → (𝖕 ∘ S.TxtV) (t0 ++ t1)
-                ("+", S.TxtV t0, S.NumV n1) → (𝖕 ∘ S.TxtV) (t0 ++ show n1)
+                        else 𝖕 $ I.NumV (div n0 n1)
+                ("+", I.TxtV t0, I.TxtV t1) → (𝖕 ∘ I.TxtV) (t0 ++ t1)
+                ("+", I.TxtV t0, I.NumV n1) → (𝖕 ∘ I.TxtV) (t0 ++ show n1)
                 _ → exc' (invalidOperands o a b)
-            , S.branch = \fls tru → \case
-                S.NumV n → if n /= 0 then tru else fls
-                _ → 𝖕 (S.Undefined "Branching on non-numeric value")
+            , I.branch = \fls tru → \case
+                I.NumV n → if n /= 0 then tru else fls
+                _ → 𝖕 (I.Undefined "Branching on non-numeric value")
             }
 
 invalidOperands ∷ (Fmt a1, Fmt a2) ⇒ String → a1 → a2 → String
@@ -86,7 +86,7 @@ invalidOperands o a b =
         <> "\nright operand >>> "
         <> termFmt b
 
-newtype ProgramTrace l = ProgramTrace [(S.Expr, S.Env l, S.Store l)] deriving (Show, Semigroup, Monoid, Foldable)
+newtype ProgramTrace l = ProgramTrace [(I.Expr, I.Env l, I.Store l)] deriving (Show, Semigroup, Monoid, Foldable)
 
 instance (Show l) ⇒ Fmt (ProgramTrace l) where
     ansiFmt ∷ ProgramTrace l → ANSI
@@ -97,13 +97,13 @@ instance (Show l) ⇒ Fmt (ProgramTrace l) where
         join' [(a, i)] = dim >+ show i <> a <> start "\n"
         join' (x : xs) = join' [x] <> join' xs
 
-        f ∷ (S.Expr, S.Env l, S.Store l) → ANSI
+        f ∷ (I.Expr, I.Env l, I.Store l) → ANSI
         f (e, r, s) = dim >+ ("\n" <> name e <> " ") <> ansiFmt e <> dim >+ "\nenvr " <> ansiFmt r <> g s
-        g (S.Store []) = start ""
+        g (I.Store []) = start ""
         g x = start "\n" <> ansiFmt x
         name = map C.toLower ∘ L.take 3 ∘ show
 
-newtype NotCovered = NotCovered [S.Expr] deriving (Eq, Show, Semigroup, Monoid)
+newtype NotCovered = NotCovered [I.Expr] deriving (Eq, Show, Semigroup, Monoid)
 
 instance Fmt NotCovered where
     ansiFmt (NotCovered li) = f li
