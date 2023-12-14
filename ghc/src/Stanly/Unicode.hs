@@ -1,64 +1,63 @@
 {-# LANGUAGE StarIsType #-}
 
-module Stanly.Unicode (𝖏𝖋𝖋, mul, (∘), (⋙), (⋘), (≫), (∈), (∉), (∪), (∩), (⊛), (∅), 𝖟, 𝖋, 𝖋𝖋, 𝖋𝖋𝖋, 𝖕) where
+module Stanly.Unicode where
 
-import Control.Applicative (Alternative, empty, liftA2, liftA3)
-import Control.Category (Category, (<<<), (>>>))
-import Control.Monad (MonadPlus, join, liftM2, mzero)
-import Data.List (intersect, union)
-
-infixr 9 ∘
-infixr 1 ⋙, ⋘
+import Control.Applicative (Alternative (..), empty)
+import Control.Arrow ((>>>))
+import Control.Category (Category)
+import Control.Monad (MonadPlus, mzero)
 
 (∘) ∷ (β → γ) → (α → β) → α → γ
 (∘) = (.)
 {-# INLINE (∘) #-}
+infixr 9 ∘
 
-(⋙) ∷ (Category c) ⇒ c α β → c β γ → c α γ
+(⋙) ∷ (Category cat) ⇒ cat a b → cat b c → cat a c
 (⋙) = (>>>)
 {-# INLINE (⋙) #-}
-(⋘) ∷ (Category c) ⇒ c β γ → c α β → c α γ
-(⋘) = (<<<)
-{-# INLINE (⋘) #-}
+infixr 1 ⋙
+
 (≫) ∷ ∀ (m ∷ ★ → ★) α β. (Monad m) ⇒ m α → m β → m β
 (≫) = (>>)
 {-# INLINE (≫) #-}
-(∈) ∷ (Eq α) ⇒ α → [α] → Bool
-(∈) = elem
-{-# INLINE (∈) #-}
-(∉) ∷ (Eq α) ⇒ α → [α] → Bool
-(∉) = notElem
-{-# INLINE (∉) #-}
-(∪) ∷ (Eq α) ⇒ [α] → [α] → [α]
-(∪) = union
-{-# INLINE (∪) #-}
-(∩) ∷ (Eq α) ⇒ [α] → [α] → [α]
-(∩) = intersect
-{-# INLINE (∩) #-}
+infixl 1 ≫
+
 (⊛) ∷ (Applicative f) ⇒ f (α → β) → f α → f β
 (⊛) = (<*>)
 {-# INLINE (⊛) #-}
-(∅) ∷ (Alternative f) ⇒ f α
-(∅) = empty
-{-# INLINE (∅) #-}
-𝖋 ∷ (Functor f) ⇒ (α → β) → f α → f β
-𝖋 = fmap
-{-# INLINE 𝖋 #-}
-𝖋𝖋 ∷ (Applicative f) ⇒ (α → β → γ) → f α → f β → f γ
-𝖋𝖋 = liftA2
-{-# INLINE 𝖋𝖋 #-}
-𝖋𝖋𝖋 ∷ (Applicative f) ⇒ (α → β → γ → δ) → f α → f β → f γ → f δ
-𝖋𝖋𝖋 = liftA3
-{-# INLINE 𝖋𝖋𝖋 #-}
-𝖏𝖋𝖋 ∷ (Monad m) ⇒ (α → β → m a) → m α → m β → m a
-𝖏𝖋𝖋 f a b = join $ liftM2 f a b
-{-# INLINE 𝖏𝖋𝖋 #-}
-𝖕 ∷ (Applicative m) ⇒ α → m α
-𝖕 = pure
-{-# INLINE 𝖕 #-}
-𝖟 ∷ (MonadPlus m) ⇒ m a
-𝖟 = mzero
-{-# INLINE 𝖟 #-}
-mul ∷ (Num a) ⇒ a → a → a
-mul = (*)
-{-# INLINE mul #-}
+infixl 4 ⊛
+
+(<**>) ∷ (Applicative f) ⇒ f (α → β) → f α → f β
+(<**>) = (<*>)
+{-# INLINE (<**>) #-}
+
+εₐ ∷ (Alternative f) ⇒ f α
+εₐ = empty
+{-# INLINE εₐ #-}
+
+εₘ ∷ (MonadPlus m) ⇒ m a
+εₘ = mzero
+{-# INLINE εₘ #-}
+
+ε₁ ∷ (Monoid m) ⇒ m
+ε₁ = mempty
+{-# INLINE ε₁ #-}
+
+ω ∷ (Applicative m) ⇒ a → m a
+ω = pure
+{-# INLINE ω #-}
+
+(⎴) ∷ (a → b) → a → b
+(⎴) = ($)
+infixr 0 ⎴
+{-# INLINE (⎴) #-}
+
+(⫿) ∷ (Alternative f) ⇒ f a → f a → f a
+(⫿) = (<|>)
+{-# INLINE (⫿) #-}
+infixl 3 ⫿
+
+(⋄) ∷ (Semigroup a) ⇒ a → a → a
+(⋄) = (<>)
+{-# INLINE (⋄) #-}
+infixr 6 ⋄

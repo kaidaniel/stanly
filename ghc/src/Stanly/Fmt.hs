@@ -4,6 +4,7 @@
 module Stanly.Fmt where
 
 import Data.Text qualified as T
+import Stanly.Unicode
 
 newtype ANSI = ANSI {unANSI ∷ [(ESC, T.Text)]} deriving (Eq, Show, Semigroup, Monoid)
 
@@ -16,7 +17,7 @@ start ∷ String → ANSI
 start s = ANSI [(ESC "", T.pack s)]
 
 ansi ∷ Int → ESC
-ansi n = ESC ("\x1b[" <> T.pack (show n) <> "m")
+ansi n = ESC ("\x1b[" ⋄ T.pack (show n) ⋄ "m")
 
 reset, bold, dim, italic, underline, black, red, green, yellow, blue, magenta, cyan, white, dflt ∷ ESC
 reset = ansi 0
@@ -36,13 +37,13 @@ dflt = ansi 39
 
 class Fmt a where
     fmt ∷ a → String
-    fmt e = let ANSI x = ansiFmt e in T.unpack (foldl (\txt (_, t) → txt <> t) mempty x)
+    fmt e = let ANSI x = ansiFmt e in T.unpack (foldl (\txt (_, t) → txt ⋄ t) ε₁ x)
     termFmt ∷ a → String
-    termFmt e = let ANSI x = ansiFmt e in T.unpack (foldl (\txt (ESC code, t) → ((txt <> code) <> t) <> unESC reset) mempty x)
+    termFmt e = let ANSI x = ansiFmt e in T.unpack (foldl (\txt (ESC code, t) → ((txt ⋄ code) ⋄ t) ⋄ unESC reset) ε₁ x)
     ansiFmt ∷ a → ANSI
 
 instance (Fmt a, Fmt b) ⇒ Fmt (a, b) where
-    ansiFmt (a, b) = start "(" <> ansiFmt a <> start ", " <> ansiFmt b <> start ")"
+    ansiFmt (a, b) = start "(" ⋄ ansiFmt a ⋄ start ", " ⋄ ansiFmt b ⋄ start ")"
 
 instance (Fmt a, Fmt b, Fmt c) ⇒ Fmt (a, b, c) where
-    ansiFmt (a, b, c) = dim >+ "(" <> ansiFmt a <> start ", " <> ansiFmt b <> start ", " <> ansiFmt c <> dim >+ ")"
+    ansiFmt (a, b, c) = dim >+ "(" ⋄ ansiFmt a ⋄ start ", " ⋄ ansiFmt b ⋄ start ", " ⋄ ansiFmt c ⋄ dim >+ ")"

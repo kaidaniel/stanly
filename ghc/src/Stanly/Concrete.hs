@@ -19,23 +19,23 @@ type ExcT m = ExceptT String m
 type ConcreteT m = ExcT (EnvT (StoreT m))
 
 evalConcrete ∷ ∀ m. (Monad m) ⇒ I.Combinator Int (ConcreteT m) → I.Expr → m (Either String (I.Val Int))
-evalConcrete c e = do (v, _) ← runConcrete c e; pure v
+evalConcrete c e = do (v, _) ← runConcrete c e; ω v
 
 runConcrete ∷ ∀ m. (Monad m) ⇒ I.Combinator Int (ConcreteT m) → I.Expr → m (Either String (I.Val Int), I.Store Int)
-runConcrete ev = rstore . renv . rexc . ev'
+runConcrete ev = rstore ∘ renv ∘ rexc ∘ ev'
   where
-    rstore = flip runStateT mempty
-    renv = flip runReaderT mempty
+    rstore = flip runStateT ε₁
+    renv = flip runReaderT ε₁
     rexc = runExceptT
     ev' = ev concreteInterpreter
     concreteInterpreter =
-        let exc' er = throwError ("Exception: " ++ er)
+        let exc' er = throwError ⎴ "Exception: " ++ er
          in I.Interpreter
                 { I.deref = \l → do
-                    (I.Store store) ← get
+                    I.Store store ← get
                     case lookup l store of
-                        Just val → 𝖕 val
-                        Nothing → error $ show l ++ " not found in store. " ++ fmt (I.Store store)
+                        Just val → ω val
+                        Nothing → error ⎴ show l ++ " not found in store. " ++ fmt (I.Store store)
                 , I.exc = exc'
                 , I.env = ask
                 , I.alloc = \_ → gets length
@@ -43,29 +43,29 @@ runConcrete ev = rstore . renv . rexc . ev'
                 , I.store = get
                 , I.updateStore = modify
                 , I.op2 = \o a b → case (o, a, b) of
-                    ("+", I.NumV n0, I.NumV n1) → (𝖕 ∘ I.NumV) (n0 + n1)
-                    ("-", I.NumV n0, I.NumV n1) → (𝖕 ∘ I.NumV) (n0 - n1)
-                    ("*", I.NumV n0, I.NumV n1) → (𝖕 ∘ I.NumV) (mul n0 n1)
-                    ("/", I.NumV n0, I.NumV n1) →
-                        if n1 == 0
-                            then exc' ("Division by zero. " ++ show n0 ++ "/" ++ show n1)
-                            else 𝖕 $ I.NumV (div n0 n1)
-                    ("+", I.TxtV t0, I.TxtV t1) → (𝖕 ∘ I.TxtV) (t0 ++ t1)
-                    ("+", I.TxtV t0, I.NumV n1) → (𝖕 ∘ I.TxtV) (t0 ++ show n1)
-                    _ → exc' (invalidOperands o a b)
+                    ("+", I.NumV n₀, I.NumV n₁) → ω ∘ I.NumV ⎴ n₀ + n₁
+                    ("-", I.NumV n₀, I.NumV n₁) → ω ∘ I.NumV ⎴ n₀ - n₁
+                    ("*", I.NumV n₀, I.NumV n₁) → ω ∘ I.NumV ⎴ n₀ * n₁
+                    ("/", I.NumV n₀, I.NumV n₁) →
+                        if n₁ == 0
+                            then exc' ⎴ "Division by zero. " ++ show n₀ ++ "/" ++ show n₁
+                            else ω ⎴ I.NumV ⎴ div n₀ n₁
+                    ("+", I.TxtV t₀, I.TxtV t₁) → ω ∘ I.TxtV ⎴ t₀ ++ t₁
+                    ("+", I.TxtV t₀, I.NumV n₁) → ω ∘ I.TxtV ⎴ t₀ ++ show n₁
+                    _ → exc' ⎴ invalidOperands o a b
                 , I.branch = \fls tru → \case
                     I.NumV n → if n /= 0 then tru else fls
-                    _ → 𝖕 (I.Undefined "Branching on non-numeric value")
+                    _ → ω ⎴ I.Undefined "Branching on non-numeric value"
                 }
 
-invalidOperands ∷ (Fmt a1, Fmt a2) ⇒ String → a1 → a2 → String
+invalidOperands ∷ (Fmt a₁, Fmt a₂) ⇒ String → a₁ → a₂ → String
 invalidOperands o a b =
     "Invalid arguments to operator '"
-        <> o
-        <> "':\n"
-        <> "\nleft operand  >>> "
-        <> termFmt a
-        <> "\noperation     >>> "
-        <> o
-        <> "\nright operand >>> "
-        <> termFmt b
+        ⋄ o
+        ⋄ "':\n"
+        ⋄ "\nleft operand  >>> "
+        ⋄ termFmt a
+        ⋄ "\noperation     >>> "
+        ⋄ o
+        ⋄ "\nright operand >>> "
+        ⋄ termFmt b
