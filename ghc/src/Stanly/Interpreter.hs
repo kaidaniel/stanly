@@ -7,6 +7,8 @@ import Control.Applicative qualified as A
 import Control.Arrow ((>>>))
 import Control.Monad qualified as M
 import Control.Monad.Fix (fix)
+import Control.Monad.Trans (MonadTrans)
+import Control.Monad.Trans.Class (lift)
 import Data.Coerce (coerce)
 import Data.Function ((&))
 import Data.List qualified as L
@@ -45,18 +47,14 @@ deriving instance (Eq l) ⇒ Eq (Val l)
 deriving instance Show (Val l)
 deriving instance Foldable Val
 
-type Eval m l = Expr → m (Val l)
+type Eval l m = Expr → m (Val l)
+type EvalTr l m = Eval l m → Eval l m
+type Combinator l m = Interpreter l m → Expr → m (Val l)
 
-ev ∷
-    ∀ m l.
-    (Show l, Monad m) ⇒
-    Interpreter l m →
-    ((Eval m l → Eval m l) → (Eval m l → Eval m l)) →
-    (Eval m l → Eval m l) →
-    Eval m l
-ev interpreter inner outer = outer (fix (inner (eval interpreter)))
+interpret ∷ ∀ l m. Interpreter l m → EvalTr l m → (EvalTr l m → EvalTr l m) → Expr → m (Val l)
+interpret interpreter closed open = closed (fix (open (eval interpreter)))
 
-eval ∷ ∀ m l. (Show l, Monad m) ⇒ Interpreter l m → (Eval m l → Eval m l)
+eval ∷ ∀ m l. Interpreter l m → (Eval l m → Eval l m)
 eval Interpreter{..} eval' = \case
     Num n → 𝖕 (NumV n)
     Txt s → 𝖕 (TxtV s)
@@ -92,17 +90,34 @@ eval Interpreter{..} eval' = \case
     localEnv' f = localEnv (coerce f)
     updateStore' f = updateStore (coerce f)
 
-data Interpreter l m = Interpreter
-    { deref ∷ l → m (Val l)
-    , env ∷ m (Env l)
-    , localEnv ∷ (Env l → Env l) → m (Val l) → m (Val l)
-    , store ∷ m (Store l)
-    , updateStore ∷ (Store l → Store l) → m ()
-    , alloc ∷ Var → m l
-    , op2 ∷ String → Val l → Val l → m (Val l)
-    , branch ∷ m (Val l) → m (Val l) → Val l → m (Val l)
-    , exc ∷ String → m (Val l)
-    }
+data Interpreter l m where
+    Interpreter ∷
+        (Show l, Monad m) ⇒
+        { deref ∷ l → m (Val l)
+        , env ∷ m (Env l)
+        , localEnv ∷ (Env l → Env l) → m (Val l) → m (Val l)
+        , store ∷ m (Store l)
+        , updateStore ∷ (Store l → Store l) → m ()
+        , alloc ∷ Var → m l
+        , op2 ∷ String → Val l → Val l → m (Val l)
+        , branch ∷ m (Val l) → m (Val l) → Val l → m (Val l)
+        , exc ∷ String → m (Val l)
+        } →
+        Interpreter l m
+
+liftInterpreter ∷ ∀ l m n. (MonadTrans n, Monad (n m)) ⇒ Interpreter l m → Interpreter l (n m)
+liftInterpreter Interpreter{..} =
+    Interpreter
+        { deref = lift . deref
+        , exc = lift . exc
+        , env = lift env
+        , alloc = lift . alloc
+        , localEnv = \g m → m >>= (lift . localEnv g . pure)
+        , store = lift store
+        , updateStore = lift . updateStore
+        , op2 = \o a b → lift (op2 o a b)
+        , branch = \m n v → m >>= (\x → n >>= (\y → lift (branch (pure x) (pure y) v)))
+        }
 
 parser ∷ String → String → Either P.ParseError Expr
 parser = P.parse $ expr <* P.eof
