@@ -7,6 +7,9 @@ import Control.Arrow ((>>>))
 import Control.Category (Category)
 import Control.Monad (MonadPlus, mzero)
 
+-- ₁ ₂ ₃ ₄ ₅ ₆ ₇ ₈ ₉ ₀
+
+-- no-haskell-unicode
 (∘) ∷ (β → γ) → (α → β) → α → γ
 (∘) = (.)
 {-# INLINE (∘) #-}
@@ -27,9 +30,9 @@ infixl 1 ≫
 {-# INLINE (⊛) #-}
 infixl 4 ⊛
 
-(<**>) ∷ (Applicative f) ⇒ f (α → β) → f α → f β
-(<**>) = (<*>)
-{-# INLINE (<**>) #-}
+(<*>!) ∷ (Applicative f) ⇒ f (α → β) → f α → f β
+(<*>!) = (<*>)
+{-# INLINE (<*>!) #-}
 
 εₐ ∷ (Alternative f) ⇒ f α
 εₐ = empty
@@ -52,12 +55,42 @@ infixl 4 ⊛
 infixr 0 ⎴
 {-# INLINE (⎴) #-}
 
-(⫿) ∷ (Alternative f) ⇒ f a → f a → f a
-(⫿) = (<|>)
-{-# INLINE (⫿) #-}
-infixl 3 ⫿
+(⫶) ∷ (Alternative f) ⇒ f a → f a → f a
+(⫶) = (<|>)
+{-# INLINE (⫶) #-}
+infixl 3 ⫶
 
 (⋄) ∷ (Semigroup a) ⇒ a → a → a
 (⋄) = (<>)
 {-# INLINE (⋄) #-}
 infixr 6 ⋄
+
+(⇉) ∷ (Monad m) ⇒ m a → (a → m b) → m b
+(⇉) = (>>=)
+{-# INLINE (⇉) #-}
+infixl 1 ⇉
+
+(>>=!) ∷ (Monad m) ⇒ m a → (a → m b) → m b
+(>>=!) = (>>=)
+{-# INLINE (>>=!) #-}
+infixl 1 >>=!
+
+π₁ ∷ ∀ {a} {b}. (a, b) → a
+π₁ = fst
+{-# INLINE π₁ #-}
+
+π₂ ∷ ∀ {a} {b}. (a, b) → b
+π₂ = snd
+{-# INLINE π₂ #-}
+
+π₃₁ ∷ ∀ {a} {b} {c}. (a, b, c) → a
+π₃₁ (a, _, _) = a
+{-# INLINE π₃₁ #-}
+
+π₃₂ ∷ ∀ {a} {b} {c}. (a, b, c) → b
+π₃₂ (_, b, _) = b
+{-# INLINE π₃₂ #-}
+
+π₃₃ ∷ ∀ {a} {b} {c}. (a, b, c) → c
+π₃₃ (_, _, c) = c
+{-# INLINE π₃₃ #-}

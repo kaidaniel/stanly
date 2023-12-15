@@ -6,6 +6,7 @@ export PATH := $(PATH):build/
 all: format cabal test
 
 format:
+	./haskell-unicode src/**/*.hs tests/*.hs app/*.hs
 	fourmolu --unicode always --mode inplace src/Stanly/*.hs app/*.hs tests/*.hs
 
 cabal: format

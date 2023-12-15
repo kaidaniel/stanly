@@ -32,12 +32,12 @@ options =
             ⋄ O.short (head long)
             ⋄ O.showDefault
             ⋄ O.value (head li)
-            ⋄ O.metavar ("{" ⋄ L.intercalate "|" (map show li) ⋄ "}")
+            ⋄ O.metavar ("{" ⋄ L.intercalate "|" [show x | x ← li] ⋄ "}")
             ⋄ O.help help
     flag long help = O.switch (O.long long ⋄ O.help help)
 
 data Fns = Fns
-    { show_store ∷ ∀ l. (Show l) ⇒ I.Store l → String
+    { show_store ∷ ∀ l. (F.Fmt l) ⇒ I.Store l → String
     , fmt' ∷ ∀ a. (F.Fmt a) ⇒ a → String
     }
 
@@ -67,7 +67,7 @@ main = do
         pruneEnv = \case (l, I.LamV x e r) → (l, I.LamV x e (I.pruneEnv e r)); x → x
         fmt' ∷ ∀ a. (F.Fmt a) ⇒ a → String
         fmt' = if noColourO then F.fmt else F.termFmt
-        show_store ∷ ∀ l. (Show l) ⇒ I.Store l → String
+        show_store ∷ ∀ l. (F.Fmt l) ⇒ I.Store l → String
         show_store s = case storeO of
             NoneS → ""
             Full → fmt' s ⋄ "\n"

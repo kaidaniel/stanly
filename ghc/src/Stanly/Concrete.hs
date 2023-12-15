@@ -63,9 +63,9 @@ invalidOperands o a b =
     "Invalid arguments to operator '"
         ⋄ o
         ⋄ "':\n"
-        ⋄ "\nleft operand  >>> "
+        ⋄ "\nleft operand  ⋙ "
         ⋄ termFmt a
-        ⋄ "\noperation     >>> "
+        ⋄ "\noperation     ⋙ "
         ⋄ o
-        ⋄ "\nright operand >>> "
+        ⋄ "\nright operand ⋙ "
         ⋄ termFmt b

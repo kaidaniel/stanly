@@ -17,14 +17,14 @@ runAbstractT ∷ AbstractT m a → m (a, Store Var)
 runAbstractT (AbstractT m) = runStateT (runReaderT m ε₁) ε₁
 
 -- instance (MonadPlus m) ⇒ Exc (AbstractT m) where
---     exc why = ω $ Undefined ("Bottom: " ⋄ why)
+--     exc why = ω ⎴ Undefined ("Bottom: " ⋄ why)
 
 top ∷ (Applicative f) ⇒ String → f (Val l)
-top why = ω $ Undefined ("Top: " ⋄ why)
+top why = ω ⎴ Undefined ("Top: " ⋄ why)
 
 -- instance (MonadPlus m) ⇒ Primops Addr (AbstractT m) where
 --     op2 o lhs rhs
---         | o `notElem` ["+", "-", "*", "/"] = exc $ "Invalid operation: " ⋄ o
+--         | o `notElem` ["+", "-", "*", "/"] = exc ⎴ "Invalid operation: " ⋄ o
 --         | otherwise = case (o, lhs, rhs) of
 --             ("/", _, Undefined t) → mplus (exc "Division by zero") (reraise t)
 --             ("/", _, NumV 0) → exc "Division by zero"
@@ -33,7 +33,7 @@ top why = ω $ Undefined ("Top: " ⋄ why)
 --             (_, _, Undefined t) → reraise t
 --             (_, _, _) → top "Invalid operands top op2"
 --       where
---         reraise t = ω $ Undefined t
+--         reraise t = ω ⎴ Undefined t
 
 --     branch fls tru = \case
 --         NumV n → if n /= 0 then tru else fls
@@ -45,14 +45,14 @@ top why = ω $ Undefined ("Top: " ⋄ why)
 --     alloc = ω
 --     deref l = do
 --         store ← get
---         maybe (error $ show l ++ " not found in store. " ++ fmt store) ω (lookup l $ unStore store)
+--         maybe (error ⎴ show l ++ " not found in store. " ++ fmt store) ω (lookup l ⎴ unStore store)
 --     ext l s = modify (\(Store store) → Store ((l, s) : store))
 
 newtype PowerSetT a = PowerSet {unPowerSet ∷ [a]} deriving (Eq, Show, Foldable, Functor, Applicative, Monad, Alternative, MonadPlus)
 
 execPowerSet ∷ Expr → PowerSetT (Val Var, Store Var)
--- execPowerSet e = PowerSet $ nub $ (unPowerSet ∘ runAbstractT) (fix eval e)
+-- execPowerSet e = PowerSet ⎴ nub ⎴ (unPowerSet ∘ runAbstractT) (fix eval e)
 execPowerSet = undefined
 
 instance (Fmt a) ⇒ Fmt (PowerSetT a) where
-    ansiFmt (PowerSet xs) = foldr ((\a b → a ⋄ start "\n" ⋄ b) ∘ ansiFmt) (start "") xs
+    ansiFmt (PowerSet xs) = mconcat [x ⊹ "\n" | x ← xs]

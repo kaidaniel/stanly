@@ -1,23 +1,26 @@
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
-{-# LANGUAGE OverloadedStrings #-}
 
 module Stanly.Fmt where
 
-import Data.Text qualified as T
+-- no-haskell-unicode
+import Data.Coerce
 import Stanly.Unicode
 
-newtype ANSI = ANSI {unANSI ∷ [(ESC, T.Text)]} deriving (Eq, Show, Semigroup, Monoid)
+newtype ANSI = ANSI {unANSI ∷ [(ESC, String)]} deriving (Eq, Show, Semigroup, Monoid)
 
-newtype ESC = ESC {unESC ∷ T.Text} deriving (Eq, Show, Semigroup, Monoid)
+newtype ESC = ESC {unESC ∷ String} deriving (Eq, Show, Semigroup, Monoid)
 
-(>+) ∷ ESC → String → ANSI
-(>+) esc rhs = ANSI [(esc, T.pack rhs)]
+(>+) ∷ (Fmt a) ⇒ ESC → a → ANSI
+(>+) esc rhs = ANSI [(esc, "")] <> ansiFmt rhs
 
-start ∷ String → ANSI
-start s = ANSI [(ESC "", T.pack s)]
+(⊹), (|-|) ∷ (Fmt a, Fmt b) ⇒ a → b → ANSI
+(|-|) a b = ansiFmt a ⋄ ansiFmt b
+(⊹) = (|-|)
+infixr 6 |-|, ⊹
+{-# INLINE (⊹) #-}
 
 ansi ∷ Int → ESC
-ansi n = ESC ("\x1b[" ⋄ T.pack (show n) ⋄ "m")
+ansi n = ESC ("\x1b[" ⋄ show n ⋄ "m")
 
 reset, bold, dim, italic, underline, black, red, green, yellow, blue, magenta, cyan, white, dflt ∷ ESC
 reset = ansi 0
@@ -34,16 +37,32 @@ magenta = ansi 35
 cyan = ansi 36
 white = ansi 37
 dflt = ansi 39
-
 class Fmt a where
     fmt ∷ a → String
-    fmt e = let ANSI x = ansiFmt e in T.unpack (foldl (\txt (_, t) → txt ⋄ t) ε₁ x)
+    fmt e = mconcat [snd x | let ANSI xs = ansiFmt e, x ← xs]
     termFmt ∷ a → String
-    termFmt e = let ANSI x = ansiFmt e in T.unpack (foldl (\txt (ESC code, t) → ((txt ⋄ code) ⋄ t) ⋄ unESC reset) ε₁ x)
+    termFmt e = mconcat [coerce code ⋄ t ⋄ coerce reset | let ANSI xs = ansiFmt e, (code, t) ← xs]
     ansiFmt ∷ a → ANSI
 
 instance (Fmt a, Fmt b) ⇒ Fmt (a, b) where
-    ansiFmt (a, b) = start "(" ⋄ ansiFmt a ⋄ start ", " ⋄ ansiFmt b ⋄ start ")"
+    ansiFmt (a, b) = "(" ⊹ a ⊹ ", " ⊹ b ⊹ ")"
 
 instance (Fmt a, Fmt b, Fmt c) ⇒ Fmt (a, b, c) where
-    ansiFmt (a, b, c) = dim >+ "(" ⋄ ansiFmt a ⋄ start ", " ⋄ ansiFmt b ⋄ start ", " ⋄ ansiFmt c ⋄ dim >+ ")"
+    ansiFmt (a, b, c) = dim >+ "(" ⊹ a ⊹ ", " ⊹ b ⊹ ", " ⊹ c ⊹ dim >+ ")"
+
+instance Fmt Integer where
+    ansiFmt i = ANSI [(ESC "", show i)]
+
+instance Fmt Int where ansiFmt i = ANSI [(ESC "", show i)]
+
+instance Fmt ANSI where
+    ansiFmt = id
+
+instance Fmt Char where
+    ansiFmt c = ANSI [(ESC "", [c])]
+
+instance (Fmt a) ⇒ Fmt [a] where
+    ansiFmt xs = mconcat [ansiFmt x | x ← xs]
+
+instance Fmt ESC where
+    ansiFmt esc = ANSI [(esc, "")]
