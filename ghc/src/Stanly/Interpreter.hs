@@ -12,12 +12,11 @@ import Data.Coerce (coerce)
 import Data.Function ((&))
 import Data.List qualified as L
 import GHC.Generics
-import Stanly.Fmt (Fmt (..), bold, dim, magenta, yellow, (>+), (⊹))
+import Stanly.Fmt (Fmt (..), bold, dim, magenta, yellow, (⊹))
 import Stanly.Unicode
 import Text.Parsec qualified as P
 import Text.Parsec.Language (emptyDef)
 import Text.Parsec.Token qualified as Tn
-import Text.Printf qualified as Pr
 
 type Var = String
 
@@ -168,15 +167,15 @@ subexprs = \case
     Vbl _ → εₐ
 
 pruneEnv ∷ ∀ l. Expr → Env l → Env l
-pruneEnv e = coerce ⋙ filter (flip elem (vbls e) ∘ π₁) ⋙ coerce @[(Var, l)] @(Env l)
+pruneEnv e = coerce ⋙ filter (flip elem (vbls e) ∘ π₁) ⋙ coerce @[(Var, l)]
 
 vbls ∷ Expr → [Var]
 vbls e = do Vbl v ← subexprs e; ω v
 
 instance (Fmt l) ⇒ Fmt (Env l) where
-    ansiFmt (Env r) = yellow >+ "Γ⟦" ⊹ fmt₁ r "" ⊹ yellow >+ "⟧"
+    ansiFmt (Env r) = yellow ⊹ "Γ⟦" ⊹ fmt₁ r "" ⊹ yellow ⊹ "⟧"
       where
-        fmt₁ ((v, a) : r₁) sep = sep ⊹ v ⊹ ": " ⊹ yellow >+ a ⊹ fmt₁ r₁ ", "
+        fmt₁ ((v, a) : r₁) sep = sep ⊹ v ⊹ ": " ⊹ yellow ⊹ a ⊹ fmt₁ r₁ ", "
         fmt₁ [] _ = ansiFmt ""
 
 instance (Fmt l) ⇒ Fmt (Store l) where
@@ -185,14 +184,14 @@ instance (Fmt l) ⇒ Fmt (Store l) where
             [] → ε₁
             (x : xs) → line x ⊹ ["\n" ⊹ line x₁ | x₁ ← xs]
       where
-        prefix = (dim >+) ∘ \case LamV{} → "lam "; NumV{} → "num "; TxtV{} → "txt "; Undefined{} → "und "
-        line (k, v) = dim >+ "stor " ⋄ ((>+) @String) yellow (Pr.printf "%-4s" (fmt k)) ⊹ prefix v ⊹ v
+        prefix = (dim ⊹) ∘ \case LamV{} → "lam "; NumV{} → "num "; TxtV{} → "txt "; Undefined{} → "und "
+        line (k, v) = dim ⊹ "stor " ⊹ yellow ⊹ take 4 (fmt k) ⊹ prefix v ⊹ v
 
 instance (Fmt l) ⇒ Fmt (Val l) where
     ansiFmt = \case
-        LamV x body r → "λ" ⊹ bold >+ x ⊹ "." ⊹ body ⊹ " " ⊹ r
-        NumV n → dim >+ n
-        TxtV s → dim >+ s
+        LamV x body r → "λ" ⊹ bold ⊹ x ⊹ "." ⊹ body ⊹ " " ⊹ r
+        NumV n → dim ⊹ n
+        TxtV s → dim ⊹ s
         Undefined s → "Undefined: " ⊹ s
 
 instance (Fmt l) ⇒ Fmt (Either String (Val l)) where
@@ -203,19 +202,19 @@ instance (Fmt l) ⇒ Fmt (Either String (Val l)) where
 instance Fmt Expr where
     ansiFmt = \case
         Vbl x → ansiFmt x
-        App fn arg → (dim ⋄ magenta) >+ "(" ⊹ appParen fn ⊹ " " ⊹ arg ⊹ (dim ⋄ magenta) >+ ")"
-        Lam x body → dim >+ "(λ" ⊹ bold >+ x ⊹ "." ⊹ binderParen body ⊹ dim >+ ")"
-        Rec f body → dim >+ "(μ" ⊹ bold >+ f ⊹ "." ⊹ binderParen body ⊹ dim >+ ")"
-        Op2 o left right → dim >+ "(" ⊹ left ⊹ opFmt o ⊹ right ⊹ dim >+ ")"
+        App fn arg → (dim ⋄ magenta) ⊹ "(" ⊹ appParen fn ⊹ " " ⊹ arg ⊹ (dim ⋄ magenta) ⊹ ")"
+        Lam x body → dim ⊹ "(λ" ⊹ bold ⊹ x ⊹ "." ⊹ binderParen body ⊹ dim ⊹ ")"
+        Rec f body → dim ⊹ "(μ" ⊹ bold ⊹ f ⊹ "." ⊹ binderParen body ⊹ dim ⊹ ")"
+        Op2 o left right → dim ⊹ "(" ⊹ left ⊹ opFmt o ⊹ right ⊹ dim ⊹ ")"
         Num n → ansiFmt n
-        Txt s → dim >+ show s
+        Txt s → dim ⊹ show s
         If tst tru fls → "(if " ⊹ tst ⊹ " then " ⊹ tru ⊹ " else " ⊹ fls ⊹ ")"
       where
         appParen = \case
             App fn arg → appParen fn ⊹ " " ⊹ arg
             e → ansiFmt e
         binderParen = \case
-            Rec f body → "μ" ⊹ bold >+ f ⊹ "." ⊹ binderParen body
-            Lam x body → "λ" ⊹ bold >+ x ⊹ "." ⊹ binderParen body
+            Rec f body → "μ" ⊹ bold ⊹ f ⊹ "." ⊹ binderParen body
+            Lam x body → "λ" ⊹ bold ⊹ x ⊹ "." ⊹ binderParen body
             e → ansiFmt e
         opFmt o = " " ⊹ o ⊹ " "

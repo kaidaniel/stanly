@@ -10,9 +10,6 @@ newtype ANSI = ANSI {unANSI ∷ [(ESC, String)]} deriving (Eq, Show, Semigroup, 
 
 newtype ESC = ESC {unESC ∷ String} deriving (Eq, Show, Semigroup, Monoid)
 
-(>+) ∷ (Fmt a) ⇒ ESC → a → ANSI
-(>+) esc rhs = ANSI [(esc, "")] <> ansiFmt rhs
-
 (⊹), (|-|) ∷ (Fmt a, Fmt b) ⇒ a → b → ANSI
 (|-|) a b = ansiFmt a ⋄ ansiFmt b
 (⊹) = (|-|)
@@ -37,6 +34,10 @@ magenta = ansi 35
 cyan = ansi 36
 white = ansi 37
 dflt = ansi 39
+
+display ∷ String → ANSI
+display s = ANSI [(ESC "", s)]
+
 class Fmt a where
     fmt ∷ a → String
     fmt e = mconcat [snd x | let ANSI xs = ansiFmt e, x ← xs]
@@ -44,25 +45,25 @@ class Fmt a where
     termFmt e = mconcat [coerce code ⋄ t ⋄ coerce reset | let ANSI xs = ansiFmt e, (code, t) ← xs]
     ansiFmt ∷ a → ANSI
 
-instance (Fmt a, Fmt b) ⇒ Fmt (a, b) where
-    ansiFmt (a, b) = "(" ⊹ a ⊹ ", " ⊹ b ⊹ ")"
-
-instance (Fmt a, Fmt b, Fmt c) ⇒ Fmt (a, b, c) where
-    ansiFmt (a, b, c) = dim >+ "(" ⊹ a ⊹ ", " ⊹ b ⊹ ", " ⊹ c ⊹ dim >+ ")"
-
 instance Fmt Integer where
-    ansiFmt i = ANSI [(ESC "", show i)]
+    ansiFmt i = display $ show i
 
-instance Fmt Int where ansiFmt i = ANSI [(ESC "", show i)]
+instance Fmt Int where ansiFmt i = display $ show i
 
 instance Fmt ANSI where
     ansiFmt = id
 
 instance Fmt Char where
-    ansiFmt c = ANSI [(ESC "", [c])]
+    ansiFmt c = display [c]
 
-instance (Fmt a) ⇒ Fmt [a] where
-    ansiFmt xs = mconcat [ansiFmt x | x ← xs]
+instance Fmt String where
+    ansiFmt = display
+
+instance Fmt [ANSI] where
+    ansiFmt = mconcat
+
+instance Fmt [String] where
+    ansiFmt = mconcat . fmap display
 
 instance Fmt ESC where
     ansiFmt esc = ANSI [(esc, "")]
