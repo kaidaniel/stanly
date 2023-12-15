@@ -23,8 +23,8 @@ options =
             ⊛ flag "desugared" "Show the program after syntax transformation."
             ⊛ flag "ast" "Show the abstract syntax tree used by the interpreter."
             ⊛ flag "trace" "Show how the interpreter state changes while the program is being evaluated."
-            ⊛ flag "dead-code" "Show parts of the program that weren't reached during interpretation."
-            ⊛ flag "no-colour" "Don't colourise output."
+            ⊛ flag "dead-code" "Show parts of the program that weren₁t reached during interpretation."
+            ⊛ flag "no-colour" "Don₁t colourise output."
   where
     choice long li help =
         O.option O.auto
@@ -38,7 +38,7 @@ options =
 
 data Fns = Fns
     { show_store ∷ ∀ l. (F.Fmt l) ⇒ I.Store l → String
-    , fmt' ∷ ∀ a. (F.Fmt a) ⇒ a → String
+    , bwText₁ ∷ ∀ a. (F.Fmt a) ⇒ a → String
     }
 
 main ∷ IO ()
@@ -55,9 +55,9 @@ main = do
         M.when deadCodeO (putFmt (execWriter (C.runConcrete K.evDeadCode ast)))
         M.when traceO (putFmt (execWriter (C.runConcrete K.evTrace ast)))
       where
-        fmt_ ∷ ∀ a. (F.Fmt a) ⇒ a → String
-        fmt_ = if noColourO then F.fmt else F.termFmt
-        putFmt x = if fmt_ x == "" then putStr "" else putStrLn ⎴ fmt_ x
+        bwText_ ∷ ∀ a. (F.Fmt a) ⇒ a → String
+        bwText_ = if noColourO then F.bwText else F.ttyText
+        putFmt x = if bwText_ x == "" then putStr "" else putStrLn ⎴ bwText_ x
     value Options{valueO, noColourO, storeO} =
         putStr ∘ case valueO of
             Concrete → concreteOutput Fns{..}
@@ -65,16 +65,16 @@ main = do
             NoneV → const ""
       where
         pruneEnv = \case (l, I.LamV x e r) → (l, I.LamV x e (I.pruneEnv e r)); x → x
-        fmt' ∷ ∀ a. (F.Fmt a) ⇒ a → String
-        fmt' = if noColourO then F.fmt else F.termFmt
+        bwText₁ ∷ ∀ a. (F.Fmt a) ⇒ a → String
+        bwText₁ = if noColourO then F.bwText else F.ttyText
         show_store ∷ ∀ l. (F.Fmt l) ⇒ I.Store l → String
         show_store s = case storeO of
             NoneS → ""
-            Full → fmt' s ⋄ "\n"
-            Pruned → (coerce @_ @[(l, I.Val l)] ⋙ map pruneEnv ⋙ I.Store ⋙ fmt' ⋙ (⋄ "\n")) s
-    fmtVal Fns{..} = \case (I.TxtV s) → s; e → fmt' e
-    abstractOutput Fns{..} expr = do (v, s) ← Abs.unPowerSet ⎴ Abs.execPowerSet expr; fmtVal Fns{..} v ⋄ "\n" ⋄ show_store s
-    concreteOutput Fns{..} expr = do (v, s) ← C.runConcrete K.ev expr; either id (fmtVal Fns{..}) v ⋄ "\n" ⋄ show_store s
+            Full → bwText₁ s ⋄ "\n"
+            Pruned → (coerce @_ @[(l, I.Val l)] ⋙ map pruneEnv ⋙ I.Store ⋙ bwText₁ ⋙ (⋄ "\n")) s
+    bwTextVal Fns{..} = \case (I.TxtV s) → s; e → bwText₁ e
+    abstractOutput Fns{..} expr = do (v, s) ← Abs.unPowerSet ⎴ Abs.execPowerSet expr; bwTextVal Fns{..} v ⋄ "\n" ⋄ show_store s
+    concreteOutput Fns{..} expr = do (v, s) ← C.runConcrete K.ev expr; either id (bwTextVal Fns{..}) v ⋄ "\n" ⋄ show_store s
     opts = O.execParser ⎴ O.info (O.helper ⊛ options) desc
       where
         desc = O.fullDesc ⋄ progDesc ⋄ header

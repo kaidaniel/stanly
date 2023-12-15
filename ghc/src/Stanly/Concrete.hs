@@ -19,24 +19,24 @@ type ExcT m = ExceptT String m
 type ConcreteT m = ExcT (EnvT (StoreT m))
 
 evalConcrete ∷ ∀ m. (Monad m) ⇒ I.Combinator Int (ConcreteT m) → I.Expr → m (Either String (I.Val Int))
-evalConcrete c e = do (v, _) ← runConcrete c e; ω v
+evalConcrete c e = runConcrete c e ⇉ \x → ω ⎴ π₁ x
 
 runConcrete ∷ ∀ m. (Monad m) ⇒ I.Combinator Int (ConcreteT m) → I.Expr → m (Either String (I.Val Int), I.Store Int)
-runConcrete ev = rstore ∘ renv ∘ rexc ∘ ev'
+runConcrete ev = rstore ∘ renv ∘ rexc ∘ ev₁
   where
     rstore = flip runStateT ε₁
     renv = flip runReaderT ε₁
     rexc = runExceptT
-    ev' = ev concreteInterpreter
+    ev₁ = ev concreteInterpreter
     concreteInterpreter =
-        let exc' er = throwError ⎴ "Exception: " ++ er
+        let exc₁ er = throwError ⎴ "Exception: " ++ er
          in I.Interpreter
                 { I.deref = \l → do
                     I.Store store ← get
                     case lookup l store of
                         Just val → ω val
-                        Nothing → error ⎴ show l ++ " not found in store. " ++ fmt (I.Store store)
-                , I.exc = exc'
+                        Nothing → error ⎴ show l ++ " not found in store. " ++ bwText (I.Store store)
+                , I.exc = exc₁
                 , I.env = ask
                 , I.alloc = \_ → gets length
                 , I.localEnv = local
@@ -48,11 +48,11 @@ runConcrete ev = rstore ∘ renv ∘ rexc ∘ ev'
                     ("*", I.NumV n₀, I.NumV n₁) → ω ∘ I.NumV ⎴ n₀ * n₁
                     ("/", I.NumV n₀, I.NumV n₁) →
                         if n₁ == 0
-                            then exc' ⎴ "Division by zero. " ++ show n₀ ++ "/" ++ show n₁
+                            then exc₁ ⎴ "Division by zero. " ++ show n₀ ++ "/" ++ show n₁
                             else ω ⎴ I.NumV ⎴ div n₀ n₁
                     ("+", I.TxtV t₀, I.TxtV t₁) → ω ∘ I.TxtV ⎴ t₀ ++ t₁
                     ("+", I.TxtV t₀, I.NumV n₁) → ω ∘ I.TxtV ⎴ t₀ ++ show n₁
-                    _ → exc' ⎴ invalidOperands o a b
+                    _ → exc₁ ⎴ invalidOperands o a b
                 , I.branch = \fls tru → \case
                     I.NumV n → if n /= 0 then tru else fls
                     _ → ω ⎴ I.Undefined "Branching on non-numeric value"
@@ -64,8 +64,8 @@ invalidOperands o a b =
         ⋄ o
         ⋄ "':\n"
         ⋄ "\nleft operand  ⋙ "
-        ⋄ termFmt a
+        ⋄ ttyText a
         ⋄ "\noperation     ⋙ "
         ⋄ o
         ⋄ "\nright operand ⋙ "
-        ⋄ termFmt b
+        ⋄ ttyText b

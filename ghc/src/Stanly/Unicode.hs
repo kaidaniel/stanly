@@ -49,6 +49,19 @@ infixl 4 ⊛
 ω ∷ (Applicative m) ⇒ a → m a
 ω = pure
 {-# INLINE ω #-}
+fmap_, φ ∷ (Functor f) ⇒ (a → b) → f a → f b
+φ = fmap
+{-# INLINE φ #-}
+fmap_ = fmap
+{-# INLINE fmap_ #-}
+κ₁ ∷ (Monoid m) ⇒ [m] → m
+κ₁ = mconcat
+{-# INLINE κ₁ #-}
+κₗ ∷ (Foldable t, Monoid m) ⇒ t [m] → [m]
+κₗ = concat
+κλ ∷ (Foldable t) ⇒ (a → [b]) → t a → [b]
+κλ = concatMap
+{-# INLINE κλ #-}
 
 (⎴) ∷ (a → b) → a → b
 (⎴) = ($)

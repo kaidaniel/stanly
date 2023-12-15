@@ -12,7 +12,7 @@ import Data.Coerce (coerce)
 import Data.Function ((&))
 import Data.List qualified as L
 import GHC.Generics
-import Stanly.Fmt (Fmt (..), bold, dim, magenta, yellow, (⊹))
+import Stanly.Fmt (Fmt (..), bold, bwText, dim, magenta, yellow, (⊹))
 import Stanly.Unicode
 import Text.Parsec qualified as P
 import Text.Parsec.Language (emptyDef)
@@ -20,9 +20,13 @@ import Text.Parsec.Token qualified as Tn
 
 type Var = String
 
-newtype Env l = Env [(Var, l)] deriving (Eq, Foldable, Semigroup, Monoid)
+newtype Env l where
+    Env ∷ [(Var, l)] → Env l
+    deriving (Eq, Foldable, Semigroup, Monoid)
 
-newtype Store l = Store [(l, Val l)] deriving (Foldable, Semigroup, Monoid)
+newtype Store l where
+    Store ∷ [(l, Val l)] → Store l
+    deriving (Foldable, Semigroup, Monoid)
 
 data Expr where
     Vbl ∷ Var → Expr
@@ -76,14 +80,14 @@ eval Interpreter{..} eval₁ = \case
     notAFunction lamV arg =
         "Left hand side of application not bound to a function."
             ⋄ "\n\nIn function position ⋙ "
-            ⋄ fmt lamV
+            ⋄ bwText lamV
             ⋄ "\nIn argument position ⋙ "
-            ⋄ fmt arg
+            ⋄ bwText arg
     search variable iffound ifnotfound =
         env ⇉ \r →
             lookup variable (coerce r) & \case
                 Just l → iffound l
-                _ → ifnotfound (show variable ⋄ " not found in environment: " ⋄ fmt r)
+                _ → ifnotfound (show variable ⋄ " not found in environment: " ⋄ bwText r)
     localEnv₁ f = localEnv ⎴ coerce f
     updateStore₁ f = updateStore ⎴ coerce f
 
@@ -173,48 +177,43 @@ vbls ∷ Expr → [Var]
 vbls e = do Vbl v ← subexprs e; ω v
 
 instance (Fmt l) ⇒ Fmt (Env l) where
-    ansiFmt (Env r) = yellow ⊹ "Γ⟦" ⊹ fmt₁ r "" ⊹ yellow ⊹ "⟧"
+    fmt (Env r) = yellow ⊹ "Γ⟦" ⊹ bwText₁ r "" ⊹ yellow ⊹ "⟧"
       where
-        fmt₁ ((v, a) : r₁) sep = sep ⊹ v ⊹ ": " ⊹ yellow ⊹ a ⊹ fmt₁ r₁ ", "
-        fmt₁ [] _ = ansiFmt ""
+        bwText₁ ((v, a) : r₁) sep = sep ⊹ v ⊹ ": " ⊹ yellow ⊹ a ⊹ bwText₁ r₁ ", "
+        bwText₁ [] _ = fmt ""
 
 instance (Fmt l) ⇒ Fmt (Store l) where
-    ansiFmt =
+    fmt =
         coerce @_ @[(l, Val l)] ⋙ L.reverse ⋙ \case
             [] → ε₁
             (x : xs) → line x ⊹ ["\n" ⊹ line x₁ | x₁ ← xs]
       where
         prefix = (dim ⊹) ∘ \case LamV{} → "lam "; NumV{} → "num "; TxtV{} → "txt "; Undefined{} → "und "
-        line (k, v) = dim ⊹ "stor " ⊹ yellow ⊹ take 4 (fmt k) ⊹ prefix v ⊹ v
+        line (k, v) = dim ⊹ "stor " ⊹ yellow ⊹ take 4 (bwText k) ⊹ prefix v ⊹ v
 
 instance (Fmt l) ⇒ Fmt (Val l) where
-    ansiFmt = \case
+    fmt = \case
         LamV x body r → "λ" ⊹ bold ⊹ x ⊹ "." ⊹ body ⊹ " " ⊹ r
         NumV n → dim ⊹ n
         TxtV s → dim ⊹ s
         Undefined s → "Undefined: " ⊹ s
 
 instance (Fmt l) ⇒ Fmt (Either String (Val l)) where
-    ansiFmt = \case
-        Left err → ansiFmt err
-        Right val → ansiFmt val
+    fmt = \case
+        Left err → fmt err
+        Right val → fmt val
 
 instance Fmt Expr where
-    ansiFmt = \case
-        Vbl x → ansiFmt x
-        App fn arg → (dim ⋄ magenta) ⊹ "(" ⊹ appParen fn ⊹ " " ⊹ arg ⊹ (dim ⋄ magenta) ⊹ ")"
-        Lam x body → dim ⊹ "(λ" ⊹ bold ⊹ x ⊹ "." ⊹ binderParen body ⊹ dim ⊹ ")"
-        Rec f body → dim ⊹ "(μ" ⊹ bold ⊹ f ⊹ "." ⊹ binderParen body ⊹ dim ⊹ ")"
-        Op2 o left right → dim ⊹ "(" ⊹ left ⊹ opFmt o ⊹ right ⊹ dim ⊹ ")"
-        Num n → ansiFmt n
+    fmt = \case
+        Vbl x → fmt x
+        App f x → (dim ⋄ magenta) ⊹ "(" ⊹ paren₁ f ⊹ " " ⊹ x ⊹ (dim ⋄ magenta) ⊹ ")"
+        Lam x fn → dim ⊹ "(λ" ⊹ bold ⊹ x ⊹ "." ⊹ paren₂ fn ⊹ dim ⊹ ")"
+        Rec x fn → dim ⊹ "(μ" ⊹ bold ⊹ x ⊹ "." ⊹ paren₂ fn ⊹ dim ⊹ ")"
+        Op2 o e₁ e₂ → dim ⊹ "(" ⊹ e₁ ⊹ " " ⊹ o ⊹ " " ⊹ e₂ ⊹ dim ⊹ ")"
+        Num n → fmt n
         Txt s → dim ⊹ show s
-        If tst tru fls → "(if " ⊹ tst ⊹ " then " ⊹ tru ⊹ " else " ⊹ fls ⊹ ")"
+        If tst e₁ e₂ → "(if " ⊹ tst ⊹ " then " ⊹ e₁ ⊹ " else " ⊹ e₂ ⊹ ")"
       where
-        appParen = \case
-            App fn arg → appParen fn ⊹ " " ⊹ arg
-            e → ansiFmt e
-        binderParen = \case
-            Rec f body → "μ" ⊹ bold ⊹ f ⊹ "." ⊹ binderParen body
-            Lam x body → "λ" ⊹ bold ⊹ x ⊹ "." ⊹ binderParen body
-            e → ansiFmt e
-        opFmt o = " " ⊹ o ⊹ " "
+        paren₁ = \case App f x → paren₁ f ⊹ " " ⊹ x; e → fmt e
+        paren₂ = \case Rec x fn → k "μ" x fn; Lam x fn → k "λ" x fn; e → fmt e
+        k sym x fn = sym ⊹ bold ⊹ x ⊹ "." ⊹ paren₂ fn

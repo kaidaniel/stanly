@@ -6,12 +6,12 @@ module Stanly.Fmt where
 import Data.Coerce
 import Stanly.Unicode
 
-newtype ANSI = ANSI {unANSI ∷ [(ESC, String)]} deriving (Eq, Show, Semigroup, Monoid)
+newtype ANSI = ANSI [(ESC, String)] deriving (Eq, Show, Semigroup, Monoid)
 
-newtype ESC = ESC {unESC ∷ String} deriving (Eq, Show, Semigroup, Monoid)
+newtype ESC = ESC String deriving (Eq, Show, Semigroup, Monoid)
 
 (⊹), (|-|) ∷ (Fmt a, Fmt b) ⇒ a → b → ANSI
-(|-|) a b = ansiFmt a ⋄ ansiFmt b
+(|-|) a b = fmt a ⋄ fmt b
 (⊹) = (|-|)
 infixr 6 |-|, ⊹
 {-# INLINE (⊹) #-}
@@ -38,32 +38,21 @@ dflt = ansi 39
 display ∷ String → ANSI
 display s = ANSI [(ESC "", s)]
 
+bwText, ttyText ∷ (Fmt a) ⇒ a → String
+bwText = bwText' . fmt
+ttyText = ttyText' . fmt
+
+bwText', ttyText' ∷ ANSI → String
+bwText' (ANSI xs) = concatMap snd xs
+ttyText' (ANSI xs) = concatMap (coerce (\(code, t) → code ⋄ t ⋄ reset)) xs
+
 class Fmt a where
-    fmt ∷ a → String
-    fmt e = mconcat [snd x | let ANSI xs = ansiFmt e, x ← xs]
-    termFmt ∷ a → String
-    termFmt e = mconcat [coerce code ⋄ t ⋄ coerce reset | let ANSI xs = ansiFmt e, (code, t) ← xs]
-    ansiFmt ∷ a → ANSI
-
-instance Fmt Integer where
-    ansiFmt i = display $ show i
-
-instance Fmt Int where ansiFmt i = display $ show i
-
-instance Fmt ANSI where
-    ansiFmt = id
-
-instance Fmt Char where
-    ansiFmt c = display [c]
-
-instance Fmt String where
-    ansiFmt = display
-
-instance Fmt [ANSI] where
-    ansiFmt = mconcat
-
-instance Fmt [String] where
-    ansiFmt = mconcat . fmap display
-
-instance Fmt ESC where
-    ansiFmt esc = ANSI [(esc, "")]
+    fmt ∷ a → ANSI
+instance Fmt Integer where fmt i = display $ show i
+instance Fmt Int where fmt i = display $ show i
+instance Fmt ANSI where fmt = id
+instance Fmt Char where fmt c = display [c]
+instance Fmt String where fmt = display
+instance Fmt [ANSI] where fmt = mconcat
+instance Fmt [String] where fmt = mconcat . fmap display
+instance Fmt ESC where fmt esc = ANSI [(esc, "")]
