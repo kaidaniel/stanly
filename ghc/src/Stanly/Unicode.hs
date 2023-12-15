@@ -46,8 +46,10 @@ infixl 4 ⊛
 ε₁ = mempty
 {-# INLINE ε₁ #-}
 
-ω ∷ (Applicative m) ⇒ a → m a
+pure_, ω ∷ (Applicative m) ⇒ a → m a
 ω = pure
+pure_ = pure
+{-# INLINE pure_ #-}
 {-# INLINE ω #-}
 fmap_, φ ∷ (Functor f) ⇒ (a → b) → f a → f b
 φ = fmap
@@ -78,15 +80,12 @@ infixl 3 ⫶
 {-# INLINE (⋄) #-}
 infixr 6 ⋄
 
-(⇉) ∷ (Monad m) ⇒ m a → (a → m b) → m b
+(>>=!), (⇉) ∷ (Monad m) ⇒ m a → (a → m b) → m b
 (⇉) = (>>=)
 {-# INLINE (⇉) #-}
-infixl 1 ⇉
-
-(>>=!) ∷ (Monad m) ⇒ m a → (a → m b) → m b
+infixl 1 ⇉, >>=!
 (>>=!) = (>>=)
 {-# INLINE (>>=!) #-}
-infixl 1 >>=!
 
 π₁ ∷ ∀ {a} {b}. (a, b) → a
 π₁ = fst
