@@ -28,12 +28,19 @@ newtype Store l where
     Store ∷ [(l, Val l)] → Store l
     deriving (Foldable, Semigroup, Monoid)
 
+data Op2 where
+    Plus ∷ Op2
+    Minus ∷ Op2
+    Times ∷ Op2
+    Divide ∷ Op2
+    deriving (Eq, Show)
+
 data Expr where
     Vbl ∷ Var → Expr
     App ∷ Expr → Expr → Expr
     Lam ∷ Var → Expr → Expr
     Rec ∷ Var → Expr → Expr
-    Op2 ∷ String → Expr → Expr → Expr
+    Op2 ∷ Op2 → Expr → Expr → Expr
     Num ∷ Integer → Expr
     Txt ∷ String → Expr
     If ∷ Expr → Expr → Expr → Expr
@@ -101,7 +108,7 @@ data Interpreter l m where
         , store ∷ m (Store l)
         , updateStore ∷ (Store l → Store l) → m ()
         , alloc ∷ Var → m l
-        , op2 ∷ String → m (Val l) → m (Val l) → m (Val l)
+        , op2 ∷ Op2 → m (Val l) → m (Val l) → m (Val l)
         , branch ∷ m (Val l) → m (Val l) → m (Val l) → m (Val l)
         , exc ∷ String → m (Val l)
         } →
@@ -155,7 +162,7 @@ parser = P.parse ⎴ expr <* P.eof
     iden = Tn.identifier lx
     dot = Tn.dot lx
     nat = Tn.natural lx
-    operator = Tn.operator lx
+    operator = Tn.operator lx ⇉ \case "+" → ω Plus; "-" → ω Minus; "*" → ω Times; "/" → ω Divide; o → fail ⎴ "Invalid operator: '" ⋄ o ⋄ "'"
     stringLiteral = Tn.stringLiteral lx
     (<⫶>) = (P.<|>)
     infixl 2 <⫶>
@@ -178,32 +185,34 @@ vbls ∷ Expr → [Var]
 vbls e = do Vbl v ← subexprs e; ω v
 
 exception ∷ (MonadError String m) ⇒ String → m a
-exception msg = throwError ("Exception: " ⋄ msg)
+exception msg = throwError ⎴ "Exception: " ⋄ msg
 
-arithmetic ∷ (Fmt l, MonadError String m) ⇒ String → m (Val l) → m (Val l) → m (Val l)
-arithmetic o _ _ | o `notElem` ["+", "-", "*", "/"] = throwError ("Invalid operator" ⋄ o)
+arithmetic ∷ (Fmt l, MonadError String m) ⇒ Op2 → m (Val l) → m (Val l) → m (Val l)
 arithmetic o a b = do
     a₁ ← a
     b₁ ← b
     let exc msg = exception ⎴ bwText ⎴ msg ⊹ ".\nWhen evaluating: " ⊹ a₁ ⊹ o ⊹ b₁
     case (a₁, b₁) of
         (NumV n₀, NumV n₁)
-            | o == "+" → ω ⎴ NumV ⎴ n₀ + n₁
-            | o == "-" → ω ⎴ NumV ⎴ n₀ - n₁
-            | o == "*" → ω ⎴ NumV ⎴ n₀ * n₁
-            | o == "/", n₁ == 0 → exc "Division by zero"
-            | o == "/" → ω ⎴ NumV ⎴ div n₀ n₁
+            | o == Plus → ω ⎴ NumV ⎴ n₀ + n₁
+            | o == Minus → ω ⎴ NumV ⎴ n₀ - n₁
+            | o == Times → ω ⎴ NumV ⎴ n₀ * n₁
+            | o == Divide, n₁ == 0 → exc "Division by zero"
+            | o == Divide → ω ⎴ NumV ⎴ div n₀ n₁
         (TxtV t₀, TxtV t₁)
-            | o == "+" → ω ⎴ TxtV ⎴ t₀ ⋄ t₁
+            | o == Plus → ω ⎴ TxtV ⎴ t₀ ⋄ t₁
         (TxtV t₀, NumV n₁)
-            | o == "+" → ω ⎴ TxtV ⎴ t₀ ⋄ show n₁
+            | o == Plus → ω ⎴ TxtV ⎴ t₀ ⋄ show n₁
         _ → exc "Invalid arguments to operator"
 
 branchIfn0 ∷ (MonadError String m) ⇒ m (Val l) → m (Val l) → m (Val l) → m (Val l)
 branchIfn0 tst then' else' =
     tst ⇉ \case
         NumV n | n == 0 → else' | otherwise → then'
-        _ → exception "Exception: Branching on non-numeric value."
+        _ → exception "Branching on non-numeric value."
+
+instance Fmt Op2 where
+    fmt = fmt ∘ \case Plus → "+"; Minus → "-"; Times → "*"; Divide → "/"
 
 instance (Fmt l) ⇒ Fmt (Env l) where
     fmt (Env r) = yellow ⊹ "Γ⟦" ⊹ bwText₁ r "" ⊹ yellow ⊹ "⟧"

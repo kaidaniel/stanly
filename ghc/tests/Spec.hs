@@ -4,7 +4,7 @@
 
 -- import Stanly.Abstract (execPowerSet)
 import Stanly.Fmt (bwText)
-import Stanly.Interpreter (Expr (..), parser)
+import Stanly.Interpreter (Expr (..), Op2 (..), parser)
 import Stanly.Unicode
 import Test.Hspec
 import Test.QuickCheck
@@ -21,7 +21,7 @@ instance Arbitrary Expr where
                 [ φ Num (choose (0, 1000))
                 , φ Txt char
                 , φ Vbl word
-                , φ Op2 operator ⊛ half ⊛ half
+                , φ Op2 arbitrary ⊛ half ⊛ half
                 , φ App half ⊛ half
                 , φ Lam word ⊛ half
                 , φ Rec word ⊛ half
@@ -31,8 +31,10 @@ instance Arbitrary Expr where
             half = resize (div n 2) arbitrary
             word = oneof (suchThat char (`notElem` kw) : [ω (x ++ "x") | x ← kw])
             char = listOf1 (elements ['a' .. 'z'])
-            operator = elements ["+", "-", "*", "/"]
             kw = ["let", "fn", "rec", "if", "then", "else", "mu", "in"]
+
+instance Arbitrary Op2 where
+    arbitrary = elements [Plus, Minus, Times, Divide]
 
 shrink ∷ Expr → [Expr]
 shrink = genericShrink
