@@ -30,11 +30,8 @@ for path in args.files:
         (">>>", "⋙"),
         (">>", "≫"),
         ("\<\>", "⋄"),
-        ("pure", "ω"),
         (">>=\!", "⇉"),
         ("\<\*\>\!", "⊛"),
-        (">>=", "⇉"),
-        ("\<\*\>", "⊛"),
         ("fst", "π₁"),
         ("snd", "π₂"),
         ("\|-\|", "⊹"),
@@ -48,14 +45,16 @@ for path in args.files:
             rf"\1{new}\2", 
             contents
         )
+        if n != 0:
+            counts[old] = n
         for prime, subscript in ("3'", "₃"), ("2'", "₂"), ("1'", "₁"):
             contents, n = subn(
                 rf"([^'][a-zA-Z]+){prime}",
                 rf"\1{subscript}",
                 contents
             )
-        if n != 0:
-            counts[old] = n
+            if n != 0:
+                counts[old] = counts[old] + n
 
     print(f"{path}: {sum(counts.values())} replacements {counts}")
     path.write_text(contents, encoding="utf8")

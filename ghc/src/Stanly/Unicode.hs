@@ -25,14 +25,12 @@ infixr 1 ⋙
 {-# INLINE (≫) #-}
 infixl 1 ≫
 
-(⊛) ∷ (Applicative f) ⇒ f (α → β) → f α → f β
+(<*>!), (⊛) ∷ (Applicative f) ⇒ f (α → β) → f α → f β
 (⊛) = (<*>)
-{-# INLINE (⊛) #-}
-infixl 4 ⊛
-
-(<*>!) ∷ (Applicative f) ⇒ f (α → β) → f α → f β
 (<*>!) = (<*>)
+{-# INLINE (⊛) #-}
 {-# INLINE (<*>!) #-}
+infixl 4 ⊛, <*>!
 
 εₐ ∷ (Alternative f) ⇒ f α
 εₐ = empty
@@ -51,24 +49,28 @@ pure_, ω ∷ (Applicative m) ⇒ a → m a
 pure_ = pure
 {-# INLINE pure_ #-}
 {-# INLINE ω #-}
+
 fmap_, φ ∷ (Functor f) ⇒ (a → b) → f a → f b
 φ = fmap
-{-# INLINE φ #-}
 fmap_ = fmap
+{-# INLINE φ #-}
 {-# INLINE fmap_ #-}
+
 κ₁ ∷ (Monoid m) ⇒ [m] → m
 κ₁ = mconcat
 {-# INLINE κ₁ #-}
+
 κₗ ∷ (Foldable t, Monoid m) ⇒ t [m] → [m]
 κₗ = concat
+
 κλ ∷ (Foldable t) ⇒ (a → [b]) → t a → [b]
 κλ = concatMap
 {-# INLINE κλ #-}
 
 (⎴) ∷ (a → b) → a → b
 (⎴) = ($)
-infixr 0 ⎴
 {-# INLINE (⎴) #-}
+infixr 0 ⎴
 
 (⫶) ∷ (Alternative f) ⇒ f a → f a → f a
 (⫶) = (<|>)
@@ -82,10 +84,10 @@ infixr 6 ⋄
 
 (>>=!), (⇉) ∷ (Monad m) ⇒ m a → (a → m b) → m b
 (⇉) = (>>=)
-{-# INLINE (⇉) #-}
-infixl 1 ⇉, >>=!
 (>>=!) = (>>=)
+{-# INLINE (⇉) #-}
 {-# INLINE (>>=!) #-}
+infixl 1 ⇉, >>=!
 
 π₁ ∷ ∀ {a} {b}. (a, b) → a
 π₁ = fst

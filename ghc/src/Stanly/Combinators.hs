@@ -1,3 +1,5 @@
+{-# LANGUAGE BlockArguments #-}
+
 module Stanly.Combinators (ev, evTrace, evDeadCode) where
 
 import Control.Monad.Writer.Strict
@@ -23,11 +25,9 @@ evTrace i = I.interpret i id open
 evDeadCode ∷ ∀ m l. (MonadWriter NotCovered m) ⇒ I.Combinator l m
 evDeadCode i = I.interpret i closed open
   where
-    closed eval expr = censor (coerce (\used → cleanUp ⎴ I.subexprs expr L.\\ used)) (eval expr)
-    cleanUp dead = reverse (dead L.\\ (dead ⇉ I.subexprs))
-    open evalTr eval expr = do
-        tell ⎴ coerce [expr]
-        evalTr eval expr
+    closed eval expr = censor (coerce \used → cleanUp ⎴ I.subexprs expr L.\\ used) ⎴ eval expr
+    cleanUp x = reverse ⎴ x L.\\ (x ⇉ I.subexprs)
+    open evalTr eval expr = do tell ⎴ NotCovered [expr]; evalTr eval expr
 
 newtype ProgramTrace l = ProgramTrace [(I.Expr, I.Env l, I.Store l)] deriving (Semigroup, Monoid, Foldable)
 
@@ -40,9 +40,4 @@ instance (Fmt l) ⇒ Fmt (ProgramTrace l) where
 
 newtype NotCovered = NotCovered [I.Expr] deriving (Eq, Show, Semigroup, Monoid)
 
-instance Fmt NotCovered where
-    fmt =
-        coerce ⎴ \case
-            [] → ε₁
-            [x] → fmt x
-            (x : xs) → x ⊹ "\n" ⊹ NotCovered xs
+instance Fmt NotCovered where fmt = coerce ⎴ \case [] → ε₁; [x] → fmt x; (x : xs) → x ⊹ "\n" ⊹ NotCovered xs

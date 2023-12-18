@@ -1,3 +1,4 @@
+{-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
 
 module Stanly.Fmt where
@@ -36,23 +37,22 @@ white = ansi 37
 dflt = ansi 39
 
 display ∷ String → ANSI
-display s = ANSI [(ESC "", s)]
+display = ANSI ∘ ω ∘ (ESC "",)
 
 bwText, ttyText ∷ (Fmt a) ⇒ a → String
-bwText = bwText' . fmt
-ttyText = ttyText' . fmt
+bwText = bwText' ∘ fmt
+ttyText = ttyText' ∘ fmt
 
 bwText', ttyText' ∷ ANSI → String
-bwText' (ANSI xs) = concatMap snd xs
-ttyText' (ANSI xs) = concatMap (coerce (\(code, t) → code ⋄ t ⋄ reset)) xs
+bwText' (ANSI xs) = κλ π₂ xs
+ttyText' (ANSI xs) = κλ (coerce \(cmd, str) → cmd <> str <> reset) xs
 
-class Fmt a where
-    fmt ∷ a → ANSI
-instance Fmt Integer where fmt i = display $ show i
-instance Fmt Int where fmt i = display $ show i
+class Fmt a where fmt ∷ a → ANSI
+instance Fmt Integer where fmt = display ∘ show
+instance Fmt Int where fmt = display ∘ show
 instance Fmt ANSI where fmt = id
-instance Fmt Char where fmt c = display [c]
+instance Fmt Char where fmt = display ∘ ω
 instance Fmt String where fmt = display
-instance Fmt [ANSI] where fmt = mconcat
-instance Fmt [String] where fmt = mconcat . fmap display
-instance Fmt ESC where fmt esc = ANSI [(esc, "")]
+instance Fmt [ANSI] where fmt = κ₁
+instance Fmt [String] where fmt = κ₁ ∘ φ display
+instance Fmt ESC where fmt = ANSI ∘ ω ∘ (,"")

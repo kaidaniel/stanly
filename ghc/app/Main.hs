@@ -23,8 +23,8 @@ options =
             ⊛ flag "desugared" "Show the program after syntax transformation."
             ⊛ flag "ast" "Show the abstract syntax tree used by the interpreter."
             ⊛ flag "trace" "Show how the interpreter state changes while the program is being evaluated."
-            ⊛ flag "dead-code" "Show parts of the program that weren₁t reached during interpretation."
-            ⊛ flag "no-colour" "Don₁t colourise output."
+            ⊛ flag "dead-code" "Show parts of the program that weren't reached during interpretation."
+            ⊛ flag "no-colour" "Don't colourise output."
   where
     choice long li help =
         O.option O.auto
@@ -37,7 +37,7 @@ options =
     flag long help = O.switch (O.long long ⋄ O.help help)
 
 data Fns = Fns
-    { show_store ∷ ∀ l. (F.Fmt l) ⇒ I.Store l → String
+    { showStore ∷ ∀ l. (F.Fmt l) ⇒ I.Store l → String
     , bwText₁ ∷ ∀ a. (F.Fmt a) ⇒ a → String
     }
 
@@ -67,14 +67,14 @@ main = do
         pruneEnv = \case (l, I.LamV x e r) → (l, I.LamV x e (I.pruneEnv e r)); x → x
         bwText₁ ∷ ∀ a. (F.Fmt a) ⇒ a → String
         bwText₁ = if noColourO then F.bwText else F.ttyText
-        show_store ∷ ∀ l. (F.Fmt l) ⇒ I.Store l → String
-        show_store s = case storeO of
+        showStore ∷ ∀ l. (F.Fmt l) ⇒ I.Store l → String
+        showStore s = case storeO of
             NoneS → ""
             Full → bwText₁ s ⋄ "\n"
             Pruned → (coerce @_ @[(l, I.Val l)] ⋙ map pruneEnv ⋙ I.Store ⋙ bwText₁ ⋙ (⋄ "\n")) s
     bwTextVal Fns{..} = \case (I.TxtV s) → s; e → bwText₁ e
-    abstractOutput Fns{..} expr = do (v, s) ← Abs.unPowerSet ⎴ Abs.execPowerSet expr; bwTextVal Fns{..} v ⋄ "\n" ⋄ show_store s
-    concreteOutput Fns{..} expr = do (v, s) ← C.runConcrete K.ev expr; either id (bwTextVal Fns{..}) v ⋄ "\n" ⋄ show_store s
+    abstractOutput Fns{..} expr = do (v, s) ← Abs.unPowerSet ⎴ Abs.execPowerSet expr; bwTextVal Fns{..} v ⋄ "\n" ⋄ showStore s
+    concreteOutput Fns{..} expr = do (v, s) ← C.runConcrete K.ev expr; either id (bwTextVal Fns{..}) v ⋄ "\n" ⋄ showStore s
     opts = O.execParser ⎴ O.info (O.helper ⊛ options) desc
       where
         desc = O.fullDesc ⋄ progDesc ⋄ header
