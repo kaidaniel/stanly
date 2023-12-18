@@ -54,7 +54,7 @@ for path in args.files:
                 contents
             )
             if n != 0:
-                counts[old] = counts[old] + n
+                counts[old] = counts.get(old, 0) + n
 
     print(f"{path}: {sum(counts.values())} replacements {counts}")
     path.write_text(contents, encoding="utf8")

@@ -8,6 +8,8 @@ import Control.Monad.Reader (
     ReaderT (runReaderT),
  )
 import Control.Monad.State
+import Data.Coerce
+import Data.Maybe (fromMaybe)
 import Stanly.Fmt
 import Stanly.Interpreter qualified as I
 import Stanly.Unicode
@@ -31,41 +33,41 @@ runConcrete ev = rstore ∘ renv ∘ rexc ∘ ev₁
     concreteInterpreter =
         let exc₁ er = throwError ⎴ "Exception: " ⋄ er
          in I.Interpreter
-                { I.deref = \l → do
-                    I.Store store ← get
-                    case lookup l store of
-                        Just val → ω val
-                        Nothing → error ⎴ show l ⋄ " not found in store. " ⋄ bwText (I.Store store)
+                { I.deref = \l → get ⇉ ω ∘ \store → fromMaybe (error ⎴ bwText ⎴ " not found in store.\n" ⊹ store) (lookup l ⎴ coerce store)
                 , I.exc = exc₁
                 , I.env = ask
                 , I.alloc = \_ → gets length
                 , I.localEnv = local
                 , I.store = get
                 , I.updateStore = modify
-                , I.op2 = \o a b → case (o, a, b) of
-                    ("+", I.NumV n₀, I.NumV n₁) → ω ∘ I.NumV ⎴ n₀ + n₁
-                    ("-", I.NumV n₀, I.NumV n₁) → ω ∘ I.NumV ⎴ n₀ - n₁
-                    ("*", I.NumV n₀, I.NumV n₁) → ω ∘ I.NumV ⎴ n₀ * n₁
-                    ("/", I.NumV n₀, I.NumV n₁) →
-                        if n₁ == 0
-                            then exc₁ ⎴ "Division by zero. " ⋄ show n₀ ⋄ "/" ⋄ show n₁
-                            else ω ⎴ I.NumV ⎴ div n₀ n₁
-                    ("+", I.TxtV t₀, I.TxtV t₁) → ω ∘ I.TxtV ⎴ t₀ ⋄ t₁
-                    ("+", I.TxtV t₀, I.NumV n₁) → ω ∘ I.TxtV ⎴ t₀ ⋄ show n₁
-                    _ → exc₁ ⎴ invalidOperands o a b
+                , I.op2 = \o a b →
+                    let exc₂ msg = exc₁ ⎴ ttyText ⎴ msg ⊹ ".\nIn expression: " ⊹ a ⊹ " " ⊹ o ⊹ b
+                     in case (a, b) of
+                            (I.NumV n₀, I.NumV n₁)
+                                | o == "+" → ω ⎴ I.NumV ⎴ n₀ + n₁
+                                | o == "-" → ω ⎴ I.NumV ⎴ n₀ - n₁
+                                | o == "*" → ω ⎴ I.NumV ⎴ n₀ * n₁
+                                | o == "/", n₁ == 0 → exc₂ "Division by zero"
+                                | o == "/" → ω ⎴ I.NumV ⎴ div n₀ n₁
+                            (I.TxtV t₀, I.TxtV t₁)
+                                | o == "+" → ω ⎴ I.TxtV ⎴ t₀ ⋄ t₁
+                            (I.TxtV t₀, I.NumV n₁)
+                                | o == "+" → ω ⎴ I.TxtV ⎴ t₀ ⋄ show n₁
+                            _ → exc₂ "Invalid arguments to operator"
                 , I.branch = \fls tru → \case
-                    I.NumV n → if n /= 0 then tru else fls
-                    _ → ω ⎴ I.Undefined "Branching on non-numeric value"
+                    I.NumV n | n == 0 → fls | otherwise → tru
+                    _ → exc₁ "Branching on non-numeric value"
                 }
 
-invalidOperands ∷ (Fmt a₁, Fmt a₂) ⇒ String → a₁ → a₂ → String
-invalidOperands o a b =
-    "Invalid arguments to operator '"
-        ⋄ o
-        ⋄ "':\n"
-        ⋄ "\nleft operand  ⋙ "
-        ⋄ ttyText a
-        ⋄ "\noperation     ⋙ "
-        ⋄ o
-        ⋄ "\nright operand ⋙ "
-        ⋄ ttyText b
+op2 o a b = case (a, b) of
+    (I.NumV n₀, I.NumV n₁)
+        | o == "+" → I.NumV ⎴ n₀ + n₁
+        | o == "-" → I.NumV ⎴ n₀ - n₁
+        | o == "*" → I.NumV ⎴ n₀ * n₁
+        | o == "/", n₁ == 0 → I.Undefined "Division by zero"
+        | o == "/" → I.NumV ⎴ div n₀ n₁
+    (I.TxtV t₀, I.TxtV t₁)
+        | o == "+" → I.TxtV ⎴ t₀ ⋄ t₁
+    (I.TxtV t₀, I.NumV n₁)
+        | o == "+" → I.TxtV ⎴ t₀ ⋄ show n₁
+    _ → I.Undefined "Invalid arguments to operator"
