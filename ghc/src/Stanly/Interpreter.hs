@@ -4,7 +4,7 @@
 module Stanly.Interpreter where
 
 import Control.Applicative qualified as A
-import Control.Monad qualified as M
+import Control.Monad.Except (MonadError, throwError)
 import Control.Monad.Fix (fix)
 import Control.Monad.Trans (MonadTrans)
 import Control.Monad.Trans.Class (lift)
@@ -12,7 +12,7 @@ import Data.Coerce (coerce)
 import Data.Function ((&))
 import Data.List qualified as L
 import GHC.Generics
-import Stanly.Fmt (Fmt (..), bold, bwText, dim, magenta, yellow, (⊹))
+import Stanly.Fmt
 import Stanly.Unicode
 import Text.Parsec qualified as P
 import Text.Parsec.Language (emptyDef)
@@ -50,31 +50,31 @@ deriving instance Foldable Val
 
 type Eval l m = Expr → m (Val l)
 type EvalTr l m = Eval l m → Eval l m
-type Combinator l m = Interpreter l m → Expr → m (Val l)
+type Combinator l m = Interpreter l m → Eval l m
 
-interpret ∷ ∀ l m. Interpreter l m → EvalTr l m → (EvalTr l m → EvalTr l m) → Expr → m (Val l)
-interpret interpreter closed open = closed ⎴ fix ⎴ open ⎴ eval interpreter
+interpret ∷ ∀ l m. (Eval l m → Eval l m) → ((Eval l m → Eval l m) → (Eval l m → Eval l m)) → Combinator l m
+interpret closed open interpreter = closed ⎴ fix ⎴ open ⎴ eval interpreter
 
 eval ∷ ∀ m l. Interpreter l m → (Eval l m → Eval l m)
 eval Interpreter{..} eval₁ = \case
     Num n → ω (NumV n)
     Txt s → ω (TxtV s)
-    Lam v e → ω (LamV v e) ⊛ env
+    Lam v e → φ (LamV v e) env
     Vbl vbl → search vbl deref exc
-    If b tru fls → branch (eval₁ fls) (eval₁ tru) =<< eval₁ b
-    Op2 o e₁ e₂ → M.join ⎴ ω (op2 o) ⊛ eval₁ e₁ ⊛ eval₁ e₂
-    Rec f t → do
-        l ← alloc f
-        resv ← localEnv₁ ([(f, l)] ⋄) ⎴ eval₁ t
-        updateStore₁ ([(l, resv)] ⋄)
-        ω resv
+    If tst then' else' → branch (eval₁ tst) (eval₁ then') (eval₁ else')
+    Op2 o e₁ e₂ → op2 o (eval₁ e₁) (eval₁ e₂)
+    Rec vbl body → do
+        loc ← alloc vbl
+        value ← localEnv₂ (vbl, loc) body
+        updateStore₁ (loc, value)
+        ω value
     App lamV arg →
         eval₁ lamV ⇉ \case
-            LamV x body r → do
-                evalArg ← eval₁ arg
-                allocX ← alloc x
-                updateStore₁ ([(allocX, evalArg)] ⋄)
-                localEnv (const (coerce [(x, allocX)] ⋄ r)) ⎴ eval₁ body
+            LamV vbl body env₁ → do
+                arg₁ ← eval₁ arg
+                loc ← alloc vbl
+                updateStore₁ (loc, arg₁)
+                localEnv₁ env₁ (vbl, loc) body
             _ → exc ⎴ notAFunction lamV arg
   where
     notAFunction lamV arg =
@@ -88,8 +88,9 @@ eval Interpreter{..} eval₁ = \case
             lookup variable (coerce r) & \case
                 Just l → iffound l
                 _ → ifnotfound (show variable ⋄ " not found in environment: " ⋄ bwText r)
-    localEnv₁ f = localEnv ⎴ coerce f
-    updateStore₁ f = updateStore ⎴ coerce f
+    localEnv₂ binding cc = localEnv (coerce [binding] ⋄) ⎴ eval₁ cc
+    localEnv₁ env₁ binding cc = localEnv (const (coerce [binding] ⋄ env₁)) ⎴ eval₁ cc
+    updateStore₁ binding = updateStore (coerce [binding] ⋄)
 
 data Interpreter l m where
     Interpreter ∷
@@ -100,8 +101,8 @@ data Interpreter l m where
         , store ∷ m (Store l)
         , updateStore ∷ (Store l → Store l) → m ()
         , alloc ∷ Var → m l
-        , op2 ∷ String → Val l → Val l → m (Val l)
-        , branch ∷ m (Val l) → m (Val l) → Val l → m (Val l)
+        , op2 ∷ String → m (Val l) → m (Val l) → m (Val l)
+        , branch ∷ m (Val l) → m (Val l) → m (Val l) → m (Val l)
         , exc ∷ String → m (Val l)
         } →
         Interpreter l m
@@ -113,11 +114,11 @@ liftInterpreter Interpreter{..} =
         , exc = lift ∘ exc
         , env = lift env
         , alloc = lift ∘ alloc
-        , localEnv = \g m → m ⇉ lift ∘ localEnv g ∘ ω
+        , localEnv = \g m → m ⇉ \m₁ → lift ⎴ localEnv g (ω m₁)
         , store = lift store
         , updateStore = lift ∘ updateStore
-        , op2 = \o a b → lift ⎴ op2 o a b
-        , branch = \m n v → m ⇉ \x → n ⇉ \y → lift ⎴ branch (ω x) (ω y) v
+        , op2 = \o a b → a ⇉ \a₁ → b ⇉ \b₁ → lift ⎴ op2 o (ω a₁) (ω b₁)
+        , branch = \v m n → v ⇉ \v₁ → m ⇉ \m₁ → n ⇉ \n₁ → lift ⎴ branch (ω v₁) (ω m₁) (ω n₁)
         }
 
 parser ∷ String → String → Either P.ParseError Expr
@@ -175,6 +176,34 @@ pruneEnv e = coerce ⋙ filter (flip elem (vbls e) ∘ π₁) ⋙ coerce @[(Var,
 
 vbls ∷ Expr → [Var]
 vbls e = do Vbl v ← subexprs e; ω v
+
+exception ∷ (MonadError String m) ⇒ String → m a
+exception msg = throwError ("Exception: " ⋄ msg)
+
+arithmetic ∷ (Fmt l, MonadError String m) ⇒ String → m (Val l) → m (Val l) → m (Val l)
+arithmetic o _ _ | o `notElem` ["+", "-", "*", "/"] = throwError ("Invalid operator" ⋄ o)
+arithmetic o a b = do
+    a₁ ← a
+    b₁ ← b
+    let exc msg = exception ⎴ bwText ⎴ msg ⊹ ".\nWhen evaluating: " ⊹ a₁ ⊹ o ⊹ b₁
+    case (a₁, b₁) of
+        (NumV n₀, NumV n₁)
+            | o == "+" → ω ⎴ NumV ⎴ n₀ + n₁
+            | o == "-" → ω ⎴ NumV ⎴ n₀ - n₁
+            | o == "*" → ω ⎴ NumV ⎴ n₀ * n₁
+            | o == "/", n₁ == 0 → exc "Division by zero"
+            | o == "/" → ω ⎴ NumV ⎴ div n₀ n₁
+        (TxtV t₀, TxtV t₁)
+            | o == "+" → ω ⎴ TxtV ⎴ t₀ ⋄ t₁
+        (TxtV t₀, NumV n₁)
+            | o == "+" → ω ⎴ TxtV ⎴ t₀ ⋄ show n₁
+        _ → exc "Invalid arguments to operator"
+
+branchIfn0 ∷ (MonadError String m) ⇒ m (Val l) → m (Val l) → m (Val l) → m (Val l)
+branchIfn0 tst then' else' =
+    tst ⇉ \case
+        NumV n | n == 0 → else' | otherwise → then'
+        _ → exception "Exception: Branching on non-numeric value."
 
 instance (Fmt l) ⇒ Fmt (Env l) where
     fmt (Env r) = yellow ⊹ "Γ⟦" ⊹ bwText₁ r "" ⊹ yellow ⊹ "⟧"

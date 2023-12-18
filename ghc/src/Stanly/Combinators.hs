@@ -1,4 +1,5 @@
 {-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module Stanly.Combinators (ev, evTrace, evDeadCode) where
 
@@ -11,19 +12,19 @@ import Stanly.Interpreter qualified as I
 import Stanly.Unicode
 
 ev ∷ ∀ l m. (Monad m) ⇒ I.Combinator l m
-ev i = I.interpret i id id
+ev = I.interpret id id
 
 evTrace ∷ ∀ l m. (MonadWriter (ProgramTrace l) m) ⇒ I.Combinator l m
-evTrace i = I.interpret i id open
+evTrace i@I.Interpreter{..} = I.interpret id open i
   where
     open evalTr eval expr = do
-        r ← I.env i
-        s ← I.store i
+        r ← env
+        s ← store
         tell ⎴ coerce [(expr, r, s)]
         evalTr eval expr
 
 evDeadCode ∷ ∀ m l. (MonadWriter NotCovered m) ⇒ I.Combinator l m
-evDeadCode i = I.interpret i closed open
+evDeadCode = I.interpret closed open
   where
     closed eval expr = censor (coerce \used → cleanUp ⎴ I.subexprs expr L.\\ used) ⎴ eval expr
     cleanUp x = reverse ⎴ x L.\\ (x ⇉ I.subexprs)

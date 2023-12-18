@@ -12,6 +12,6 @@ let d = (x / y);
 let x = 1 in let x = 2 in
 let myvar = 1 in ((fn myvar.(myvar + myvar)) 3)
 
-// CHECK: Exception: Left hand side of application not bound to a function.
+// CHECK: Left hand side of application not bound to a function.
 // CHECK: In function position ⋙ 0
 // CHECK: In argument position ⋙ 1
