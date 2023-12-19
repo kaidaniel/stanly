@@ -1,3 +1,4 @@
+{-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE RecordWildCards #-}
 
@@ -56,13 +57,12 @@ deriving instance (Eq l) ⇒ Eq (Val l)
 deriving instance Foldable Val
 
 type Eval l m = Expr → m (Val l)
-type EvalTr l m = Eval l m → Eval l m
 type Combinator l m = Interpreter l m → Eval l m
 
 interpret ∷ ∀ l m. (Eval l m → Eval l m) → ((Eval l m → Eval l m) → (Eval l m → Eval l m)) → Combinator l m
 interpret closed open interpreter = closed ⎴ fix ⎴ open ⎴ eval interpreter
 
-eval ∷ ∀ m l. Interpreter l m → (Eval l m → Eval l m)
+eval ∷ ∀ m l. Interpreter l m → Eval l m → Eval l m
 eval Interpreter{..} eval₁ = \case
     Num n → ω (NumV n)
     Txt s → ω (TxtV s)
@@ -114,36 +114,47 @@ data Interpreter l m where
         } →
         Interpreter l m
 
-liftInterpreter ∷ ∀ l m n. (MonadTrans n, Monad (n m)) ⇒ Interpreter l m → Interpreter l (n m)
+liftInterpreter ∷ ∀ l m t. (MonadTrans t, Monad (t m)) ⇒ Interpreter l m → Interpreter l (t m)
 liftInterpreter Interpreter{..} =
     Interpreter
-        { deref = lift ∘ deref
-        , exc = lift ∘ exc
-        , env = lift env
-        , alloc = lift ∘ alloc
-        , localEnv = \g m → m ⇉ \m₁ → lift ⎴ localEnv g (ω m₁)
-        , store = lift store
-        , updateStore = lift ∘ updateStore
-        , op2 = \o a b → a ⇉ \a₁ → b ⇉ \b₁ → lift ⎴ op2 o (ω a₁) (ω b₁)
-        , branch = \v m n → v ⇉ \v₁ → m ⇉ \m₁ → n ⇉ \n₁ → lift ⎴ branch (ω v₁) (ω m₁) (ω n₁)
+        { deref = ζ₀ ∘ deref
+        , exc = ζ₀ ∘ exc
+        , env = ζ₀ env
+        , alloc = ζ₀ ∘ alloc
+        , localEnv = ζ₁ ∘ localEnv
+        , store = ζ₀ store
+        , updateStore = ζ₀ ∘ updateStore
+        , op2 = ζ₂ ∘ op2
+        , branch = ζ₃ branch
         }
+  where
+    ζ₀ ∷ m r → t m r
+    ζ₁ ∷ (m x₁ → m r) → (t m x₁ → t m r)
+    ζ₂ ∷ (m x₁ → m x₂ → m r) → (t m x₁ → t m x₂ → t m r)
+    ζ₃ ∷ (m x₁ → m x₂ → m x₃ → m r) → (t m x₁ → t m x₂ → t m x₃ → t m r)
+
+    f ⊰ a = f ⊛ φ ω a
+    infixl 4 ⊰
+    ζ₀ = lift
+    ζ₁ f x = ω f ⊰ x ⇉ ζ₀
+    ζ₂ f x y = ω f ⊰ x ⊰ y ⇉ ζ₀
+    ζ₃ f x y z = ω f ⊰ x ⊰ y ⊰ z ⇉ ζ₀
 
 parser ∷ String → String → Either P.ParseError Expr
-parser = P.parse ⎴ expr <* P.eof
+parser = P.parse ⎴ ws *> expr <* P.eof
   where
-    expr = ws *> expr₁
-    expr₁ =
+    expr =
         parens (P.try op2₁ <⫶> P.try app <⫶> expr)
             P.<|> ω Txt ⊛ stringLiteral
-            P.<|> ω Lam ⊛ (try₁ "λ" <⫶> try₁ "fn " ≫ iden) ⊛ (dot ≫ expr)
-            P.<|> ω Rec ⊛ (try₁ "μ" <⫶> try₁ "mu " ≫ iden) ⊛ (dot ≫ expr)
-            P.<|> ω If ⊛ (kw "if" ≫ expr) ⊛ (kw "then" ≫ expr) ⊛ (kw "else" ≫ expr)
-            P.<|> ω let_ ⊛ (kw "let" ≫ iden) ⊛ (kw "=" ≫ expr) ⊛ (kw "in" <⫶> kw ";" ≫ expr)
+            P.<|> ω Lam ⊛ try₁ "λ" <⫶> try₁ "fn " ⫸ iden ⊛ dot ⫸ expr
+            P.<|> ω Rec ⊛ try₁ "μ" <⫶> try₁ "mu " ⫸ iden ⊛ dot ⫸ expr
+            P.<|> ω If ⊛ kw "if" ⫸ expr ⊛ kw "then" ⫸ expr ⊛ kw "else" ⫸ expr
+            P.<|> ω let' ⊛ kw "let" ⫸ iden ⊛ kw "=" ⫸ expr ⊛ kw "in" <⫶> kw ";" ⫸ expr
             P.<|> ω Num ⊛ nat
             P.<|> ω Vbl ⊛ iden
     op2₁ = ω (flip Op2) ⊛ expr ⊛ operator ⊛ expr
     app = ω (foldl1 App) ⊛ P.many1 expr
-    let_ x arg body = App (Lam x body) arg
+    let' x arg body = App (Lam x body) arg
     lx =
         Tn.makeTokenParser
             emptyDef
@@ -165,7 +176,9 @@ parser = P.parse ⎴ expr <* P.eof
     operator = Tn.operator lx ⇉ \case "+" → ω Plus; "-" → ω Minus; "*" → ω Times; "/" → ω Divide; o → fail ⎴ "Invalid operator: '" ⋄ o ⋄ "'"
     stringLiteral = Tn.stringLiteral lx
     (<⫶>) = (P.<|>)
-    infixl 2 <⫶>
+    (⫸) = (*>)
+    infixl 6 <⫶>
+    infixl 5 ⫸
 
 subexprs ∷ (A.Alternative f) ⇒ Expr → f Expr
 subexprs = \case
@@ -179,7 +192,7 @@ subexprs = \case
     Vbl _ → εₐ
 
 pruneEnv ∷ ∀ l. Expr → Env l → Env l
-pruneEnv e = coerce ⋙ filter (flip elem (vbls e) ∘ π₁) ⋙ coerce @[(Var, l)]
+pruneEnv e = coerce @[(Var, l)] ∘ filter (flip elem (vbls e) ∘ π₁) ∘ coerce
 
 vbls ∷ Expr → [Var]
 vbls e = do Vbl v ← subexprs e; ω v
@@ -215,10 +228,11 @@ instance Fmt Op2 where
     fmt = fmt ∘ \case Plus → "+"; Minus → "-"; Times → "*"; Divide → "/"
 
 instance (Fmt l) ⇒ Fmt (Env l) where
-    fmt (Env r) = (Yellow ⊹ "Γ⟦") ⊹ fmt₁ r "" ⊹ (Yellow ⊹ "⟧")
+    fmt (Env r) = (Yellow ⊹ "Γ⟦") ⊹ fmt₁ (r, "") ⊹ (Yellow ⊹ "⟧")
       where
-        fmt₁ ((v, a) : r₁) sep = sep ⊹ v ⊹ ": " ⊹ (Yellow ⊹ a) ⊹ fmt₁ r₁ ", "
-        fmt₁ [] _ = fmt ""
+        fmt₁ = \case
+            ((v, a) : r₁, sep) → sep ⊹ v ⊹ ": " ⊹ (Yellow ⊹ a) ⊹ fmt₁ (r₁, ", ")
+            ([], _) → fmt ""
 
 instance (Fmt l) ⇒ Fmt (Store l) where
     fmt =
