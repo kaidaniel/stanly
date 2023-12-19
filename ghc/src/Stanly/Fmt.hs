@@ -48,7 +48,6 @@ data FmtStr where
 instance Semigroup FmtStr where
     Empty <> a = a
     a <> Empty = a
-    Str NoFmtCmd a <> Str cmd b = Str cmd (a <> b)
     Str cmd a <> Str NoFmtCmd b = Str cmd (a <> b)
     Str cmda "" <> Str cmdb "" = Str (cmda <> cmdb) ""
     a <> b = Node a b
