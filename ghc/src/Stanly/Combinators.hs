@@ -33,10 +33,10 @@ evDeadCode = I.interpret closed open
 newtype ProgramTrace l = ProgramTrace [(I.Expr, I.Env l, I.Store l)] deriving (Semigroup, Monoid, Foldable)
 
 instance (Fmt l) ⇒ Fmt (ProgramTrace l) where
-    fmt (ProgramTrace li) = κ₁ [dim ⊹ i ⊹ expr₁ e ⊹ env₁ r ⊹ store₁ s ⊹ "\n" | ((e, r, s), i) ← zip li [1 ∷ Integer ..]]
+    fmt (ProgramTrace li) = κ₁ [Dim ⊹ i ⊹ expr₁ e ⊹ env₁ r ⊹ store₁ s ⊹ "\n" | ((e, r, s), i) ← zip li [1 ∷ Integer ..]]
       where
-        expr₁ e = dim ⊹ "\n" ⊹ [C.toLower x | x ← take 3 ⎴ show e] ⊹ " " ⊹ e
-        env₁ r = dim ⊹ "\nenvr " ⊹ r
+        expr₁ e = Dim ⊹ "\n" ⊹ [C.toLower x | x ← take 3 ⎴ show e] ⊹ " " ⊹ e
+        env₁ r = Dim ⊹ "\nenvr " ⊹ r
         store₁ = \case I.Store [] → fmt ""; x → "\n" ⊹ x
 
 newtype NotCovered = NotCovered [I.Expr] deriving (Eq, Show, Semigroup, Monoid)

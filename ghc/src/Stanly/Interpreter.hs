@@ -215,10 +215,10 @@ instance Fmt Op2 where
     fmt = fmt ∘ \case Plus → "+"; Minus → "-"; Times → "*"; Divide → "/"
 
 instance (Fmt l) ⇒ Fmt (Env l) where
-    fmt (Env r) = yellow ⊹ "Γ⟦" ⊹ bwText₁ r "" ⊹ yellow ⊹ "⟧"
+    fmt (Env r) = (Yellow ⊹ "Γ⟦") ⊹ fmt₁ r "" ⊹ (Yellow ⊹ "⟧")
       where
-        bwText₁ ((v, a) : r₁) sep = sep ⊹ v ⊹ ": " ⊹ yellow ⊹ a ⊹ bwText₁ r₁ ", "
-        bwText₁ [] _ = fmt ""
+        fmt₁ ((v, a) : r₁) sep = sep ⊹ v ⊹ ": " ⊹ (Yellow ⊹ a) ⊹ fmt₁ r₁ ", "
+        fmt₁ [] _ = fmt ""
 
 instance (Fmt l) ⇒ Fmt (Store l) where
     fmt =
@@ -226,14 +226,22 @@ instance (Fmt l) ⇒ Fmt (Store l) where
             [] → ε₁
             (x : xs) → line x ⊹ ["\n" ⊹ line x₁ | x₁ ← xs]
       where
-        prefix = (dim ⊹) ∘ \case LamV{} → "lam "; NumV{} → "num "; TxtV{} → "txt "; Undefined{} → "und "
-        line (k, v) = dim ⊹ "stor " ⊹ yellow ⊹ take 4 (bwText k) ⊹ prefix v ⊹ v
+        prefix = (Dim ⊹) ∘ \case LamV{} → "lam "; NumV{} → "num "; TxtV{} → "txt "; Undefined{} → "und "
+        line (k, v) = (Dim ⊹ "stor ") ⊹ (Yellow ⊹ (padded ⎴ bwText k) ⊹ " ") ⊹ prefix v ⊹ v
+          where
+            padded ∷ String → String
+            padded = \case
+                [] → "    "
+                s@[_] → "   " ⋄ s
+                s@[_, _] → "  " ⋄ s
+                s@[_, _, _] → " " ⋄ s
+                s → s
 
 instance (Fmt l) ⇒ Fmt (Val l) where
     fmt = \case
-        LamV x body r → "λ" ⊹ bold ⊹ x ⊹ "." ⊹ body ⊹ " " ⊹ r
-        NumV n → dim ⊹ n
-        TxtV s → dim ⊹ s
+        LamV x body r → "λ" ⊹ (Bold ⊹ x) ⊹ "." ⊹ body ⊹ " " ⊹ r
+        NumV n → Dim ⊹ n
+        TxtV s → Dim ⊹ s
         Undefined s → "Undefined: " ⊹ s
 
 instance (Fmt l) ⇒ Fmt (Either String (Val l)) where
@@ -244,14 +252,14 @@ instance (Fmt l) ⇒ Fmt (Either String (Val l)) where
 instance Fmt Expr where
     fmt = \case
         Vbl x → fmt x
-        App f x → (dim ⋄ magenta) ⊹ "(" ⊹ paren₁ f ⊹ " " ⊹ x ⊹ (dim ⋄ magenta) ⊹ ")"
-        Lam x fn → dim ⊹ "(λ" ⊹ bold ⊹ x ⊹ "." ⊹ paren₂ fn ⊹ dim ⊹ ")"
-        Rec x fn → dim ⊹ "(μ" ⊹ bold ⊹ x ⊹ "." ⊹ paren₂ fn ⊹ dim ⊹ ")"
-        Op2 o e₁ e₂ → dim ⊹ "(" ⊹ e₁ ⊹ " " ⊹ o ⊹ " " ⊹ e₂ ⊹ dim ⊹ ")"
+        App f x → (Dim ⊹ Magenta ⊹ "(") ⊹ paren₁ f ⊹ " " ⊹ x ⊹ (Dim ⊹ Magenta ⊹ ")")
+        Lam x fn → (Dim ⊹ "(λ") ⊹ (Bold ⊹ x) ⊹ "." ⊹ paren₂ fn ⊹ (Dim ⊹ ")")
+        Rec x fn → (Dim ⊹ "(μ") ⊹ (Bold ⊹ x) ⊹ "." ⊹ paren₂ fn ⊹ (Dim ⊹ ")")
+        Op2 o e₁ e₂ → Dim ⊹ "(" ⊹ e₁ ⊹ " " ⊹ o ⊹ " " ⊹ e₂ ⊹ (Dim ⊹ ")")
         Num n → fmt n
-        Txt s → dim ⊹ show s
+        Txt s → (Dim ⊹ show s)
         If tst e₁ e₂ → "(if " ⊹ tst ⊹ " then " ⊹ e₁ ⊹ " else " ⊹ e₂ ⊹ ")"
       where
         paren₁ = \case App f x → paren₁ f ⊹ " " ⊹ x; e → fmt e
         paren₂ = \case Rec x fn → k "μ" x fn; Lam x fn → k "λ" x fn; e → fmt e
-        k sym x fn = sym ⊹ bold ⊹ x ⊹ "." ⊹ paren₂ fn
+        k sym x fn = sym ⊹ (Bold ⊹ x) ⊹ "." ⊹ paren₂ fn
