@@ -2,11 +2,11 @@ module Stanly.MachineState (Env (..), Store (..), Val (..)) where
 
 import Data.Coerce (coerce)
 import Stanly.Fmt (Fmt (..), FmtCmd (Bold, Dim, Yellow), bwText, (⊹))
-import Stanly.Language (Expr, Var)
+import Stanly.Language (Expr, Variable)
 import Stanly.Unicode
 
 newtype Env l where
-    Env ∷ [(Var, l)] → Env l
+    Env ∷ [(Variable, l)] → Env l
     deriving (Eq, Foldable, Semigroup, Monoid)
 
 newtype Store l where
@@ -14,7 +14,7 @@ newtype Store l where
     deriving (Foldable, Semigroup, Monoid)
 
 data Val l where
-    LamV ∷ (Fmt l) ⇒ Var → Expr → Env l → Val l
+    LamV ∷ (Fmt l) ⇒ Variable → Expr → Env l → Val l
     NumV ∷ Integer → Val l
     TxtV ∷ String → Val l
 

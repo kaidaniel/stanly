@@ -5,10 +5,9 @@
 module Stanly.Interpreter (Interpreter (..), makeInterpreter, arithmetic, branchIfn0, Eval) where
 
 import Control.Monad.Except (MonadError, fix, throwError)
-import Data.Function ((&))
 import GHC.Base (coerce)
 import Stanly.Fmt (Fmt, bwText, (⊹))
-import Stanly.Language (Expr (..), Op2 (..), Var)
+import Stanly.Language (Expr (..), Op2 (..), Variable)
 import Stanly.MachineState (Env (..), Store (..), Val (..))
 import Stanly.Unicode
 
@@ -22,36 +21,35 @@ eval Interpreter{..} eval₁ = \case
     Num n → ω (NumV n)
     Txt s → ω (TxtV s)
     Lam v e → φ (LamV v e) env
-    Vbl vbl → search vbl deref exc
+    Var var → search var
     If tst then' else' → branch (eval₁ tst) (eval₁ then') (eval₁ else')
     Op2 o e₁ e₂ → op2 o (eval₁ e₁) (eval₁ e₂)
-    Rec vbl body → do
-        loc ← alloc vbl
-        value ← localEnv₂ (vbl, loc) body
+    Rec var body → do
+        loc ← alloc var
+        value ← localEnv₂ (var, loc) body
         updateStore₁ (loc, value)
         ω value
-    App lamV arg →
-        eval₁ lamV ⇉ \case
-            LamV vbl body env₁ → do
-                arg₁ ← eval₁ arg
-                loc ← alloc vbl
-                updateStore₁ (loc, arg₁)
-                localEnv₁ env₁ (vbl, loc) body
-            _ → exc ⎴ notAFunction lamV arg
+    App f x →
+        eval₁ f ⇉ \case
+            LamV var body ρ₁ → do
+                x₁ ← eval₁ x
+                loc ← alloc var
+                updateStore₁ (loc, x₁)
+                localEnv₁ ρ₁ (var, loc) body
+            _ → exc ⎴ notAFunction f x
   where
-    notAFunction lamV arg =
+    notAFunction f x =
         "Left hand side of application not bound to a function."
             ⋄ "\n\nIn function position ⋙ "
-            ⋄ bwText lamV
+            ⋄ bwText f
             ⋄ "\nIn argument position ⋙ "
-            ⋄ bwText arg
-    search variable iffound ifnotfound =
-        env ⇉ \r →
-            lookup variable (coerce r) & \case
-                Just l → iffound l
-                _ → ifnotfound (show variable ⋄ " not found in environment: " ⋄ bwText r)
+            ⋄ bwText x
+    search var =
+        env ⇉ \ρ → case lookup var (coerce ρ) of
+            Just l → deref l
+            Nothing → exc (show var ⋄ " not found in environment: " ⋄ bwText ρ)
     localEnv₂ binding cc = localEnv (coerce [binding] ⋄) ⎴ eval₁ cc
-    localEnv₁ env₁ binding cc = localEnv (const (coerce [binding] ⋄ env₁)) ⎴ eval₁ cc
+    localEnv₁ ρ₁ binding cc = localEnv (const (coerce [binding] ⋄ ρ₁)) ⎴ eval₁ cc
     updateStore₁ binding = updateStore (coerce [binding] ⋄)
 
 data Interpreter l m where
@@ -62,7 +60,7 @@ data Interpreter l m where
         , localEnv ∷ (Env l → Env l) → m (Val l) → m (Val l)
         , store ∷ m (Store l)
         , updateStore ∷ (Store l → Store l) → m ()
-        , alloc ∷ Var → m l
+        , alloc ∷ Variable → m l
         , op2 ∷ Op2 → m (Val l) → m (Val l) → m (Val l)
         , branch ∷ m (Val l) → m (Val l) → m (Val l) → m (Val l)
         , exc ∷ String → m (Val l)

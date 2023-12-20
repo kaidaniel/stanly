@@ -9,12 +9,12 @@ import Stanly.Language
 import Stanly.MachineState
 import Stanly.Unicode
 
-type Addr = Var
+type Addr = Variable
 
-newtype AbstractT m a = AbstractT (ReaderT (Env Var) (StateT (Store Var) m) a)
-    deriving (Functor, Applicative, Monad, Alternative, MonadPlus, MonadReader (Env Var), MonadState (Store Var))
+newtype AbstractT m a = AbstractT (ReaderT (Env Variable) (StateT (Store Variable) m) a)
+    deriving (Functor, Applicative, Monad, Alternative, MonadPlus, MonadReader (Env Variable), MonadState (Store Variable))
 
-runAbstractT ∷ AbstractT m a → m (a, Store Var)
+runAbstractT ∷ AbstractT m a → m (a, Store Variable)
 runAbstractT (AbstractT m) = runStateT (runReaderT m ε₁) ε₁
 
 -- instance (MonadPlus m) ⇒ Exc (AbstractT m) where
@@ -48,7 +48,7 @@ runAbstractT (AbstractT m) = runStateT (runReaderT m ε₁) ε₁
 
 newtype PowerSetT a = PowerSet {unPowerSet ∷ [a]} deriving (Eq, Show, Foldable, Functor, Applicative, Monad, Alternative, MonadPlus)
 
-execPowerSet ∷ Expr → PowerSetT (Val Var, Store Var)
+execPowerSet ∷ Expr → PowerSetT (Val Variable, Store Variable)
 -- execPowerSet e = PowerSet ⎴ nub ⎴ (unPowerSet ∘ runAbstractT) (fix eval e)
 execPowerSet = undefined
 

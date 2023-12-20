@@ -27,7 +27,7 @@ expr = withParens P.<|> withoutParens
                 P.<|> ω If ⊛ (kw "if" ≫ expr) ⊛ (kw "then" ≫ expr) ⊛ (kw "else" ≫ expr)
                 P.<|> ω let' ⊛ (kw "let" ≫ iden) ⊛ (kw "=" ≫ expr) ⊛ (kw "in" ⫶ kw ";" ≫ expr)
                 P.<|> ω Num ⊛ nat
-                P.<|> ω Vbl ⊛ iden
+                P.<|> ω Var ⊛ iden
 
 operator ∷ P.Parsec String u Op2
 operator =

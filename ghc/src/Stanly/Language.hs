@@ -2,7 +2,7 @@
 {-# LANGUAGE GADTs #-}
 {-# OPTIONS_GHC -Wno-unused-top-binds #-}
 
-module Stanly.Language (Var, Op2 (..), Expr (..), subexprs, pruneEnv) where
+module Stanly.Language (Variable, Op2 (..), Expr (..), subexprs, pruneEnv) where
 
 import Control.Applicative (Alternative)
 import Data.Coerce (Coercible, coerce)
@@ -21,13 +21,13 @@ import Test.QuickCheck (
     suchThat,
  )
 
-type Var = String
+type Variable = String
 
 data Expr where
-    Vbl ∷ Var → Expr
+    Var ∷ Variable → Expr
     App ∷ Expr → Expr → Expr
-    Lam ∷ Var → Expr → Expr
-    Rec ∷ Var → Expr → Expr
+    Lam ∷ Variable → Expr → Expr
+    Rec ∷ Variable → Expr → Expr
     Op2 ∷ Op2 → Expr → Expr → Expr
     Num ∷ Integer → Expr
     Txt ∷ String → Expr
@@ -50,20 +50,20 @@ subexprs = \case
     Op2 _ l r → ω l ⫶ ω r ⫶ subexprs l ⫶ subexprs r
     If b x y → ω b ⫶ ω x ⫶ ω y ⫶ subexprs b ⫶ subexprs x ⫶ subexprs y
     Rec _ e → ω e ⫶ subexprs e
-    Vbl _ → εₐ
+    Var _ → εₐ
 
-pruneEnv ∷ ∀ l m n. (Coercible [(Var, l)] (n l), Coercible (m l) [(Var, l)]) ⇒ Expr → m l → n l
-pruneEnv e = coerce @[(Var, l)] ∘ filter (flip elem (vbls e) ∘ π₁) ∘ coerce
+pruneEnv ∷ ∀ l m n. (Coercible [(Variable, l)] (n l), Coercible (m l) [(Variable, l)]) ⇒ Expr → m l → n l
+pruneEnv e = coerce @[(Variable, l)] ∘ filter (flip elem (vars e) ∘ π₁) ∘ coerce
 
-vbls ∷ Expr → [Var]
-vbls e = do Vbl v ← subexprs e; ω v
+vars ∷ Expr → [Variable]
+vars e = do Var v ← subexprs e; ω v
 
 instance Fmt Op2 where
     fmt = ("" ⊹) ∘ \case Plus → "+"; Minus → "-"; Times → "*"; Divide → "/"
 
 instance Fmt Expr where
     fmt = \case
-        Vbl x → "" ⊹ x
+        Var x → "" ⊹ x
         App f x → (Dim ⊹ Magenta ⊹ "(") ⊹ paren₁ f ⊹ " " ⊹ x ⊹ (Dim ⊹ Magenta ⊹ ")")
         Lam x fn → (Dim ⊹ "(λ") ⊹ (Bold ⊹ x) ⊹ "." ⊹ paren₂ fn ⊹ (Dim ⊹ ")")
         Rec x fn → (Dim ⊹ "(μ") ⊹ (Bold ⊹ x) ⊹ "." ⊹ paren₂ fn ⊹ (Dim ⊹ ")")
@@ -83,7 +83,7 @@ instance Arbitrary Expr where
             oneof
                 [ φ Num (choose (0, 1000))
                 , φ Txt char
-                , φ Vbl word
+                , φ Var word
                 , φ Op2 arbitrary ⊛ half ⊛ half
                 , φ App half ⊛ half
                 , φ Lam word ⊛ half

@@ -3,11 +3,11 @@
 
 module Stanly.Combinators (ev, evTrace, evDeadCode) where
 
-import Control.Monad.Writer.Strict
+import Control.Monad.Writer.Strict (MonadWriter (tell), censor)
 import Data.Char (toLower)
 import Data.Coerce (coerce)
 import Data.List qualified as L
-import Stanly.Fmt
+import Stanly.Fmt (Fmt (..), FmtCmd (Dim), (⊹))
 import Stanly.Interpreter qualified as I
 import Stanly.Language qualified as L
 import Stanly.MachineState qualified as I
@@ -20,9 +20,9 @@ evTrace ∷ ∀ l m. (MonadWriter (ProgramTrace l) m) ⇒ I.Interpreter l m → 
 evTrace i@I.Interpreter{..} = I.makeInterpreter id open i
   where
     open evalTr eval expr = do
-        r ← env
-        s ← store
-        tell ⎴ coerce [(expr, r, s)]
+        ρ ← env
+        σ ← store
+        tell ⎴ coerce [(expr, ρ, σ)]
         evalTr eval expr
 
 evDeadCode ∷ ∀ m l. (MonadWriter NotCovered m) ⇒ I.Interpreter l m → I.Eval l m
