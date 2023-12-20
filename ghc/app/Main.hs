@@ -2,15 +2,14 @@
 
 import Control.Monad qualified as M
 import Control.Monad.Writer (execWriter)
-import Data.Coerce (coerce)
 import Data.List qualified as L
 import Options.Applicative qualified as O
 import Stanly.Abstract qualified as Abs
 import Stanly.Combinators qualified as K
 import Stanly.Concrete qualified as C
+import Stanly.Env qualified as I
 import Stanly.Fmt qualified as F
 import Stanly.Language qualified as L
-import Stanly.MachineState qualified as I
 import Stanly.Parser (parser)
 import Stanly.Unicode
 
@@ -39,7 +38,7 @@ options =
     flag long help = O.switch (O.long long ⋄ O.help help)
 
 data Fns = Fns
-    { showStore ∷ ∀ l. (F.Fmt l) ⇒ I.Store l → String
+    { showₛ ∷ ∀ l. (F.Fmt l, Eq l) ⇒ C.Store l → String
     , bwText₁ ∷ ∀ a. (F.Fmt a) ⇒ a → String
     }
 
@@ -66,17 +65,16 @@ main = do
             Abstract → abstractOutput Fns{..}
             NoneV → const ""
       where
-        pruneEnv = \case (l, I.LamV x e r) → (l, I.LamV x e (L.pruneEnv e r)); x → x
         bwText₁ ∷ ∀ a. (F.Fmt a) ⇒ a → String
         bwText₁ = if noColourO then F.bwText else F.ttyText
-        showStore ∷ ∀ l. (F.Fmt l) ⇒ I.Store l → String
-        showStore s = case storeO of
+        showₛ ∷ ∀ l. (F.Fmt l, Eq l) ⇒ C.Store l → String
+        showₛ s = case storeO of
             NoneS → ""
             Full → bwText₁ s ⋄ "\n"
-            Pruned → (coerce @_ @[(l, I.Val l)] ⋙ map pruneEnv ⋙ I.Store ⋙ bwText₁ ⋙ (⋄ "\n")) s
+            Pruned → bwText₁ (C.pruneₛ (const True) s) ⋄ "\n"
     bwTextVal Fns{..} = \case (I.TxtV s) → s; e → bwText₁ e
-    abstractOutput Fns{..} expr = do (v, s) ← Abs.unPowerSet ⎴ Abs.execPowerSet expr; bwTextVal Fns{..} v ⋄ "\n" ⋄ showStore s
-    concreteOutput Fns{..} expr = do (v, s) ← C.runConcrete K.ev expr; either id (bwTextVal Fns{..}) v ⋄ "\n" ⋄ showStore s
+    abstractOutput Fns{..} expr = do (v, s) ← Abs.unPowerSet ⎴ Abs.execPowerSet expr; bwTextVal Fns{..} v ⋄ "\n" ⋄ showₛ s
+    concreteOutput Fns{..} expr = do (v, s) ← C.runConcrete K.ev expr; either id (bwTextVal Fns{..}) v ⋄ "\n" ⋄ showₛ s
     opts = O.execParser ⎴ O.info (O.helper ⊛ options) desc
       where
         desc = O.fullDesc ⋄ progDesc ⋄ header

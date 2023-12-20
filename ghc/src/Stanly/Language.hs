@@ -2,10 +2,9 @@
 {-# LANGUAGE GADTs #-}
 {-# OPTIONS_GHC -Wno-unused-top-binds #-}
 
-module Stanly.Language (Variable, Op2 (..), Expr (..), subexprs, pruneEnv) where
+module Stanly.Language (Variable, Op2 (..), Expr (..), subexprs, freeVars) where
 
 import Control.Applicative (Alternative)
-import Data.Coerce (Coercible, coerce)
 import GHC.Generics (Generic)
 import Stanly.Fmt (Fmt (..), FmtCmd (Bold, Dim, Magenta), (⊹))
 import Stanly.Unicode
@@ -52,11 +51,8 @@ subexprs = \case
     Rec _ e → ω e ⫶ subexprs e
     Var _ → εₐ
 
-pruneEnv ∷ ∀ l m n. (Coercible [(Variable, l)] (n l), Coercible (m l) [(Variable, l)]) ⇒ Expr → m l → n l
-pruneEnv e = coerce @[(Variable, l)] ∘ filter (flip elem (vars e) ∘ π₁) ∘ coerce
-
-vars ∷ Expr → [Variable]
-vars e = do Var v ← subexprs e; ω v
+freeVars ∷ Expr → [Variable]
+freeVars e = [v | Var v ← subexprs e]
 
 instance Fmt Op2 where
     fmt = ("" ⊹) ∘ \case Plus → "+"; Minus → "-"; Times → "*"; Divide → "/"

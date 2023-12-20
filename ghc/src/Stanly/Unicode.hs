@@ -32,6 +32,10 @@ infixl 1 ≫
 {-# INLINE (<*>!) #-}
 infixl 4 ⊛, <*>!
 
+(∈) ∷ (Foldable t, Eq a) ⇒ a → t a → Bool
+a ∈ l = a `elem` l
+{-# INLINE (∈) #-}
+
 εₐ ∷ (Alternative f) ⇒ f α
 εₐ = empty
 {-# INLINE εₐ #-}

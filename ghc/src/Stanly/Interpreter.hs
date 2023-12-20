@@ -5,9 +5,9 @@
 module Stanly.Interpreter (Interpreter (..), makeInterpreter, arithmetic, branchIfn0, Eval) where
 
 import Control.Monad.Except (MonadError, fix, throwError)
+import Stanly.Env (Env (..), Val (..))
 import Stanly.Fmt (Fmt, bwText, (⊹))
 import Stanly.Language (Expr (..), Op2 (..), Variable)
-import Stanly.MachineState (Env (..), Val (..))
 import Stanly.Unicode
 
 type Eval l m = Expr → m (Val l)
