@@ -36,13 +36,6 @@ eval Interpreter{..} eval₁ = \case
                 storeₗ (loc, x₁)
                 substitute ρ₁ (var, loc) (eval₁ body)
             _ → throwError ⎴ notAFunction f x
-  where
-    notAFunction f x =
-        "Left hand side of application not bound to a function."
-            ⋄ "\n\nIn function position ⋙ "
-            ⋄ bwText f
-            ⋄ "\nIn argument position ⋙ "
-            ⋄ bwText x
 
 data Interpreter l m where
     Interpreter ∷
@@ -84,6 +77,14 @@ branchIfn0 tst then' else' =
     tst ⇉ \case
         NumV n | n == 0 → else' | otherwise → then'
         _ → exception "Branching on non-numeric value."
+
+notAFunction ∷ Expr → Expr → String
+notAFunction f x =
+    "Left hand side of application not bound to a function."
+        ⋄ "\n\nIn function position ⋙ "
+        ⋄ bwText f
+        ⋄ "\nIn argument position ⋙ "
+        ⋄ bwText x
 
 -- liftInterpreter ∷ ∀ l m t. (MonadTrans t, Monad (t m)) ⇒ Interpreter l m → Interpreter l (t m)
 -- liftInterpreter Interpreter{..} =

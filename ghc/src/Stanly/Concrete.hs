@@ -6,7 +6,6 @@ import Control.Monad.Except (ExceptT, MonadError (throwError), runExceptT)
 import Control.Monad.Reader (MonadReader (ask, local), ReaderT (runReaderT))
 import Control.Monad.State (MonadState (get), StateT (runStateT), gets, modify)
 import Data.Coerce (coerce)
-import Data.Maybe (fromMaybe)
 import Stanly.Fmt (bwText, (⊹))
 import Stanly.Interpreter (Eval, Interpreter (..), arithmetic, branchIfn0)
 import Stanly.Language (Expr)
@@ -30,7 +29,10 @@ runConcrete ev = rstore ∘ renv ∘ rexc ∘ ev₁
         Interpreter
             { load = \var →
                 ask ⇉ \(Env ρ) → case lookup var ρ of
-                    Just l → get ⇉ ω ∘ \store → (error ⎴ bwText ⎴ " not found in store.\n" ⊹ store) `fromMaybe` (lookup l ⎴ coerce store)
+                    Just l →
+                        get ⇉ \(Store store) → case lookup l ⎴ store of
+                            Just x → ω x
+                            Nothing → throwError ⎴ bwText ⎴ " not found in store.\n" ⊹ Store store
                     Nothing → throwError (show var ⋄ " not found in environment: " ⋄ bwText (Env ρ))
             , closure = (`φ` ask)
             , bind = \binding cc → local (Env [binding] ⋄) ⎴ cc
