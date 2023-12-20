@@ -4,11 +4,12 @@ import Control.Applicative (Alternative)
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
-import Stanly.Concrete (Store)
 import Stanly.Env
 import Stanly.Fmt
 import Stanly.Language
+import Stanly.Store
 import Stanly.Unicode
+import Stanly.Val
 
 type Addr = Variable
 

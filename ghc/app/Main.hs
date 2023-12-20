@@ -7,10 +7,10 @@ import Options.Applicative qualified as O
 import Stanly.Abstract qualified as Abs
 import Stanly.Combinators qualified as K
 import Stanly.Concrete qualified as C
-import Stanly.Env qualified as I
 import Stanly.Fmt qualified as F
 import Stanly.Language qualified as L
 import Stanly.Parser (parser)
+import Stanly.Store qualified as C
 import Stanly.Unicode
 
 options ∷ O.Parser Options
@@ -72,7 +72,7 @@ main = do
             NoneS → ""
             Full → bwText₁ s ⋄ "\n"
             Pruned → bwText₁ (C.pruneₛ (const True) s) ⋄ "\n"
-    bwTextVal Fns{..} = \case (I.TxtV s) → s; e → bwText₁ e
+    bwTextVal Fns{..} = \case e → bwText₁ e
     abstractOutput Fns{..} expr = do (v, s) ← Abs.unPowerSet ⎴ Abs.execPowerSet expr; bwTextVal Fns{..} v ⋄ "\n" ⋄ showₛ s
     concreteOutput Fns{..} expr = do (v, s) ← C.runConcrete K.ev expr; either id (bwTextVal Fns{..}) v ⋄ "\n" ⋄ showₛ s
     opts = O.execParser ⎴ O.info (O.helper ⊛ options) desc

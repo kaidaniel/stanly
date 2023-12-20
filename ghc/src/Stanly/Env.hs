@@ -1,37 +1,29 @@
-module Stanly.Env (Env (..), Val (..), pruneᵥ, regionᵣ, regionᵥ) where
+{-# LANGUAGE BlockArguments #-}
 
-import Stanly.Fmt (Fmt (..), FmtCmd (Bold, Dim, Yellow), (⊹))
-import Stanly.Language (Expr, Variable, freeVars)
+module Stanly.Env (Env, regionᵣ, lookupₗ, bind', pruneᵣ) where
+
+import Control.Monad.Except (MonadError, throwError)
+import Control.Monad.Reader (MonadReader (ask))
+import Data.Coerce (coerce)
+import Stanly.Fmt (Fmt (..), FmtCmd (Yellow), bwText, (⊹))
+import Stanly.Language (Variable)
 import Stanly.Unicode
 
 newtype Env l where
     Env ∷ [(Variable, l)] → Env l
     deriving (Eq, Foldable, Semigroup, Monoid)
 
-data Val l where
-    LamV ∷ (Fmt l) ⇒ Variable → Expr → Env l → Val l
-    NumV ∷ Integer → Val l
-    TxtV ∷ String → Val l
-
-deriving instance (Eq l) ⇒ Eq (Val l)
-deriving instance Foldable Val
-
-pruneᵥ ∷ Val l → Val l
-pruneᵥ = \case
-    LamV x e (Env r) → LamV x e ⎴ Env [(var, l) | (var, l) ← r, var ∈ freeVars e]
-    x → x
+lookupₗ ∷ (Fmt l, Eq l, MonadError String m, MonadReader (Env l) m) ⇒ Variable → m l
+lookupₗ var = ask ⇉ \(Env ρ) → case lookup var ρ of Just l → ω l; Nothing → throwError (show var ⋄ " not found in environment: " ⋄ bwText (Env ρ))
 
 regionᵣ ∷ Env l → [l]
 regionᵣ (Env r) = map π₂ r
 
-regionᵥ ∷ Val l → [l]
-regionᵥ = \case LamV _ _ r → regionᵣ r; _ → []
+bind' ∷ (Variable, l) → Env l → Env l
+bind' (var, l) = coerce \r → (var, l) : r
 
-instance Show (Val l) where
-    show = \case
-        LamV x body _ → "LamV" ⋄ " " ⋄ show x ⋄ " " ⋄ show body
-        NumV n → "NumV" ⋄ " " ⋄ show n
-        TxtV s → "TxtV" ⋄ " " ⋄ show s
+pruneᵣ ∷ (Variable → Bool) → Env l → Env l
+pruneᵣ predicate (Env r) = Env [(var, l) | (var, l) ← r, predicate var]
 
 instance (Fmt l) ⇒ Fmt (Env l) where
     fmt (Env r) = (Yellow ⊹ "Γ⟦") ⊹ fmt₁ (r, "") ⊹ (Yellow ⊹ "⟧")
@@ -39,9 +31,3 @@ instance (Fmt l) ⇒ Fmt (Env l) where
         fmt₁ = \case
             ((v, a) : r₁, sep) → sep ⊹ v ⊹ ": " ⊹ (Yellow ⊹ a) ⊹ fmt₁ (r₁, ", ")
             ([], _) → ε₁
-
-instance (Fmt l) ⇒ Fmt (Val l) where
-    fmt = \case
-        LamV x body r → "λ" ⊹ (Bold ⊹ x) ⊹ "." ⊹ body ⊹ " " ⊹ r
-        NumV n → Dim ⊹ n
-        TxtV s → Dim ⊹ s
