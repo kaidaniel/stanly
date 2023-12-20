@@ -53,8 +53,8 @@ main = do
     flags Options{desugaredO, astO, deadCodeO, noColourO, traceO} ast = do
         M.when desugaredO (putFmt ast)
         M.when astO (print ast)
-        M.when deadCodeO (putFmt (execWriter (C.runConcrete K.evDeadCode ast)))
-        M.when traceO (putFmt (execWriter (C.runConcrete K.evTrace ast)))
+        M.when deadCodeO (putFmt (execWriter (C.runConcreteT K.evDeadCode ast)))
+        M.when traceO (putFmt (execWriter (C.runConcreteT K.evTrace ast)))
       where
         bwText_ ∷ ∀ a. (F.Fmt a) ⇒ a → String
         bwText_ = if noColourO then F.bwText else F.ttyText
@@ -74,7 +74,7 @@ main = do
             Pruned → bwText₁ (C.pruneₛ (const True) s) ⋄ "\n"
     bwTextVal Fns{..} = \case e → bwText₁ e
     abstractOutput Fns{..} expr = do (v, s) ← Abs.unPowerSet ⎴ Abs.execPowerSet expr; bwTextVal Fns{..} v ⋄ "\n" ⋄ showₛ s
-    concreteOutput Fns{..} expr = do (v, s) ← C.runConcrete K.ev expr; either id (bwTextVal Fns{..}) v ⋄ "\n" ⋄ showₛ s
+    concreteOutput Fns{..} expr = do (v, s) ← C.runConcreteT K.ev expr; either id (bwTextVal Fns{..}) v ⋄ "\n" ⋄ showₛ s
     opts = O.execParser ⎴ O.info (O.helper ⊛ options) desc
       where
         desc = O.fullDesc ⋄ progDesc ⋄ header

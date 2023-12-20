@@ -7,7 +7,7 @@ module Stanly.Interpreter (Interpreter (..), makeInterpreter, Eval) where
 import Control.Monad.Except (MonadError, fix)
 import Stanly.Env (Env)
 import Stanly.Fmt (Fmt)
-import Stanly.Language (Expr (..), Op2 (..), Variable)
+import Stanly.Language (Expr (..), Op2, Variable)
 import Stanly.Unicode
 import Stanly.Val (Val, lambda, numberᵥ, textᵥ)
 
@@ -22,7 +22,7 @@ eval Interpreter{..} eval₁ = \case
     Txt s → textᵥ s
     Lam x e → closure x e
     Var x → load x
-    If tst then' else' → if' (eval₁ tst) (eval₁ then') (eval₁ else')
+    If' tst then' else' → if' (eval₁ tst) (eval₁ then') (eval₁ else')
     Op2 o e₁ e₂ → op2 o (eval₁ e₁) (eval₁ e₂)
     Rec var body → do
         loc ← alloc var

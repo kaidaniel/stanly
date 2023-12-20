@@ -30,7 +30,7 @@ data Expr where
     Op2 ∷ Op2 → Expr → Expr → Expr
     Num ∷ Integer → Expr
     Txt ∷ String → Expr
-    If ∷ Expr → Expr → Expr → Expr
+    If' ∷ Expr → Expr → Expr → Expr
     deriving (Eq, Show, Generic)
 
 data Op2 where
@@ -47,7 +47,7 @@ subexprs = \case
     Txt _ → εₐ
     App f x → ω f ⫶ ω x ⫶ subexprs f ⫶ subexprs x
     Op2 _ l r → ω l ⫶ ω r ⫶ subexprs l ⫶ subexprs r
-    If b x y → ω b ⫶ ω x ⫶ ω y ⫶ subexprs b ⫶ subexprs x ⫶ subexprs y
+    If' b x y → ω b ⫶ ω x ⫶ ω y ⫶ subexprs b ⫶ subexprs x ⫶ subexprs y
     Rec _ e → ω e ⫶ subexprs e
     Var _ → εₐ
 
@@ -66,7 +66,7 @@ instance Fmt Expr where
         Op2 o e₁ e₂ → (Dim ⊹ "(") ⊹ e₁ ⊹ " " ⊹ o ⊹ " " ⊹ e₂ ⊹ (Dim ⊹ ")")
         Num n → "" ⊹ n
         Txt s → (Dim ⊹ show s)
-        If tst e₁ e₂ → "(if " ⊹ tst ⊹ " then " ⊹ e₁ ⊹ " else " ⊹ e₂ ⊹ ")"
+        If' tst e₁ e₂ → "(if " ⊹ tst ⊹ " then " ⊹ e₁ ⊹ " else " ⊹ e₂ ⊹ ")"
       where
         paren₁ = \case App f x → paren₁ f ⊹ " " ⊹ x; e → "" ⊹ e
         paren₂ = \case Rec x fn → k "μ" x fn; Lam x fn → k "λ" x fn; e → "" ⊹ e
@@ -84,7 +84,7 @@ instance Arbitrary Expr where
                 , φ App half ⊛ half
                 , φ Lam word ⊛ half
                 , φ Rec word ⊛ half
-                , φ If half ⊛ half ⊛ half
+                , φ If' half ⊛ half ⊛ half
                 ]
           where
             half = resize (div n 2) arbitrary

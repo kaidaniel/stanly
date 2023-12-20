@@ -1,30 +1,24 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Stanly.Concrete (runConcrete) where
+module Stanly.Concrete (ConcreteT, runConcreteT) where
 
 import Control.Monad.Except (ExceptT, runExceptT)
-import Control.Monad.Reader (MonadReader (local), ReaderT (runReaderT))
-import Control.Monad.State (StateT (runStateT), gets)
-import Stanly.Env (Env, bind', lookupₗ)
+import Control.Monad.Reader (MonadReader (local))
+import Control.Monad.State (gets)
+import Stanly.Env (EnvT, bind', lookupₗ, runEnvT)
 import Stanly.Interpreter (Eval, Interpreter (..))
 import Stanly.Language (Expr)
-import Stanly.Store (Store, len, lookupᵥ, store')
+import Stanly.Store (Store, StoreT, len, lookupᵥ, runStoreT, store')
 import Stanly.Unicode
 import Stanly.Val (Val, arithmetic, closureᵥ, ifn0)
 
-type EnvT m = ReaderT (Env Int) m
-type StoreT m = StateT (Store Int) m
 type ExcT m = ExceptT String m
 
-type ConcreteT m = ExcT (EnvT (StoreT m))
+type ConcreteT m = ExcT (EnvT Int (StoreT Int m))
 
-runConcrete ∷ ∀ m. (Monad m) ⇒ (Interpreter Int (ConcreteT m) → Eval Int (ConcreteT m)) → Expr → m (Either String (Val Int), Store Int)
-runConcrete ev = rstore ∘ renv ∘ rexc ∘ ev₁
+runConcreteT ∷ ∀ m. (Monad m) ⇒ (Interpreter Int (ConcreteT m) → Eval Int (ConcreteT m)) → Expr → m (Either String (Val Int), Store Int)
+runConcreteT ev = runStoreT ∘ runEnvT ∘ runExceptT ∘ ev concreteInterpreter
   where
-    rstore = flip runStateT ε₁
-    renv = flip runReaderT ε₁
-    rexc = runExceptT
-    ev₁ = ev concreteInterpreter
     concreteInterpreter =
         Interpreter
             { load = \var → lookupₗ var ⇉ lookupᵥ

@@ -1,17 +1,20 @@
 {-# LANGUAGE BlockArguments #-}
 
-module Stanly.Env (Env, regionᵣ, lookupₗ, bind', pruneᵣ) where
+module Stanly.Env (EnvT, runEnvT, Env, regionᵣ, lookupₗ, bind', pruneᵣ) where
 
 import Control.Monad.Except (MonadError, throwError)
-import Control.Monad.Reader (MonadReader (ask))
+import Control.Monad.Reader (MonadReader (ask), ReaderT, runReaderT)
 import Data.Coerce (coerce)
 import Stanly.Fmt (Fmt (..), FmtCmd (Yellow), bwText, (⊹))
 import Stanly.Language (Variable)
 import Stanly.Unicode
 
-newtype Env l where
-    Env ∷ [(Variable, l)] → Env l
-    deriving (Eq, Foldable, Semigroup, Monoid)
+newtype Env l where Env ∷ [(Variable, l)] → Env l
+
+type EnvT l m = ReaderT (Env l) m
+
+runEnvT ∷ EnvT l m a → m a
+runEnvT = flip runReaderT (Env [])
 
 lookupₗ ∷ (Fmt l, Eq l, MonadError String m, MonadReader (Env l) m) ⇒ Variable → m l
 lookupₗ var = ask ⇉ \(Env ρ) → case lookup var ρ of Just l → ω l; Nothing → throwError (show var ⋄ " not found in environment: " ⋄ bwText (Env ρ))

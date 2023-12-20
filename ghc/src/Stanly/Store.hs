@@ -1,18 +1,20 @@
 {-# LANGUAGE BlockArguments #-}
 
-module Stanly.Store (Store, len, pruneₛ, lookupᵥ, gc, store') where
+module Stanly.Store (StoreT, runStoreT, Store, len, pruneₛ, lookupᵥ, gc, store') where
 
 import Control.Monad.Except (MonadError (throwError))
-import Control.Monad.State (MonadState (get), modify)
+import Control.Monad.State (MonadState (get), StateT, modify, runStateT)
 import Data.Char (toLower)
 import Data.Coerce (coerce)
 import Stanly.Fmt (Fmt (..), FmtCmd (Dim, Yellow), bwText, (⊹))
 import Stanly.Unicode
 import Stanly.Val (Val, pruneᵥ, regionᵥ)
 
-newtype Store l where
-    Store ∷ [(l, Val l)] → Store l
-    deriving (Semigroup, Monoid)
+newtype Store l where Store ∷ [(l, Val l)] → Store l
+
+type StoreT l m = StateT (Store l) m
+runStoreT ∷ StoreT l m a → m (a, Store l)
+runStoreT = flip runStateT (Store [])
 
 len ∷ Store l → Int
 len (Store σ) = length σ

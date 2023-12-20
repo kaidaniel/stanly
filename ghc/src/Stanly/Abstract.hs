@@ -17,7 +17,7 @@ newtype AbstractT m a = AbstractT (ReaderT (Env Variable) (StateT (Store Variabl
     deriving (Functor, Applicative, Monad, Alternative, MonadPlus, MonadReader (Env Variable), MonadState (Store Variable))
 
 runAbstractT ∷ AbstractT m a → m (a, Store Variable)
-runAbstractT (AbstractT m) = runStateT (runReaderT m ε₁) ε₁
+runAbstractT (AbstractT m) = runStoreT (runEnvT m)
 
 -- instance (MonadPlus m) ⇒ Exc (AbstractT m) where
 --     exc why = ω ⎴ Undefined ("Bottom: " ⋄ why)

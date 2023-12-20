@@ -24,7 +24,7 @@ expr = withParens P.<|> withoutParens
          in ω Txt ⊛ stringLiteral
                 P.<|> ω Lam ⊛ (try₁ "λ" ⫶ try₁ "fn " ≫ iden) ⊛ (dot ≫ expr)
                 P.<|> ω Rec ⊛ (try₁ "μ" ⫶ try₁ "mu " ≫ iden) ⊛ (dot ≫ expr)
-                P.<|> ω If ⊛ (kw "if" ≫ expr) ⊛ (kw "then" ≫ expr) ⊛ (kw "else" ≫ expr)
+                P.<|> ω If' ⊛ (kw "if" ≫ expr) ⊛ (kw "then" ≫ expr) ⊛ (kw "else" ≫ expr)
                 P.<|> ω let' ⊛ (kw "let" ≫ iden) ⊛ (kw "=" ≫ expr) ⊛ (kw "in" ⫶ kw ";" ≫ expr)
                 P.<|> ω Num ⊛ nat
                 P.<|> ω Var ⊛ iden
