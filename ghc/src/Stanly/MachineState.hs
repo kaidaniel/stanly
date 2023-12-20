@@ -1,6 +1,5 @@
 module Stanly.MachineState (Env (..), Store (..), Val (..)) where
 
-import Data.Coerce (coerce)
 import Stanly.Fmt (Fmt (..), FmtCmd (Bold, Dim, Yellow), bwText, (⊹))
 import Stanly.Language (Expr, Variable)
 import Stanly.Unicode
@@ -26,18 +25,16 @@ instance (Fmt l) ⇒ Fmt (Env l) where
       where
         fmt₁ = \case
             ((v, a) : r₁, sep) → sep ⊹ v ⊹ ": " ⊹ (Yellow ⊹ a) ⊹ fmt₁ (r₁, ", ")
-            ([], _) → "" ⊹ ""
+            ([], _) → ε₁
 
 instance (Fmt l) ⇒ Fmt (Store l) where
-    fmt =
-        coerce @_ @[(l, Val l)] ⋙ reverse ⋙ \case
-            [] → ε₁
-            (x : xs) → line x ⊹ ["\n" ⊹ line x₁ | x₁ ← xs]
+    fmt (Store σ) = case reverse σ of
+        [] → ε₁
+        (x : xs) → line x ⊹ ["\n" ⊹ line x₁ | x₁ ← xs]
       where
         prefix = (Dim ⊹) ∘ \case LamV{} → "lam "; NumV{} → "num "; TxtV{} → "txt "
         line (k, v) = (Dim ⊹ "stor ") ⊹ (Yellow ⊹ (padded ⎴ bwText k) ⊹ " ") ⊹ prefix v ⊹ v
           where
-            padded ∷ String → String
             padded = \case
                 [] → "    "
                 s@[_] → "   " ⋄ s

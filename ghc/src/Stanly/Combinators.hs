@@ -6,18 +6,18 @@ module Stanly.Combinators (ev, evTrace, evDeadCode) where
 import Control.Monad.Writer.Strict (MonadWriter (tell), censor)
 import Data.Char (toLower)
 import Data.Coerce (coerce)
-import Data.List qualified as L
+import Data.List ((\\))
 import Stanly.Fmt (Fmt (..), FmtCmd (Dim), (⊹))
-import Stanly.Interpreter qualified as I
-import Stanly.Language qualified as L
-import Stanly.MachineState qualified as I
+import Stanly.Interpreter (Eval, Interpreter (..), makeInterpreter)
+import Stanly.Language (Expr, subexprs)
+import Stanly.MachineState (Env, Store (..))
 import Stanly.Unicode
 
-ev ∷ ∀ l m. (Monad m) ⇒ I.Interpreter l m → I.Eval l m
-ev = I.makeInterpreter id id
+ev ∷ ∀ l m. (Monad m) ⇒ Interpreter l m → Eval l m
+ev = makeInterpreter id id
 
-evTrace ∷ ∀ l m. (MonadWriter (ProgramTrace l) m) ⇒ I.Interpreter l m → I.Eval l m
-evTrace i@I.Interpreter{..} = I.makeInterpreter id open i
+evTrace ∷ ∀ l m. (MonadWriter (ProgramTrace l) m) ⇒ Interpreter l m → Eval l m
+evTrace i@Interpreter{..} = makeInterpreter id open i
   where
     open evalTr eval expr = do
         ρ ← env
@@ -25,22 +25,22 @@ evTrace i@I.Interpreter{..} = I.makeInterpreter id open i
         tell ⎴ coerce [(expr, ρ, σ)]
         evalTr eval expr
 
-evDeadCode ∷ ∀ m l. (MonadWriter NotCovered m) ⇒ I.Interpreter l m → I.Eval l m
-evDeadCode = I.makeInterpreter closed open
+evDeadCode ∷ ∀ m l. (MonadWriter NotCovered m) ⇒ Interpreter l m → Eval l m
+evDeadCode = makeInterpreter closed open
   where
-    closed eval expr = censor (coerce \used → cleanUp ⎴ L.subexprs expr L.\\ used) ⎴ eval expr
-    cleanUp x = reverse ⎴ x L.\\ (x ⇉ L.subexprs)
+    closed eval expr = censor (coerce \used → cleanUp ⎴ subexprs expr \\ used) ⎴ eval expr
+    cleanUp x = reverse ⎴ x \\ (x ⇉ subexprs)
     open evalTr eval expr = do tell ⎴ NotCovered [expr]; evalTr eval expr
 
-newtype ProgramTrace l = ProgramTrace [(L.Expr, I.Env l, I.Store l)] deriving (Semigroup, Monoid, Foldable)
+newtype ProgramTrace l = ProgramTrace [(Expr, Env l, Store l)] deriving (Semigroup, Monoid, Foldable)
 
 instance (Fmt l) ⇒ Fmt (ProgramTrace l) where
-    fmt (ProgramTrace li) = κ₁ [Dim ⊹ i ⊹ expr₁ e ⊹ env₁ r ⊹ store₁ s ⊹ "\n" | ((e, r, s), i) ← zip li [1 ∷ Integer ..]]
+    fmt (ProgramTrace li) = κ₁ [Dim ⊹ i ⊹ expr₁ e ⊹ env₁ ρ ⊹ store₁ σ ⊹ "\n" | ((e, ρ, σ), i) ← zip li [1 ∷ Integer ..]]
       where
         expr₁ e = Dim ⊹ "\n" ⊹ [toLower x | x ← take 3 ⎴ show e] ⊹ " " ⊹ e
-        env₁ r = Dim ⊹ "\nenvr " ⊹ r
-        store₁ = \case I.Store [] → fmt ""; x → "\n" ⊹ x
+        env₁ ρ = Dim ⊹ "\nenvr " ⊹ ρ
+        store₁ = \case Store [] → ε₁; x → "\n" ⊹ x
 
-newtype NotCovered = NotCovered [L.Expr] deriving (Eq, Show, Semigroup, Monoid)
+newtype NotCovered = NotCovered [Expr] deriving (Eq, Show, Semigroup, Monoid)
 
 instance Fmt NotCovered where fmt = coerce ⎴ \case [] → ε₁; [x] → fmt x; (x : xs) → x ⊹ "\n" ⊹ NotCovered xs
