@@ -5,10 +5,10 @@ import Control.Monad.Writer (execWriter)
 import Data.List qualified as L
 import Options.Applicative qualified as O
 import Stanly.Abstract qualified as Abs
-import Stanly.Combinators qualified as K
-import Stanly.Concrete qualified as C
 import Stanly.Fmt qualified as F
 import Stanly.Language qualified as L
+import Stanly.Mixins (dead, idₘ, trace)
+import Stanly.Monads (concrete)
 import Stanly.Parser (parser)
 import Stanly.Store qualified as C
 import Stanly.Unicode
@@ -53,8 +53,8 @@ main = do
     flags Options{desugaredO, astO, deadCodeO, noColourO, traceO} ast = do
         M.when desugaredO (putFmt ast)
         M.when astO (print ast)
-        M.when deadCodeO (putFmt (execWriter (C.runConcreteT K.evDeadCode ast)))
-        M.when traceO (putFmt (execWriter (C.runConcreteT K.evTrace ast)))
+        M.when deadCodeO (putFmt (execWriter (concrete dead ast)))
+        M.when traceO (putFmt (execWriter (concrete trace ast)))
       where
         bwText_ ∷ ∀ a. (F.Fmt a) ⇒ a → String
         bwText_ = if noColourO then F.bwText else F.ttyText
@@ -74,7 +74,7 @@ main = do
             Pruned → bwText₁ (C.pruneₛ (const True) s) ⋄ "\n"
     bwTextVal Fns{..} = \case e → bwText₁ e
     abstractOutput Fns{..} expr = do (v, s) ← Abs.unPowerSet ⎴ Abs.execPowerSet expr; bwTextVal Fns{..} v ⋄ "\n" ⋄ showₛ s
-    concreteOutput Fns{..} expr = do (v, s) ← C.runConcreteT K.ev expr; either id (bwTextVal Fns{..}) v ⋄ "\n" ⋄ showₛ s
+    concreteOutput Fns{..} expr = do (v, s) ← concrete idₘ expr; either id (bwTextVal Fns{..}) v ⋄ "\n" ⋄ showₛ s
     opts = O.execParser ⎴ O.info (O.helper ⊛ options) desc
       where
         desc = O.fullDesc ⋄ progDesc ⋄ header

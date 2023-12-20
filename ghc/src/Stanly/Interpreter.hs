@@ -2,9 +2,10 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module Stanly.Interpreter (Interpreter (..), makeInterpreter, Eval) where
+module Stanly.Interpreter (Interpreter (..), makeInterpreter, liftInterpreter, Eval) where
 
 import Control.Monad.Except (MonadError, fix)
+import Control.Monad.Trans (MonadTrans, lift)
 import Stanly.Env (Env)
 import Stanly.Fmt (Fmt)
 import Stanly.Language (Expr (..), Op2, Variable)
@@ -50,28 +51,27 @@ data Interpreter l m where
         } →
         Interpreter l m
 
--- liftInterpreter ∷ ∀ l m t. (MonadTrans t, Monad (t m)) ⇒ Interpreter l m → Interpreter l (t m)
--- liftInterpreter Interpreter{..} =
---     Interpreter
---         { deref = ζ₀ ∘ deref
---         , exc = ζ₀ ∘ exc
---         , env = ζ₀ env
---         , alloc = ζ₀ ∘ alloc
---         , localEnv = ζ₁ ∘ localEnv
---         , store = ζ₀ store
---         , updateStore = ζ₀ ∘ updateStore
---         , op2 = ζ₂ ∘ op2
---         , branch = ζ₃ branch
---         }
---   where
---     ζ₀ ∷ m r → t m r
---     ζ₁ ∷ (m x₁ → m r) → (t m x₁ → t m r)
---     ζ₂ ∷ (m x₁ → m x₂ → m r) → (t m x₁ → t m x₂ → t m r)
---     ζ₃ ∷ (m x₁ → m x₂ → m x₃ → m r) → (t m x₁ → t m x₂ → t m x₃ → t m r)
+liftInterpreter ∷ ∀ l m t. (MonadError String (t m), MonadTrans t, Monad (t m)) ⇒ Interpreter l m → Interpreter l (t m)
+liftInterpreter Interpreter{..} =
+    Interpreter
+        { load = ζ₀ ∘ load
+        , closure = \v → ζ₀ ∘ closure v
+        , bind = ζ₁ ∘ bind
+        , substitute = \ρ → ζ₁ ∘ substitute ρ
+        , storeₗ = ζ₀ ∘ storeₗ
+        , alloc = ζ₀ ∘ alloc
+        , op2 = ζ₂ ∘ op2
+        , if' = ζ₃ if'
+        }
+  where
+    ζ₀ ∷ m r → t m r
+    ζ₁ ∷ (m x₁ → m r) → (t m x₁ → t m r)
+    ζ₂ ∷ (m x₁ → m x₂ → m r) → (t m x₁ → t m x₂ → t m r)
+    ζ₃ ∷ (m x₁ → m x₂ → m x₃ → m r) → (t m x₁ → t m x₂ → t m x₃ → t m r)
 
---     f ⊰ a = f ⊛ φ ω a
---     infixl 4 ⊰
---     ζ₀ = lift
---     ζ₁ f x = ω f ⊰ x ⇉ ζ₀
---     ζ₂ f x y = ω f ⊰ x ⊰ y ⇉ ζ₀
---     ζ₃ f x y z = ω f ⊰ x ⊰ y ⊰ z ⇉ ζ₀
+    f ⊰ a = f ⊛ φ ω a
+    infixl 4 ⊰
+    ζ₀ = lift
+    ζ₁ f x = ω f ⊰ x ⇉ ζ₀
+    ζ₂ f x y = ω f ⊰ x ⊰ y ⇉ ζ₀
+    ζ₃ f x y z = ω f ⊰ x ⊰ y ⊰ z ⇉ ζ₀

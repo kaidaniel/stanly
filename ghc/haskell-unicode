@@ -9,6 +9,7 @@ args = parser.parse_args()
 
 # ₁ ₂ ₃ ₄ ₅ ₆ ₇ ₈ ₉ ₀
 # ⫶ ⫷ ⫸ ⫹ ⫺ ⫻ ⫼ ⫽ ⫾ ⫿ ⫶ ⇉ ⇝ ⇢ ⇾ ↣ ⇶ ⫶
+# ₘ ₐ ₑ ₒ ₓ ₔ ₕ ₖ ₗ ₘ ₙ ₚ ₛ ₜ
 
 for path in args.files:
 

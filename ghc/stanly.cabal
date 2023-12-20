@@ -18,9 +18,9 @@ common shared-properties
 
 library stanly-lib
     import:          shared-properties
-    exposed-modules: Stanly.Concrete, Stanly.Fmt, Stanly.Interpreter, Stanly.Abstract, Stanly.Unicode, Stanly.Combinators, Stanly.Language, Stanly.Env, Stanly.Parser, Stanly.Store, Stanly.Val
+    exposed-modules: Stanly.Monads, Stanly.Fmt, Stanly.Interpreter, Stanly.Abstract, Stanly.Unicode, Stanly.Mixins, Stanly.Language, Stanly.Env, Stanly.Parser, Stanly.Store, Stanly.Val
     hs-source-dirs:  src
-    build-depends:   haskell-src-meta, template-haskell, QuickCheck, text
+    build-depends:   haskell-src-meta, template-haskell, QuickCheck, text, list-t
       
 executable stanly
     import:           shared-properties
