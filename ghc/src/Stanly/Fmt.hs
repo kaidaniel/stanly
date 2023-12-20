@@ -1,10 +1,10 @@
 {-# LANGUAGE BlockArguments #-}
 
-module Stanly.Fmt (FmtCmd (..), FmtStr (..), (|-|), (⊹), Fmt (..), bwText, ttyText) where
+module Stanly.Fmt (FmtCmd (..), (|-|), (⊹), Fmt (fmt), bwText, ttyText) where
 
 -- no-haskell-unicode
 
-import Data.List qualified as L
+import Data.List (intercalate)
 import Stanly.Unicode
 
 data FmtCmd where
@@ -70,7 +70,7 @@ ttyText' = \case
   where
     ansi cmd = case codes cmd of
         [] → ""
-        cmds → "\x1b[" <> L.intercalate ";" (show <$> cmds) <> "m"
+        cmds → "\x1b[" <> intercalate ";" (show <$> cmds) <> "m"
     codes ∷ FmtCmd → [Integer]
     codes = \case
         Reset → [0]

@@ -9,7 +9,9 @@ import Stanly.Abstract qualified as Abs
 import Stanly.Combinators qualified as K
 import Stanly.Concrete qualified as C
 import Stanly.Fmt qualified as F
-import Stanly.Interpreter qualified as I
+import Stanly.Language qualified as L
+import Stanly.MachineState qualified as I
+import Stanly.Parser (parser)
 import Stanly.Unicode
 
 options ∷ O.Parser Options
@@ -44,11 +46,11 @@ data Fns = Fns
 main ∷ IO ()
 main = do
     o@Options{} ← opts
-    ast ← either (error ∘ show) ω ∘ I.parser "<stdin>" =<< getContents
+    ast ← either (error ∘ show) ω ∘ parser "<stdin>" =<< getContents
     value o ast
     flags o ast
   where
-    flags ∷ Options → I.Expr → IO ()
+    flags ∷ Options → L.Expr → IO ()
     flags Options{desugaredO, astO, deadCodeO, noColourO, traceO} ast = do
         M.when desugaredO (putFmt ast)
         M.when astO (print ast)
@@ -64,7 +66,7 @@ main = do
             Abstract → abstractOutput Fns{..}
             NoneV → const ""
       where
-        pruneEnv = \case (l, I.LamV x e r) → (l, I.LamV x e (I.pruneEnv e r)); x → x
+        pruneEnv = \case (l, I.LamV x e r) → (l, I.LamV x e (L.pruneEnv e r)); x → x
         bwText₁ ∷ ∀ a. (F.Fmt a) ⇒ a → String
         bwText₁ = if noColourO then F.bwText else F.ttyText
         showStore ∷ ∀ l. (F.Fmt l) ⇒ I.Store l → String
