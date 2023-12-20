@@ -1,9 +1,10 @@
 {-# LANGUAGE BlockArguments #-}
-{-# LANGUAGE RecordWildCards #-}
 
 module Stanly.Combinators (ev, evTrace, evDeadCode) where
 
-import Control.Monad.Writer.Strict (MonadWriter (tell), censor)
+import Control.Monad.Reader (MonadReader (ask))
+import Control.Monad.State (MonadState (get))
+import Control.Monad.Writer (MonadWriter (tell), censor)
 import Data.Char (toLower)
 import Data.Coerce (coerce)
 import Data.List ((\\))
@@ -16,12 +17,12 @@ import Stanly.Unicode
 ev ∷ ∀ l m. (Monad m) ⇒ Interpreter l m → Eval l m
 ev = makeInterpreter id id
 
-evTrace ∷ ∀ l m. (MonadWriter (ProgramTrace l) m) ⇒ Interpreter l m → Eval l m
-evTrace i@Interpreter{..} = makeInterpreter id open i
+evTrace ∷ ∀ l m. (MonadWriter (ProgramTrace l) m, MonadState (Store l) m, MonadReader (Env l) m) ⇒ Interpreter l m → Eval l m
+evTrace = makeInterpreter id open
   where
     open evalTr eval expr = do
-        ρ ← env
-        σ ← store
+        ρ ← ask
+        σ ← get
         tell ⎴ coerce [(expr, ρ, σ)]
         evalTr eval expr
 

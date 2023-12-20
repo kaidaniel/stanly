@@ -5,10 +5,9 @@
 module Stanly.Interpreter (Interpreter (..), makeInterpreter, arithmetic, branchIfn0, Eval) where
 
 import Control.Monad.Except (MonadError, fix, throwError)
-import GHC.Base (coerce)
 import Stanly.Fmt (Fmt, bwText, (⊹))
 import Stanly.Language (Expr (..), Op2 (..), Variable)
-import Stanly.MachineState (Env (..), Store (..), Val (..))
+import Stanly.MachineState (Env (..), Val (..))
 import Stanly.Unicode
 
 type Eval l m = Expr → m (Val l)
@@ -20,23 +19,23 @@ eval ∷ ∀ m l. Interpreter l m → Eval l m → Eval l m
 eval Interpreter{..} eval₁ = \case
     Num n → ω (NumV n)
     Txt s → ω (TxtV s)
-    Lam v e → φ (LamV v e) env
-    Var var → search var
+    Lam x e → closure (LamV x e)
+    Var x → load x
     If tst then' else' → branch (eval₁ tst) (eval₁ then') (eval₁ else')
     Op2 o e₁ e₂ → op2 o (eval₁ e₁) (eval₁ e₂)
     Rec var body → do
         loc ← alloc var
-        value ← localEnv₂ (var, loc) body
-        updateStore₁ (loc, value)
+        value ← bind (var, loc) (eval₁ body)
+        storeₗ (loc, value)
         ω value
     App f x →
         eval₁ f ⇉ \case
             LamV var body ρ₁ → do
                 x₁ ← eval₁ x
                 loc ← alloc var
-                updateStore₁ (loc, x₁)
-                localEnv₁ ρ₁ (var, loc) body
-            _ → exc ⎴ notAFunction f x
+                storeₗ (loc, x₁)
+                substitute ρ₁ (var, loc) (eval₁ body)
+            _ → throwError ⎴ notAFunction f x
   where
     notAFunction f x =
         "Left hand side of application not bound to a function."
@@ -44,26 +43,18 @@ eval Interpreter{..} eval₁ = \case
             ⋄ bwText f
             ⋄ "\nIn argument position ⋙ "
             ⋄ bwText x
-    search var =
-        env ⇉ \ρ → case lookup var (coerce ρ) of
-            Just l → deref l
-            Nothing → exc (show var ⋄ " not found in environment: " ⋄ bwText ρ)
-    localEnv₂ binding cc = localEnv (coerce [binding] ⋄) ⎴ eval₁ cc
-    localEnv₁ ρ₁ binding cc = localEnv (const (coerce [binding] ⋄ ρ₁)) ⎴ eval₁ cc
-    updateStore₁ binding = updateStore (coerce [binding] ⋄)
 
 data Interpreter l m where
     Interpreter ∷
-        (Fmt l, Monad m) ⇒
-        { deref ∷ l → m (Val l)
-        , env ∷ m (Env l)
-        , localEnv ∷ (Env l → Env l) → m (Val l) → m (Val l)
-        , store ∷ m (Store l)
-        , updateStore ∷ (Store l → Store l) → m ()
+        (Fmt l, Monad m, MonadError String m) ⇒
+        { load ∷ Variable → m (Val l)
+        , closure ∷ (Env l → Val l) → m (Val l)
+        , bind ∷ (Variable, l) → m (Val l) → m (Val l)
+        , substitute ∷ Env l → (Variable, l) → m (Val l) → m (Val l)
+        , storeₗ ∷ (l, Val l) → m ()
         , alloc ∷ Variable → m l
         , op2 ∷ Op2 → m (Val l) → m (Val l) → m (Val l)
         , branch ∷ m (Val l) → m (Val l) → m (Val l) → m (Val l)
-        , exc ∷ String → m (Val l)
         } →
         Interpreter l m
 
