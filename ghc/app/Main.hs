@@ -4,7 +4,6 @@ import Control.Monad qualified as M
 import Control.Monad.Writer (execWriter)
 import Data.List qualified as L
 import Options.Applicative qualified as O
-import Stanly.Abstract qualified as Abs
 import Stanly.Fmt qualified as F
 import Stanly.Language qualified as L
 import Stanly.Mixins (dead, idₘ, trace)
@@ -12,33 +11,36 @@ import Stanly.Monads (concrete)
 import Stanly.Parser (parser)
 import Stanly.Store qualified as C
 import Stanly.Unicode
+import Stanly.Val (Val, pruneᵥ)
 
 options ∷ O.Parser Options
 options =
     Options
         <$> choice
             "value"
+            'v'
             [Concrete, NoneV, Abstract]
+            Concrete
             "Show the value obtained when the interpreter halts."
-            ⊛ choice "store" [NoneS, Full, Pruned] "Show the final state of the store after the program halts."
+            ⊛ choice "store" 's' [NoneS, Full, Pruned] NoneS "Show the final state of the store after the program halts."
             ⊛ flag "desugared" "Show the program after syntax transformation."
             ⊛ flag "ast" "Show the abstract syntax tree used by the interpreter."
             ⊛ flag "trace" "Show how the interpreter state changes while the program is being evaluated."
             ⊛ flag "dead-code" "Show parts of the program that weren't reached during interpretation."
             ⊛ flag "no-colour" "Don't colourise output."
   where
-    choice long li help =
+    choice long short choices dfltChoice help =
         O.option O.auto
             ⎴ O.long long
-            ⋄ O.short (head long)
+            ⋄ O.short short
             ⋄ O.showDefault
-            ⋄ O.value (head li)
-            ⋄ O.metavar ("{" ⋄ L.intercalate "|" [show x | x ← li] ⋄ "}")
+            ⋄ O.value dfltChoice
+            ⋄ O.metavar ("{" ⋄ L.intercalate "|" [show x | x ← choices] ⋄ "}")
             ⋄ O.help help
     flag long help = O.switch (O.long long ⋄ O.help help)
 
 data Fns = Fns
-    { showₛ ∷ ∀ l. (F.Fmt l, Eq l) ⇒ C.Store l → String
+    { showₛ ∷ ∀ l. (F.Fmt l, Eq l) ⇒ C.Store l (Val l) → String
     , bwText₁ ∷ ∀ a. (F.Fmt a) ⇒ a → String
     }
 
@@ -67,13 +69,13 @@ main = do
       where
         bwText₁ ∷ ∀ a. (F.Fmt a) ⇒ a → String
         bwText₁ = if noColourO then F.bwText else F.ttyText
-        showₛ ∷ ∀ l. (F.Fmt l, Eq l) ⇒ C.Store l → String
+        showₛ ∷ ∀ l. (F.Fmt l, Eq l) ⇒ C.Store l (Val l) → String
         showₛ s = case storeO of
             NoneS → ""
             Full → bwText₁ s ⋄ "\n"
-            Pruned → bwText₁ (C.pruneₛ (const True) s) ⋄ "\n"
+            Pruned → bwText₁ (φ pruneᵥ (C.pruneₛ (const True) s)) ⋄ "\n"
     bwTextVal Fns{..} = \case e → bwText₁ e
-    abstractOutput Fns{..} expr = do (v, s) ← Abs.unPowerSet ⎴ Abs.execPowerSet expr; bwTextVal Fns{..} v ⋄ "\n" ⋄ showₛ s
+    abstractOutput Fns{} = undefined
     concreteOutput Fns{..} expr = do (v, s) ← concrete idₘ expr; either id (bwTextVal Fns{..}) v ⋄ "\n" ⋄ showₛ s
     opts = O.execParser ⎴ O.info (O.helper ⊛ options) desc
       where

@@ -12,6 +12,9 @@ data Val l where
     NumV ∷ Integer → Val l
     TxtV ∷ String → Val l
 
+deriving instance (Eq l) ⇒ Eq (Val l)
+deriving instance (Ord l) ⇒ Ord (Val l)
+
 regionᵥ ∷ Val l → [l]
 regionᵥ = \case
     LamV _ _ r → regionᵣ r

@@ -5,7 +5,8 @@ module Stanly.Monads (concrete) where
 import Control.Monad.Except (ExceptT, runExceptT)
 import Control.Monad.Reader (MonadReader (local))
 import Control.Monad.State (gets)
-import ListT (ListT (..))
+import Data.Set (Set, fromList)
+import ListT (ListT, toList)
 import Stanly.Env (EnvT, bind', lookupₗ, runEnvT)
 import Stanly.Interpreter (Eval, Interpreter (..))
 import Stanly.Language (Expr, Variable)
@@ -19,8 +20,10 @@ type ConcreteT m = EnvT Int (ExcT (StoreT Int m))
 
 type Mixin l m = Interpreter l m → Eval l m
 
-concrete ∷ ∀ m. (Monad m) ⇒ Mixin Int (ConcreteT m) → Expr → m (Either String (Val Int), Store Int)
-concrete ev = runStoreT ∘ runExceptT ∘ runEnvT ∘ ev interpreter
+type Snapshot l = (Either String (Val l), Store l (Val l))
+
+concrete ∷ ∀ m. (Monad m) ⇒ Mixin Int (ConcreteT m) → Expr → m (Snapshot Int)
+concrete mixin = runStoreT ∘ runExceptT ∘ runEnvT ∘ mixin interpreter
   where
     interpreter =
         Interpreter
@@ -36,5 +39,17 @@ concrete ev = runStoreT ∘ runExceptT ∘ runEnvT ∘ ev interpreter
 
 type AbstractT m = EnvT Variable (ExcT (StoreT Variable (ListT m)))
 
-abstract ∷ ∀ m. (Monad m) ⇒ Mixin Variable (AbstractT m) → Expr → m (Either String (Val Variable), Store Variable)
-abstract = undefined
+abstract ∷ ∀ m. (Monad m) ⇒ Mixin Variable (AbstractT m) → Expr → m (Set (Snapshot Variable))
+abstract mixin = φ fromList ∘ toList ∘ runStoreT ∘ runExceptT ∘ runEnvT ∘ mixin interpreter
+  where
+    interpreter =
+        Interpreter
+            { load = undefined
+            , closure = undefined
+            , bind = undefined
+            , alloc = undefined
+            , substitute = undefined
+            , storeₗ = undefined
+            , op2 = undefined
+            , if' = undefined
+            }

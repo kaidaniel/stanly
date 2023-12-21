@@ -4,8 +4,9 @@
 
 module Stanly.Interpreter (Interpreter (..), makeInterpreter, liftInterpreter, Eval) where
 
-import Control.Monad.Except (MonadError, fix)
+import Control.Monad.Except (MonadError)
 import Control.Monad.Trans (MonadTrans, lift)
+import Data.Function (fix)
 import Stanly.Env (Env)
 import Stanly.Fmt (Fmt)
 import Stanly.Language (Expr (..), Op2, Variable)

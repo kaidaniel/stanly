@@ -10,7 +10,7 @@ format:
 	fourmolu --unicode always --mode inplace src/Stanly/*.hs app/*.hs tests/*.hs
 
 cabal: format
-	cabal v2-build -j4
+	cabal v2-build -j8
 
 test: cabal
 	stanly-test --qc-max-success=2000 --color

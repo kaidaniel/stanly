@@ -9,7 +9,9 @@ import Stanly.Fmt (Fmt (..), FmtCmd (Yellow), bwText, (⊹))
 import Stanly.Language (Variable)
 import Stanly.Unicode
 
-newtype Env l where Env ∷ [(Variable, l)] → Env l
+newtype Env l where
+    Env ∷ [(Variable, l)] → Env l
+    deriving (Eq, Ord)
 
 type EnvT l m = ReaderT (Env l) m
 

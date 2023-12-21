@@ -31,14 +31,14 @@ data Expr where
     Num ∷ Integer → Expr
     Txt ∷ String → Expr
     If' ∷ Expr → Expr → Expr → Expr
-    deriving (Eq, Show, Generic)
+    deriving (Eq, Ord, Show, Generic)
 
 data Op2 where
     Plus ∷ Op2
     Minus ∷ Op2
     Times ∷ Op2
     Divide ∷ Op2
-    deriving (Eq, Show)
+    deriving (Eq, Ord, Show)
 
 subexprs ∷ (Alternative f) ⇒ Expr → f Expr
 subexprs = \case

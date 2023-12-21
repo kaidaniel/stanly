@@ -13,19 +13,19 @@ common shared-properties
     parsec, base, mtl, transformers
   ghc-options:
     -Wall -Wno-star-is-type -Wno-unused-do-bind -fprint-explicit-foralls
-  default-extensions: UnicodeSyntax, LambdaCase, StarIsType
+  default-extensions: UnicodeSyntax, LambdaCase, StarIsType, BlockArguments
 
 
 library stanly-lib
     import:          shared-properties
-    exposed-modules: Stanly.Monads, Stanly.Fmt, Stanly.Interpreter, Stanly.Abstract, Stanly.Unicode, Stanly.Mixins, Stanly.Language, Stanly.Env, Stanly.Parser, Stanly.Store, Stanly.Val
+    exposed-modules: Stanly.Monads, Stanly.Fmt, Stanly.Interpreter, Stanly.Unicode, Stanly.Mixins, Stanly.Language, Stanly.Env, Stanly.Parser, Stanly.Store, Stanly.Val
     hs-source-dirs:  src
-    build-depends:   haskell-src-meta, template-haskell, QuickCheck, text, list-t
+    build-depends:   haskell-src-meta, QuickCheck, list-t, containers
       
 executable stanly
     import:           shared-properties
     main-is:          Main.hs
-    build-depends:    stanly-lib, text, optparse-applicative
+    build-depends:    stanly-lib, optparse-applicative
     hs-source-dirs:   app
      
 
