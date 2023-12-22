@@ -5,7 +5,8 @@ import Control.Monad.Identity (runIdentity)
 import Control.Monad.Writer (execWriter)
 import Data.List (intersperse)
 import Options.Applicative (Parser, ParserInfo, execParser, fullDesc, header, help, helper, info, long, progDesc, short, switch)
-import Stanly.Fmt (Fmt (..), bwText, ttyText, (⊹), (⊹\))
+import Stanly.Fmt (Fmt (..), FmtStr, bwText, ttyText, (⊹), (⊹\))
+import Stanly.Language (Expr)
 import Stanly.Mixins (dead, idₘ, trace)
 import Stanly.Monads (concrete)
 import Stanly.Parser (parser)
@@ -36,14 +37,13 @@ opts =
         (helper ⊛ options)
         (fullDesc ⋄ progDesc "Discover something interesting about your source code." ⋄ header "stanly - static analyser")
 
-main ∷ IO ()
-main = do
-    Options{..} ← execParser opts
-    ast ← either (error ∘ show) ω ∘ parser "<stdin>" =<< getContents
-    let concrete₁ = runIdentity ⎴ concrete idₘ ast
-    let isDefault = not (storeO || pruneO || desugaredO || astO || traceO || deadCodeO || noColourO || sectionHeadersO)
-    let m ++? (b, title, m₁) = if b then m ++ [if sectionHeadersO then "== " ⊹ title ⊹\ m₁ else m₁] else m
-    let sections =
+outputs ∷ Options → Expr → [FmtStr]
+outputs Options{..} ast =
+    let
+        concrete₁ = runIdentity ⎴ concrete idₘ ast
+        isDefault = not (storeO || pruneO || desugaredO || astO || traceO || deadCodeO || noColourO || sectionHeadersO)
+        m ++? (b, title, m₁) = if b then m ++ [if sectionHeadersO then "== " ⊹ title ⊹\ m₁ else m₁] else m
+        sections =
             ε₁
                 ++? (valueO || isDefault, "value", fmt ⎴ value concrete₁)
                 ++? (storeO, "store", fmt ⎴ (if pruneO then φ prune else id) (store concrete₁))
@@ -51,5 +51,11 @@ main = do
                 ++? (astO, "ast", fmt (show ast))
                 ++? (deadCodeO, "dead-code", fmt (execWriter (concrete dead ast)))
                 ++? (traceO, "trace", fmt (execWriter (concrete trace ast)))
-    let putFmt = putStr ∘ if noColourO then bwText else ttyText
-    putFmt ⎴ intersperse (fmt '\n') (fmap (⊹ '\n') sections)
+     in
+        intersperse (fmt '\n') ⎴ fmap (⊹ '\n') ⎴ sections
+
+main ∷ IO ()
+main = do
+    Options{..} ← execParser opts
+    ast ← either (error ∘ show) ω ∘ parser "<stdin>" =<< getContents
+    (putStr ∘ if noColourO then bwText else ttyText) (outputs Options{..} ast)
