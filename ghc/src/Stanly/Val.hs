@@ -1,8 +1,8 @@
-module Stanly.Val (Val, pruneᵥ, regionᵥ, closureᵥ, numberᵥ, textᵥ, lambda, arithmetic, ifn0) where
+module Stanly.Val (Val, prune, regionᵥ, closureᵥ, number, text, lambda, arithmetic, ifn0) where
 
 import Control.Monad.Except (MonadError, throwError)
 import Control.Monad.Reader (MonadReader (ask))
-import Stanly.Env (Env, pruneᵣ, regionᵣ)
+import Stanly.Env (Env, pruneEnv, regionᵣ)
 import Stanly.Fmt (Fmt (..), FmtCmd (Bold, Dim), bwText, (⊹))
 import Stanly.Language (Expr, Op2 (..), Variable, freeVars)
 import Stanly.Unicode
@@ -20,16 +20,16 @@ regionᵥ = \case
     LamV _ _ r → regionᵣ r
     _ → []
 
-pruneᵥ ∷ Val l → Val l
-pruneᵥ = \case
-    LamV x e r → LamV x e (pruneᵣ (∈ freeVars e) r)
+prune ∷ Val l → Val l
+prune = \case
+    LamV x e r → LamV x e (pruneEnv (∈ freeVars e) r)
     x → x
 
-numberᵥ ∷ (Monad m) ⇒ Integer → m (Val l)
-numberᵥ = ω ∘ NumV
+number ∷ (Monad m) ⇒ Integer → m (Val l)
+number = ω ∘ NumV
 
-textᵥ ∷ (Monad m) ⇒ String → m (Val l)
-textᵥ = ω ∘ TxtV
+text ∷ (Monad m) ⇒ String → m (Val l)
+text = ω ∘ TxtV
 
 closureᵥ ∷ (Fmt l, MonadReader (Env l) m) ⇒ Variable → Expr → m (Val l)
 closureᵥ x e = φ (LamV x e) ask

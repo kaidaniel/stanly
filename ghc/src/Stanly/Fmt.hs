@@ -1,9 +1,10 @@
 {-# LANGUAGE BlockArguments #-}
 
-module Stanly.Fmt (FmtCmd (..), (|-|), (⊹), Fmt (fmt), bwText, ttyText) where
+module Stanly.Fmt (FmtStr, FmtCmd (..), (|-|), (⊹), Fmt (fmt), bwText, ttyText, (⊹\)) where
 
 -- no-haskell-unicode
 
+import Data.Char (isSpace)
 import Data.List (intercalate)
 import Stanly.Unicode
 
@@ -44,6 +45,12 @@ data FmtStr where
     Node ∷ FmtStr → FmtStr → FmtStr
     Empty ∷ FmtStr
     deriving (Eq, Show)
+
+isSpace' ∷ FmtStr → Bool
+isSpace' = \case
+    Str _ s → all isSpace s
+    Node a b → isSpace' a && isSpace' b
+    Empty → True
 
 instance Semigroup FmtStr where
     Empty <> a = a
@@ -101,9 +108,20 @@ instance Fmt Char where fmt = display ∘ ω
 instance Fmt String where fmt = display
 instance Fmt [FmtStr] where fmt = κ₁
 instance Fmt FmtCmd where fmt cmd = Str cmd ""
+instance (Fmt a, Fmt b) ⇒ Fmt (Either a b) where fmt = \case Left a → fmt a; Right b → fmt b
 
-(⊹), (|-|) ∷ (Fmt a, Fmt b) ⇒ a → b → FmtStr
-(|-|) a b = fmt a ⋄ fmt b
+(|-|), (⊹), (⊹\) ∷ (Fmt a, Fmt b) ⇒ a → b → FmtStr
+a |-| b = fmt a ⋄ fmt b
 (⊹) = (|-|)
-infixr 6 |-|, ⊹
+a ⊹\ b =
+    let
+        a1' = fmt a
+        b1' = fmt b
+     in
+        case (isSpace' a1', isSpace' b1') of
+            (True, True) → fmt ""
+            (True, _) → b1'
+            (_, True) → a1'
+            _ → a1' ⊹ '\n' ⊹ b1'
+infixr 6 |-|, ⊹, ⊹\
 {-# INLINE (⊹) #-}

@@ -1,4 +1,4 @@
-// RUN: stanly --store pruned < %s | FileCheck %s
+// RUN: stanly < %s | FileCheck %s
 
 let a = (0 1);
 let x = 1 in 

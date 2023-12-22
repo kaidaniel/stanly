@@ -1,104 +1,56 @@
+{-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE RecordWildCards #-}
 
-import Control.Monad qualified as M
+import Control.Monad.Identity (runIdentity)
 import Control.Monad.Writer (execWriter)
-import Data.List qualified as L
-import Options.Applicative qualified as O
-import Stanly.Fmt qualified as F
-import Stanly.Language qualified as L
+import Data.List (intersperse)
+import Options.Applicative (Parser, ParserInfo, execParser, fullDesc, header, help, helper, info, long, progDesc, short, switch)
+import Stanly.Fmt (Fmt (..), bwText, ttyText, (⊹), (⊹\))
 import Stanly.Mixins (dead, idₘ, trace)
 import Stanly.Monads (concrete)
 import Stanly.Parser (parser)
-import Stanly.Store qualified as C
+import Stanly.Store (store, value)
 import Stanly.Unicode
-import Stanly.Val (Val, pruneᵥ)
+import Stanly.Val (prune)
 
-options ∷ O.Parser Options
+data Options = Options {valueO, storeO, pruneO, desugaredO, astO, traceO, deadCodeO, noColourO, sectionHeadersO ∷ Bool} deriving (Read, Show, Eq)
+isDefault ∷ Options → Bool
+isDefault Options{..} = not (storeO || pruneO || desugaredO || astO || traceO || deadCodeO || noColourO || sectionHeadersO)
+
+options ∷ Parser Options
 options =
     Options
-        <$> choice
-            "value"
-            'v'
-            [Concrete, NoneV, Abstract]
-            Concrete
-            "Show the value obtained when the interpreter halts."
-            ⊛ choice "store" 's' [NoneS, Full, Pruned] NoneS "Show the final state of the store after the program halts."
-            ⊛ flag "desugared" "Show the program after syntax transformation."
-            ⊛ flag "ast" "Show the abstract syntax tree used by the interpreter."
-            ⊛ flag "trace" "Show how the interpreter state changes while the program is being evaluated."
-            ⊛ flag "dead-code" "Show parts of the program that weren't reached during interpretation."
-            ⊛ flag "no-colour" "Don't colourise output."
+        <$> flag "value" 'v' "Show calculated value (default if no other options set)."
+            ⊛ flag "store" 's' "Show the final state of the store after the program halts."
+            ⊛ flag "prune" 'p' "Prune store before showing (when using --store)."
+            ⊛ flag "desugared" 'd' "Show the program after syntax transformation."
+            ⊛ flag "ast" 'a' "Show the abstract syntax tree used by the interpreter."
+            ⊛ flag "trace" 't' "Show how the interpreter state changes while the program is being evaluated."
+            ⊛ flag "dead-code" 'e' "Show parts of the program that weren't reached during interpretation."
+            ⊛ flag "no-colour" 'n' "Don't colourise output."
+            ⊛ flag "section-headers" 'i' "Introduce each section by a line of '===' and the section's name."
   where
-    choice long short choices dfltChoice help =
-        O.option O.auto
-            ⎴ O.long long
-            ⋄ O.short short
-            ⋄ O.showDefault
-            ⋄ O.value dfltChoice
-            ⋄ O.metavar ("{" ⋄ L.intercalate "|" [show x | x ← choices] ⋄ "}")
-            ⋄ O.help help
-    flag long help = O.switch (O.long long ⋄ O.help help)
+    flag l s h = switch (long l ⋄ short s ⋄ help h)
 
-data Fns = Fns
-    { showₛ ∷ ∀ l. (F.Fmt l, Eq l) ⇒ C.Store l (Val l) → String
-    , bwText₁ ∷ ∀ a. (F.Fmt a) ⇒ a → String
-    }
+opts ∷ ParserInfo Options
+opts =
+    info
+        (helper ⊛ options)
+        (fullDesc ⋄ progDesc "Discover something interesting about your source code." ⋄ header "stanly - static analyser")
 
 main ∷ IO ()
 main = do
-    o@Options{} ← opts
+    Options{..} ← execParser opts
     ast ← either (error ∘ show) ω ∘ parser "<stdin>" =<< getContents
-    value o ast
-    flags o ast
-  where
-    flags ∷ Options → L.Expr → IO ()
-    flags Options{desugaredO, astO, deadCodeO, noColourO, traceO} ast = do
-        M.when desugaredO (putFmt ast)
-        M.when astO (print ast)
-        M.when deadCodeO (putFmt (execWriter (concrete dead ast)))
-        M.when traceO (putFmt (execWriter (concrete trace ast)))
-      where
-        bwText_ ∷ ∀ a. (F.Fmt a) ⇒ a → String
-        bwText_ = if noColourO then F.bwText else F.ttyText
-        putFmt x = if bwText_ x == "" then putStr "" else putStrLn ⎴ bwText_ x
-    value Options{valueO, noColourO, storeO} =
-        putStr ∘ case valueO of
-            Concrete → concreteOutput Fns{..}
-            Abstract → abstractOutput Fns{..}
-            NoneV → const ""
-      where
-        bwText₁ ∷ ∀ a. (F.Fmt a) ⇒ a → String
-        bwText₁ = if noColourO then F.bwText else F.ttyText
-        showₛ ∷ ∀ l. (F.Fmt l, Eq l) ⇒ C.Store l (Val l) → String
-        showₛ s = case storeO of
-            NoneS → ""
-            Full → bwText₁ s ⋄ "\n"
-            Pruned → bwText₁ (φ pruneᵥ (C.pruneₛ (const True) s)) ⋄ "\n"
-    bwTextVal Fns{..} = \case e → bwText₁ e
-    abstractOutput Fns{} = undefined
-    concreteOutput Fns{..} expr = do (v, s) ← concrete idₘ expr; either id (bwTextVal Fns{..}) v ⋄ "\n" ⋄ showₛ s
-    opts = O.execParser ⎴ O.info (O.helper ⊛ options) desc
-      where
-        desc = O.fullDesc ⋄ progDesc ⋄ header
-        progDesc = O.progDesc "Discover something interesting about your source code."
-        header = O.header "stanly - static analyser"
-
-data Options = Options
-    {valueO ∷ ValueO, storeO ∷ StoreO, desugaredO, astO, traceO, deadCodeO, noColourO ∷ Bool}
-    deriving (Read, Show, Eq)
-
-data ValueO = NoneV | Concrete | Abstract deriving (Eq)
-
-data StoreO = NoneS | Full | Pruned deriving (Eq)
-
-instance Show ValueO where
-    show = \case NoneV → "none"; Concrete → "concrete"; Abstract → "abstract"
-
-instance Show StoreO where
-    show = \case NoneS → "none"; Full → "full"; Pruned → "pruned"
-
-instance Read ValueO where
-    readsPrec _ = \case "none" → [(NoneV, "")]; "concrete" → [(Concrete, "")]; "abstract" → [(Abstract, "")]; _ → []
-
-instance Read StoreO where
-    readsPrec _ = \case "none" → [(NoneS, "")]; "full" → [(Full, "")]; "pruned" → [(Pruned, "")]; _ → []
+    let concrete₁ = runIdentity ⎴ concrete idₘ ast
+    let m ++? (b, title, m₁) = if b then m ++ [if sectionHeadersO then "== " ⊹ title ⊹\ m₁ else m₁] else m
+    let sections =
+            ε₁
+                ++? (valueO || isDefault Options{..}, "value", fmt ⎴ value concrete₁)
+                ++? (storeO, "store", fmt ⎴ (if pruneO then φ prune else id) (store concrete₁))
+                ++? (desugaredO, "desugared", fmt ast)
+                ++? (astO, "ast", fmt (show ast))
+                ++? (deadCodeO, "dead-code", fmt (execWriter (concrete dead ast)))
+                ++? (traceO, "trace", fmt (execWriter (concrete trace ast)))
+    let putFmt = putStr ∘ if noColourO then bwText else ttyText
+    putFmt ⎴ intersperse (fmt '\n') (fmap (⊹ '\n') sections)

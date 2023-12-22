@@ -11,7 +11,7 @@ import Stanly.Env (Env)
 import Stanly.Fmt (Fmt)
 import Stanly.Language (Expr (..), Op2, Variable)
 import Stanly.Unicode
-import Stanly.Val (Val, lambda, numberᵥ, textᵥ)
+import Stanly.Val (Val, lambda, number, text)
 
 type Eval l m = Expr → m (Val l)
 
@@ -20,8 +20,8 @@ makeInterpreter closed open interpreter = closed ⎴ fix ⎴ open ⎴ eval inter
 
 eval ∷ ∀ m l. Interpreter l m → Eval l m → Eval l m
 eval Interpreter{..} eval₁ = \case
-    Num n → numberᵥ n
-    Txt s → textᵥ s
+    Num n → number n
+    Txt s → text s
     Lam x e → closure x e
     Var x → load x
     If' tst then' else' → if' (eval₁ tst) (eval₁ then') (eval₁ else')

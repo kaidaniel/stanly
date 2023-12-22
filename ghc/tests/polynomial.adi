@@ -1,4 +1,4 @@
-// RUN: stanly < %s | FileCheck %s
+// RUN: stanly --value < %s | FileCheck %s
 
 let square  = λx.(x * x);
 let cube    = λx.((square x) * x);

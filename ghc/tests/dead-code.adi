@@ -1,4 +1,4 @@
-// RUN: stanly --dead-code --no-colour -v none < %s | FileCheck %s 
+// RUN: stanly --dead-code --no-colour < %s | FileCheck %s 
 
 let f = fn y.(if y then (unreachable branch) else (y + 1));
 
