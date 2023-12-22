@@ -1,4 +1,4 @@
-// RUN: stanly < %s | FileCheck %s
+// RUN: stanly --no-colour < %s | FileCheck %s
 
 let fibonacci = mu f.λn.
 

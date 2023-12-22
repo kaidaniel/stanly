@@ -1,4 +1,4 @@
-// RUN: stanly -v --no-colour < %s | FileCheck %s
+// RUN: stanly --no-colour < %s | FileCheck %s
 
 let a = (0 1);
 let x = 1 in 
