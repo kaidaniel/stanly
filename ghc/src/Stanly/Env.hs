@@ -2,10 +2,10 @@
 
 module Stanly.Env (EnvT, runEnvT, Env, regionᵣ, lookupₗ, bind', pruneEnv) where
 
-import Control.Monad.Except (MonadError, throwError)
 import Control.Monad.Reader (MonadReader (ask), ReaderT, runReaderT)
 import Data.Coerce (coerce)
-import Stanly.Fmt (Fmt (..), FmtCmd (Yellow), bwText, (⊹))
+import Stanly.Exc (MonadExc, exc)
+import Stanly.Fmt (Fmt (..), FmtCmd (Yellow), (⊹))
 import Stanly.Language (Variable)
 import Stanly.Unicode
 
@@ -18,8 +18,8 @@ type EnvT l m = ReaderT (Env l) m
 runEnvT ∷ EnvT l m a → m a
 runEnvT = flip runReaderT (Env [])
 
-lookupₗ ∷ (Fmt l, Ord l, MonadError String m, MonadReader (Env l) m) ⇒ Variable → m l
-lookupₗ var = ask ⇉ \(Env ρ) → case lookup var ρ of Just l → ω l; Nothing → throwError (show var ⋄ " not found in environment: " ⋄ bwText (Env ρ))
+lookupₗ ∷ (Fmt l, Ord l, MonadExc m, MonadReader (Env l) m) ⇒ Variable → m l
+lookupₗ var = ask ⇉ \(Env ρ) → case lookup var ρ of Just l → ω l; Nothing → exc (var ⊹ " not found in environment: " ⊹ Env ρ)
 
 regionᵣ ∷ Env l → [l]
 regionᵣ (Env r) = map π₂ r

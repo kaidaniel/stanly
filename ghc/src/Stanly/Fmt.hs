@@ -46,6 +46,8 @@ data FmtStr where
     Empty ∷ FmtStr
     deriving (Eq, Show)
 
+instance Ord FmtStr where compare l r = compare (ttyText l) (ttyText r)
+
 isSpace' ∷ FmtStr → Bool
 isSpace' = \case
     Str _ s → all isSpace s
@@ -108,7 +110,7 @@ instance Fmt Char where fmt = display ∘ ω
 instance Fmt String where fmt = display
 instance Fmt [FmtStr] where fmt = κ₁
 instance Fmt FmtCmd where fmt cmd = Str cmd ""
-instance (Fmt a, Fmt b) ⇒ Fmt (Either a b) where fmt = \case Left a → fmt a; Right b → fmt b
+instance (Fmt a, Fmt b) ⇒ Fmt (Either a b) where fmt = \case Left x → fmt x; Right x → fmt x
 
 (|-|), (⊹), (⊹\) ∷ (Fmt a, Fmt b) ⇒ a → b → FmtStr
 a |-| b = fmt a ⋄ fmt b

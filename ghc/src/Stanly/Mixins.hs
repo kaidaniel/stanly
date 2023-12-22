@@ -7,7 +7,7 @@ import Control.Monad.State (MonadState (get))
 import Control.Monad.Writer (MonadWriter (tell), censor)
 import Data.Char (toLower)
 import Data.List ((\\))
-import Stanly.Fmt (Fmt (..), FmtCmd (Dim), (⊹))
+import Stanly.Fmt (Fmt (..), FmtCmd (Dim), (⊹), (⊹\))
 import Stanly.Interpreter (Eval, Interpreter (..), makeInterpreter)
 import Stanly.Language (Expr, subexprs)
 import Stanly.Unicode
@@ -36,9 +36,8 @@ dead = makeInterpreter closed open
     open evalTr eval expr = do tell ⎴ NotCovered [expr]; evalTr eval expr
 
 instance (Fmt s, Fmt r) ⇒ Fmt (ProgramTrace r s) where
-    fmt (ProgramTrace li) = κ₁ [Dim ⊹ i ⊹ expr₁ e ⊹ env₁ ρ ⊹ "\n" ⊹ σ ⊹ "\n" | ((e, ρ, σ), i) ← zip li [1 ∷ Integer ..]]
+    fmt (ProgramTrace li) = κ₁ [Dim ⊹ i ⊹ expr₁ e ⊹ (Dim ⊹\ "envr ") ⊹ ρ ⊹\ σ ⊹ "\n" | ((e, ρ, σ), i) ← zip li [1 ∷ Integer ..]]
       where
-        expr₁ e = Dim ⊹ "\n" ⊹ [toLower x | x ← take 3 ⎴ show e] ⊹ " " ⊹ e
-        env₁ ρ = (Dim ⊹ "\nenvr ") ⊹ ρ
+        expr₁ e = Dim ⊹\ [toLower x | x ← take 3 ⎴ show e] ⊹ " " ⊹ e
 
-instance Fmt NotCovered where fmt (NotCovered li) = case li of [] → ε₁; [x] → fmt x; (x : xs) → x ⊹ "\n" ⊹ NotCovered xs
+instance Fmt NotCovered where fmt (NotCovered li) = case li of [] → ε₁; [x] → fmt x; (x : xs) → x ⊹\ NotCovered xs

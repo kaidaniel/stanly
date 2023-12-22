@@ -2,14 +2,14 @@
 
 module Stanly.Store (StoreT, len, lookupStore, insertStore, runStoreT, value, store, StoreRes) where
 
-import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.State (MonadState (get), StateT, modify, runStateT)
 import Data.Bifunctor (Bifunctor (..))
 import Data.Char (toLower)
 import Data.Coerce
 import Data.List (intersperse)
 import Data.Map (Map, insert, size, toAscList, (!?))
-import Stanly.Fmt (Fmt (..), FmtCmd (Dim, Yellow), bwText, (⊹))
+import Stanly.Exc (MonadExc, exc)
+import Stanly.Fmt (Fmt (..), FmtCmd (Dim, Yellow), bwText, (⊹), (⊹\))
 import Stanly.Unicode
 import Stanly.Val (Val)
 
@@ -35,11 +35,11 @@ runStoreT = φ StoreRes ∘ flip runStateT ε₁
 len ∷ Store l v → Int
 len (Store σ) = size σ
 
-lookupStore ∷ (Show v, Fmt v, MonadError String m, MonadStore l v m) ⇒ l → m v
+lookupStore ∷ (Show v, Fmt v, MonadExc m, MonadStore l v m) ⇒ l → m v
 lookupStore l =
     get ⇉ \(Store s) → case s !? l of
         Just x → ω x
-        Nothing → throwError ⎴ bwText ⎴ " not found in store.\n" ⊹ Store s
+        Nothing → exc ⎴ " not found in store." ⊹\ Store s
 
 insertStore ∷ (MonadStore l v m) ⇒ (l, v) → m ()
 insertStore (l, v) = modify ⎴ coerce ⎴ insert l v

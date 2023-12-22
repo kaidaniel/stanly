@@ -4,10 +4,10 @@
 
 module Stanly.Interpreter (Interpreter (..), makeInterpreter, liftInterpreter, Eval) where
 
-import Control.Monad.Except (MonadError)
 import Control.Monad.Trans (MonadTrans, lift)
 import Data.Function (fix)
 import Stanly.Env (Env)
+import Stanly.Exc (MonadExc)
 import Stanly.Fmt (Fmt)
 import Stanly.Language (Expr (..), Op2, Variable)
 import Stanly.Unicode
@@ -40,7 +40,7 @@ eval Interpreter{..} eval₁ = \case
 
 data Interpreter l m where
     Interpreter ∷
-        (Fmt l, Monad m, MonadError String m) ⇒
+        (Fmt l, Monad m, MonadExc m) ⇒
         { load ∷ Variable → m (Val l)
         , closure ∷ Variable → Expr → m (Val l)
         , bind ∷ (Variable, l) → m (Val l) → m (Val l)
@@ -52,7 +52,7 @@ data Interpreter l m where
         } →
         Interpreter l m
 
-liftInterpreter ∷ ∀ l m t. (MonadError String (t m), MonadTrans t, Monad (t m)) ⇒ Interpreter l m → Interpreter l (t m)
+liftInterpreter ∷ ∀ l m t. (MonadExc (t m), MonadTrans t, Monad (t m)) ⇒ Interpreter l m → Interpreter l (t m)
 liftInterpreter Interpreter{..} =
     Interpreter
         { load = ζ₀ ∘ load

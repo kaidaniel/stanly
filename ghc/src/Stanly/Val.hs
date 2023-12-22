@@ -1,9 +1,9 @@
 module Stanly.Val (Val, prune, regionᵥ, closureᵥ, number, text, lambda, arithmetic, ifn0) where
 
-import Control.Monad.Except (MonadError, throwError)
 import Control.Monad.Reader (MonadReader (ask))
 import Stanly.Env (Env, pruneEnv, regionᵣ)
-import Stanly.Fmt (Fmt (..), FmtCmd (Bold, Dim), bwText, (⊹))
+import Stanly.Exc (MonadExc, exc)
+import Stanly.Fmt (Fmt (..), FmtCmd (Bold, Dim), (⊹))
 import Stanly.Language (Expr, Op2 (..), Variable, freeVars)
 import Stanly.Unicode
 
@@ -34,17 +34,14 @@ text = ω ∘ TxtV
 closureᵥ ∷ (Fmt l, MonadReader (Env l) m) ⇒ Variable → Expr → m (Val l)
 closureᵥ x e = φ (LamV x e) ask
 
-exception ∷ (MonadError String m) ⇒ String → m a
-exception msg = throwError ⎴ "Exception: " ⋄ msg
-
-lambda ∷ (Fmt l, MonadError String m) ⇒ Val l → m (Variable, Expr, Env l)
+lambda ∷ (Fmt l, MonadExc m) ⇒ Val l → m (Variable, Expr, Env l)
 lambda val = case val of
     LamV x e r → ω (x, e, r)
-    _ → exception ⎴ "'" ⋄ bwText val ⋄ "'" ⋄ " is not a function."
+    _ → exc ⎴ "'" ⊹ val ⊹ "'" ⊹ " is not a function."
 
-arithmetic ∷ (Fmt l, MonadError String m) ⇒ Op2 → Val l → Val l → m (Val l)
+arithmetic ∷ (Fmt l, MonadExc m) ⇒ Op2 → Val l → Val l → m (Val l)
 arithmetic o a b = do
-    let exc msg = exception ⎴ bwText ⎴ msg ⊹ ".\nWhen evaluating: " ⊹ a ⊹ o ⊹ b
+    let exc₁ msg = exc ⎴ msg ⊹ ".\nWhen evaluating: " ⊹ a ⊹ o ⊹ b
     case (a, b) of
         (NumV n₀, NumV n₁)
             | o == Plus → ω ⎴ NumV ⎴ n₀ + n₁
@@ -56,12 +53,16 @@ arithmetic o a b = do
             | o == Plus → ω ⎴ TxtV ⎴ t₀ ⋄ t₁
         (TxtV t₀, NumV n₁)
             | o == Plus → ω ⎴ TxtV ⎴ t₀ ⋄ show n₁
-        _ → exc "Invalid arguments to operator"
+        _ → exc₁ "Invalid arguments to operator"
 
-ifn0 ∷ (MonadError String m) ⇒ Val l → m (Val l) → m (Val l) → m (Val l)
+flattenedArithmetic ∷ (Fmt l, MonadExc m) ⇒ Op2 → Val l → Val l → m (Val l)
+flattenedArithmetic o a b = do
+    undefined
+
+ifn0 ∷ (MonadExc m) ⇒ Val l → m (Val l) → m (Val l) → m (Val l)
 ifn0 tst then' else' = case tst of
     NumV n | n == 0 → else' | otherwise → then'
-    _ → exception "Branching on non-numeric value."
+    _ → exc "Branching on non-numeric value."
 
 instance Show (Val l) where
     show = \case
