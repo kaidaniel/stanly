@@ -14,8 +14,6 @@ import Stanly.Unicode
 import Stanly.Val (prune)
 
 data Options = Options {valueO, storeO, pruneO, desugaredO, astO, traceO, deadCodeO, noColourO, sectionHeadersO ∷ Bool} deriving (Read, Show, Eq)
-isDefault ∷ Options → Bool
-isDefault Options{..} = not (storeO || pruneO || desugaredO || astO || traceO || deadCodeO || noColourO || sectionHeadersO)
 
 options ∷ Parser Options
 options =
@@ -43,10 +41,11 @@ main = do
     Options{..} ← execParser opts
     ast ← either (error ∘ show) ω ∘ parser "<stdin>" =<< getContents
     let concrete₁ = runIdentity ⎴ concrete idₘ ast
+    let isDefault = not (storeO || pruneO || desugaredO || astO || traceO || deadCodeO || noColourO || sectionHeadersO)
     let m ++? (b, title, m₁) = if b then m ++ [if sectionHeadersO then "== " ⊹ title ⊹\ m₁ else m₁] else m
     let sections =
             ε₁
-                ++? (valueO || isDefault Options{..}, "value", fmt ⎴ value concrete₁)
+                ++? (valueO || isDefault, "value", fmt ⎴ value concrete₁)
                 ++? (storeO, "store", fmt ⎴ (if pruneO then φ prune else id) (store concrete₁))
                 ++? (desugaredO, "desugared", fmt ast)
                 ++? (astO, "ast", fmt (show ast))
