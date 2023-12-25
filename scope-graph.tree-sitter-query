@@ -1,0 +1,26 @@
+(module 
+  (function_definition name: (_) @top-level-function)
+  (expression_statement [
+    (assignment left: (identifier)+ @bind-global)
+    (augmented_assignment left: (identifier) @bind-global)
+  ])
+)
+
+(function_definition 
+  name: (_) @function-def 
+  body: 
+    (block [ 
+      (expression_statement [
+        (assignment left: (identifier) @bind-local)
+        (augmented_assignment left: (identifier) @bind-local)
+        ])
+      (function_definition 
+        name: (_) @nested-function
+        body: (block [
+          (nonlocal_statement (identifier) @bind-enclosing)
+          (return_statement (expression) @returned-expression) @return-statement
+        ]))
+      (global_statement (identifier) @bind-global)]
+    )
+)
+

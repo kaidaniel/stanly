@@ -1,3 +1,4 @@
+add_subdirectory(.scratch)
 
 add_library(parse2 parse2.cpp string-index.cpp)
 target_link_libraries(parse2 PRIVATE tree-sitter tree-sitter-python)
