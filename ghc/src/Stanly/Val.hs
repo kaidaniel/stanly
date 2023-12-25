@@ -1,4 +1,4 @@
-module Stanly.Val (Val, prune, regionᵥ, closureᵥ, number, text, lambda, arithmetic, ifn0) where
+module Stanly.Val (Val, prune, regionᵥ, closureᵥ, numberᵥ, textᵥ, lambdaᵥ, arithmetic, ifn0) where
 
 import Control.Monad.Reader (MonadReader (ask))
 import Stanly.Env (Env, pruneEnv, regionᵣ)
@@ -25,17 +25,17 @@ prune = \case
     LamV x e r → LamV x e (pruneEnv (∈ freeVars e) r)
     x → x
 
-number ∷ (Monad m) ⇒ Integer → m (Val l)
-number = ω ∘ NumV
+numberᵥ ∷ (Monad m) ⇒ Integer → m (Val l)
+numberᵥ = ω ∘ NumV
 
-text ∷ (Monad m) ⇒ String → m (Val l)
-text = ω ∘ TxtV
+textᵥ ∷ (Monad m) ⇒ String → m (Val l)
+textᵥ = ω ∘ TxtV
 
 closureᵥ ∷ (Fmt l, MonadReader (Env l) m) ⇒ Variable → Expr → m (Val l)
 closureᵥ x e = φ (LamV x e) ask
 
-lambda ∷ (Fmt l, MonadExc m) ⇒ Val l → m (Variable, Expr, Env l)
-lambda val = case val of
+lambdaᵥ ∷ (Fmt l, MonadExc m) ⇒ Val l → m (Variable, Expr, Env l)
+lambdaᵥ val = case val of
     LamV x e r → ω (x, e, r)
     _ → exc ⎴ "'" ⊹ val ⊹ "'" ⊹ " is not a function."
 

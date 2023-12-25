@@ -6,19 +6,17 @@ module Stanly.Interpreter (Interpreter (..), makeInterpreter, liftInterpreter, E
 
 import Control.Monad.Trans (MonadTrans, lift)
 import Data.Function (fix)
-import Stanly.Env (Env)
 import Stanly.Exc (MonadExc)
 import Stanly.Fmt (Fmt)
 import Stanly.Language (Expr (..), Op2, Variable)
 import Stanly.Unicode
-import Stanly.Val (Val, lambda, number, text)
 
-type Eval l m = Expr → m (Val l)
+type Eval m ν = Expr → m ν
 
-makeInterpreter ∷ ∀ l m. (Eval l m → Eval l m) → ((Eval l m → Eval l m) → (Eval l m → Eval l m)) → Interpreter l m → Eval l m
+makeInterpreter ∷ ∀ ν ρ m. (Eval m ν → Eval m ν) → ((Eval m ν → Eval m ν) → (Eval m ν → Eval m ν)) → Interpreter ν ρ m → Eval m ν
 makeInterpreter closed open interpreter = closed ⎴ fix ⎴ open ⎴ eval interpreter
 
-eval ∷ ∀ m l. Interpreter l m → Eval l m → Eval l m
+eval ∷ ∀ ν ρ m. Interpreter ν ρ m → Eval m ν → Eval m ν
 eval Interpreter{..} eval₁ = \case
     Num n → number n
     Txt s → text s
@@ -32,30 +30,36 @@ eval Interpreter{..} eval₁ = \case
         storeₗ (loc, value)
         ω value
     App f x → do
-        (var, body, ρ₁) ← eval₁ f ⇉ lambda
+        (var, body, ρ) ← eval₁ f ⇉ lambda
         x₁ ← eval₁ x
         loc ← alloc var
         storeₗ (loc, x₁)
-        substitute ρ₁ (var, loc) (eval₁ body)
+        substitute ρ (var, loc) (eval₁ body)
 
-data Interpreter l m where
+data Interpreter ν ρ m where
     Interpreter ∷
         (Fmt l, Monad m, MonadExc m) ⇒
-        { load ∷ Variable → m (Val l)
-        , closure ∷ Variable → Expr → m (Val l)
-        , bind ∷ (Variable, l) → m (Val l) → m (Val l)
-        , substitute ∷ Env l → (Variable, l) → m (Val l) → m (Val l)
-        , storeₗ ∷ (l, Val l) → m ()
+        { lambda ∷ ν → m (Variable, Expr, ρ)
+        , number ∷ Integer → m ν
+        , text ∷ String → m ν
+        , load ∷ Variable → m ν
+        , closure ∷ Variable → Expr → m ν
+        , bind ∷ (Variable, l) → m ν → m ν
+        , substitute ∷ ρ → (Variable, l) → m ν → m ν
+        , storeₗ ∷ (l, ν) → m ()
         , alloc ∷ Variable → m l
-        , op2 ∷ Op2 → m (Val l) → m (Val l) → m (Val l)
-        , if' ∷ m (Val l) → m (Val l) → m (Val l) → m (Val l)
+        , op2 ∷ Op2 → m ν → m ν → m ν
+        , if' ∷ m ν → m ν → m ν → m ν
         } →
-        Interpreter l m
+        Interpreter ν ρ m
 
-liftInterpreter ∷ ∀ l m t. (MonadExc (t m), MonadTrans t, Monad (t m)) ⇒ Interpreter l m → Interpreter l (t m)
+liftInterpreter ∷ ∀ ν ρ m t. (MonadExc (t m), MonadTrans t, Monad (t m)) ⇒ Interpreter ν ρ m → Interpreter ν ρ (t m)
 liftInterpreter Interpreter{..} =
     Interpreter
-        { load = ζ₀ ∘ load
+        { lambda = ζ₀ ∘ lambda
+        , number = ζ₀ ∘ number
+        , text = ζ₀ ∘ text
+        , load = ζ₀ ∘ load
         , closure = \v → ζ₀ ∘ closure v
         , bind = ζ₁ ∘ bind
         , substitute = \ρ → ζ₁ ∘ substitute ρ
