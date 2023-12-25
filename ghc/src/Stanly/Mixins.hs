@@ -12,12 +12,12 @@ import Stanly.Interpreter (Eval, Interpreter (..), makeInterpreter)
 import Stanly.Language (Expr, subexprs)
 import Stanly.Unicode
 
-idₘ ∷ ∀ ν ρ m. (Monad m) ⇒ Interpreter ν ρ m → Eval m ν
+idₘ ∷ ∀ l ν ρ m. (Monad m) ⇒ Interpreter l ν ρ m → Eval m ν
 idₘ = makeInterpreter id id
 
 newtype Trace ρ σ = Trace [(Expr, ρ, σ)] deriving (Semigroup, Monoid)
 
-trace ∷ ∀ ν ρ σ m. (MonadWriter (Trace ρ σ) m, MonadState σ m, MonadReader ρ m) ⇒ Interpreter ν ρ m → Eval m ν
+trace ∷ ∀ l ν ρ σ m. (MonadWriter (Trace ρ σ) m, MonadState σ m, MonadReader ρ m) ⇒ Interpreter l ν ρ m → Eval m ν
 trace = makeInterpreter id open
   where
     open evalTr eval expr = do
@@ -28,7 +28,7 @@ trace = makeInterpreter id open
 
 newtype Dead = Dead [Expr] deriving (Semigroup, Monoid)
 
-dead ∷ ∀ ν ρ m. (MonadWriter Dead m) ⇒ Interpreter ν ρ m → Eval m ν
+dead ∷ ∀ l ν ρ m. (MonadWriter Dead m) ⇒ Interpreter l ν ρ m → Eval m ν
 dead = makeInterpreter closed open
   where
     closed eval expr = censor (\(Dead used) → Dead (cleanUp ⎴ subexprs expr \\ used)) ⎴ eval expr

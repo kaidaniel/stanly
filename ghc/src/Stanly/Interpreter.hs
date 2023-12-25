@@ -13,10 +13,10 @@ import Stanly.Unicode
 
 type Eval m ν = Expr → m ν
 
-makeInterpreter ∷ ∀ ν ρ m. (Eval m ν → Eval m ν) → ((Eval m ν → Eval m ν) → (Eval m ν → Eval m ν)) → Interpreter ν ρ m → Eval m ν
+makeInterpreter ∷ ∀ l ν ρ m. (Eval m ν → Eval m ν) → ((Eval m ν → Eval m ν) → (Eval m ν → Eval m ν)) → Interpreter l ν ρ m → Eval m ν
 makeInterpreter closed open interpreter = closed ⎴ fix ⎴ open ⎴ eval interpreter
 
-eval ∷ ∀ ν ρ m. Interpreter ν ρ m → Eval m ν → Eval m ν
+eval ∷ ∀ l ν ρ m. Interpreter l ν ρ m → Eval m ν → Eval m ν
 eval Interpreter{..} eval₁ = \case
     Num n → number n
     Txt s → text s
@@ -36,24 +36,24 @@ eval Interpreter{..} eval₁ = \case
         storeₗ (loc, x₁)
         substitute ρ (var, loc) (eval₁ body)
 
-data Interpreter ν ρ m where
+data Interpreter loc val env m where
     Interpreter ∷
-        (Fmt l, Monad m, MonadExc m) ⇒
-        { lambda ∷ ν → m (Variable, Expr, ρ)
-        , number ∷ Integer → m ν
-        , text ∷ String → m ν
-        , load ∷ Variable → m ν
-        , closure ∷ Variable → Expr → m ν
-        , bind ∷ (Variable, l) → m ν → m ν
-        , substitute ∷ ρ → (Variable, l) → m ν → m ν
-        , storeₗ ∷ (l, ν) → m ()
-        , alloc ∷ Variable → m l
-        , op2 ∷ Op2 → m ν → m ν → m ν
-        , if' ∷ m ν → m ν → m ν → m ν
+        (Fmt loc, Monad m) ⇒
+        { lambda ∷ val → m (Variable, Expr, env)
+        , number ∷ Integer → m val
+        , text ∷ String → m val
+        , load ∷ Variable → m val
+        , closure ∷ Variable → Expr → m val
+        , bind ∷ (Variable, loc) → m val → m val
+        , substitute ∷ env → (Variable, loc) → m val → m val
+        , storeₗ ∷ (loc, val) → m ()
+        , alloc ∷ Variable → m loc
+        , op2 ∷ Op2 → m val → m val → m val
+        , if' ∷ m val → m val → m val → m val
         } →
-        Interpreter ν ρ m
+        Interpreter loc val env m
 
-liftInterpreter ∷ ∀ ν ρ m t. (MonadExc (t m), MonadTrans t, Monad (t m)) ⇒ Interpreter ν ρ m → Interpreter ν ρ (t m)
+liftInterpreter ∷ ∀ l ν ρ m t. (MonadExc (t m), MonadTrans t, Monad (t m)) ⇒ Interpreter l ν ρ m → Interpreter l ν ρ (t m)
 liftInterpreter Interpreter{..} =
     Interpreter
         { lambda = ζ₀ ∘ lambda

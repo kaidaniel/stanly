@@ -16,7 +16,7 @@ import Stanly.Val (Val, arithmetic, closureᵥ, ifn0, lambdaᵥ, numberᵥ, text
 
 type ConcreteT m = EnvT Int (ExcT (StoreT Int m))
 
-type Mixin l m = Interpreter (Val l) (Env l) m → Eval m (Val l)
+type Mixin l m = Interpreter l (Val l) (Env l) m → Eval m (Val l)
 
 type Snapshot l = StoreRes l (ExcRes (Val l))
 
@@ -43,19 +43,17 @@ type AbstractT m = EnvT Variable (ExcT (StoreT Variable (ListT m)))
 abstract ∷ ∀ m. (Monad m) ⇒ Mixin Variable (AbstractT m) → Expr → m (Set (Snapshot Variable))
 abstract mixin = φ fromList ∘ toList ∘ runStoreT ∘ runExcT ∘ runEnvT ∘ mixin interpreter
   where
-    interpreter = undefined
-
--- interpreter =
---     Interpreter
---         { lambda = undefined
---         , number = undefined
---         , text = undefined
---         , load = undefined
---         , closure = undefined
---         , bind = undefined
---         , alloc = undefined
---         , substitute = undefined
---         , storeₗ = undefined
---         , op2 = undefined
---         , if' = undefined
---         }
+    interpreter =
+        Interpreter
+            { lambda = lambdaᵥ
+            , number = numberᵥ
+            , text = textᵥ
+            , load = \var → lookupₗ var ⇉ lookupStore
+            , closure = closureᵥ
+            , bind = \binding cc → local (bind' binding) ⎴ cc
+            , alloc = ω
+            , substitute = \ρ₁ binding cc → local (const (bind' binding ρ₁)) ⎴ cc
+            , storeₗ = insertStore
+            , op2 = \o a b → a ⇉ \a₁ → b ⇉ \b₁ → arithmetic o a₁ b₁
+            , if' = \tst a b → tst ⇉ \tst₁ → ifn0 tst₁ a b
+            }
