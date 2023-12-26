@@ -24,10 +24,6 @@ data Val l where
     NumV ∷ Integer → Val l
     TxtV ∷ String → Val l
 
-data Val₁ l where
-    Val ∷ (Fmt l) ⇒ Val l → Val₁ l
-    Top ∷ Val₁ l
-
 deriving instance (Eq l) ⇒ Eq (Val l)
 
 deriving instance (Ord l) ⇒ Ord (Val l)
@@ -73,7 +69,7 @@ arithmetic o a b = do
         _ → exc₁ "Invalid arguments to operator"
 
 flattenedArithmetic ∷
-    (Fmt l, MonadExc m, MonadPlus m) ⇒ Op2 → Val₁ l → Val₁ l → m (Val₁ l)
+    (Fmt l, MonadExc m, MonadPlus m) ⇒ Op2 → Val l → Val l → m (Val l)
 flattenedArithmetic = undefined
 
 -- flattenedArithmetic o a b = do
@@ -99,8 +95,12 @@ instance Show (Val l) where
         NumV n → "NumV" ⋄ " " ⋄ show n
         TxtV s → "TxtV" ⋄ " " ⋄ show s
 
+-- TopV → "TopV"
+
 instance (Fmt l) ⇒ Fmt (Val l) where
     fmt = \case
         LamV x body r → "λ" ⊹ (Bold ⊹ x) ⊹ "." ⊹ body ⊹ " " ⊹ r
         NumV n → Dim ⊹ n
         TxtV s → Dim ⊹ s
+
+-- TopV → Dim ⊹ "top"

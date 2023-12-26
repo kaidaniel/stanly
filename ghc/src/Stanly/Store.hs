@@ -11,25 +11,24 @@ import Data.Map (Map, insert, size, toAscList, (!?))
 import Stanly.Exc (MonadExc, exc)
 import Stanly.Fmt (Fmt (..), FmtCmd (Dim, Yellow), bwText, (⊹), (⊹\))
 import Stanly.Unicode
-import Stanly.Val (Val)
 
 newtype Store l v where
     Store ∷ Map l v → Store l v
     deriving (Eq, Ord, Semigroup, Monoid, Functor)
 
-type StoreT l m = StateT (Store l (Val l)) m
+type StoreT l v m = StateT (Store l v) m
 
 type MonadStore l v m = (MonadState (Store l v) m, Ord l, Fmt l)
 
-newtype StoreRes l a = StoreRes (a, Store l (Val l)) deriving (Eq, Ord)
+newtype StoreRes l v a = StoreRes (a, Store l v) deriving (Eq, Ord)
 
-store ∷ StoreRes l a → Store l (Val l)
+store ∷ StoreRes l v a → Store l v
 store (StoreRes x) = π₂ x
 
-value ∷ StoreRes l a → a
+value ∷ StoreRes l v a → a
 value (StoreRes x) = π₁ x
 
-runStoreT ∷ ∀ l m a. (Ord l, Monad m) ⇒ StoreT l m a → m (StoreRes l a)
+runStoreT ∷ ∀ l v m a. (Ord l, Monad m) ⇒ StoreT l v m a → m (StoreRes l v a)
 runStoreT = φ StoreRes ∘ flip runStateT ε₁
 
 len ∷ Store l v → Int

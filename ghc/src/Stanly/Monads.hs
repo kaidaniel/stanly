@@ -32,9 +32,9 @@ import Stanly.Val (
     textᵥ,
  )
 
-type ConcreteT m = EnvT Int (ExcT (StoreT Int m))
+type ConcreteT m = EnvT Int (ExcT (StoreT Int (Val Int) m))
 type Mixin l m = Interpreter l (Val l) (Env l) m → Eval m (Val l)
-type Snapshot l = StoreRes l (ExcRes (Val l))
+type Snapshot l = StoreRes l (Val l) (ExcRes (Val l))
 
 concrete ∷ ∀ m. (Monad m) ⇒ Mixin Int (ConcreteT m) → Eval m (Snapshot Int)
 concrete mixin = runStoreT ∘ runExcT ∘ runEnvT ∘ mixin interpreter
@@ -54,7 +54,7 @@ concrete mixin = runStoreT ∘ runExcT ∘ runEnvT ∘ mixin interpreter
             , if' = \tst a b → tst ⇉ \tst₁ → ifn0 tst₁ a b
             }
 
-type AbstractT m = EnvT Variable (ExcT (StoreT Variable (ListT m)))
+type AbstractT m = EnvT Variable (ExcT (StoreT Variable (Val Variable) (ListT m)))
 abstract ∷
     ∀ m. (Monad m) ⇒ Mixin Variable (AbstractT m) → Eval m (Set (Snapshot Variable))
 abstract mixin = φ fromList ∘ toList ∘ runStoreT ∘ runExcT ∘ runEnvT ∘ mixin interpreter
