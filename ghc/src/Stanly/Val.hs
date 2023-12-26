@@ -2,13 +2,14 @@ module Stanly.Val (
     Val,
     prune,
     regionᵥ,
-    closureᵥ,
-    numberᵥ,
-    textᵥ,
+    closure',
+    number',
+    text',
     lambdaᵥ,
     arithmetic,
     flattenedArithmetic,
     ifn0,
+    Value,
 ) where
 
 import Control.Monad (MonadPlus (..))
@@ -24,6 +25,12 @@ data Val l where
     NumV ∷ Integer → Val l
     TxtV ∷ String → Val l
 
+class Value val where
+    fromVal ∷ Val l → val l
+
+instance Value Val where
+    fromVal = id
+
 deriving instance (Eq l) ⇒ Eq (Val l)
 
 deriving instance (Ord l) ⇒ Ord (Val l)
@@ -38,14 +45,14 @@ prune = \case
     LamV x e r → LamV x e (pruneEnv (∈ freeVars e) r)
     x → x
 
-numberᵥ ∷ (Monad m) ⇒ Integer → m (Val l)
-numberᵥ = ω ∘ NumV
+number' ∷ (Monad m, Value val) ⇒ Integer → m (val l)
+number' = ω ∘ fromVal ∘ NumV
 
-textᵥ ∷ (Monad m) ⇒ String → m (Val l)
-textᵥ = ω ∘ TxtV
+text' ∷ (Monad m, Value val) ⇒ String → m (val l)
+text' = ω ∘ fromVal ∘ TxtV
 
-closureᵥ ∷ (Fmt l, MonadReader (Env l) m) ⇒ Variable → Expr → m (Val l)
-closureᵥ x e = φ (LamV x e) ask
+closure' ∷ (Fmt l, MonadReader (Env l) m, Value val) ⇒ Variable → Expr → m (val l)
+closure' x e = φ (fromVal ∘ LamV x e) ask
 
 lambdaᵥ ∷ (Fmt l, MonadExc m) ⇒ Val l → m (Variable, Expr, Env l)
 lambdaᵥ val = case val of

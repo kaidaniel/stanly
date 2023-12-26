@@ -24,12 +24,12 @@ import Stanly.Unicode
 import Stanly.Val (
     Val,
     arithmetic,
-    closureᵥ,
+    closure',
     flattenedArithmetic,
     ifn0,
     lambdaᵥ,
-    numberᵥ,
-    textᵥ,
+    number',
+    text',
  )
 
 type ConcreteT m = EnvT Int (ExcT (StoreT Int (Val Int) m))
@@ -42,10 +42,10 @@ concrete mixin = runStoreT ∘ runExcT ∘ runEnvT ∘ mixin interpreter
     interpreter =
         Interpreter
             { lambda = lambdaᵥ
-            , number = numberᵥ
-            , text = textᵥ
+            , number = number'
+            , text = text'
             , load = \var → lookupₗ var ⇉ lookupStore
-            , closure = closureᵥ
+            , closure = closure'
             , bind = \binding cc → local (bind' binding) ⎴ cc
             , alloc = const (gets len)
             , substitute = \ρ₁ binding cc → local (const (bind' binding ρ₁)) ⎴ cc
@@ -62,10 +62,10 @@ abstract mixin = φ fromList ∘ toList ∘ runStoreT ∘ runExcT ∘ runEnvT �
     interpreter =
         Interpreter
             { lambda = lambdaᵥ
-            , number = numberᵥ
-            , text = textᵥ
+            , number = number'
+            , text = text'
             , load = \var → lookupₗ var ⇉ lookupStore
-            , closure = closureᵥ
+            , closure = closure'
             , bind = \binding cc → local (bind' binding) ⎴ cc
             , alloc = ω
             , substitute = \ρ₁ binding cc → local (const (bind' binding ρ₁)) ⎴ cc
@@ -73,3 +73,20 @@ abstract mixin = φ fromList ∘ toList ∘ runStoreT ∘ runExcT ∘ runEnvT �
             , op2 = \o a b → a ⇉ \a₁ → b ⇉ \b₁ → arithmetic o a₁ b₁
             , if' = \tst a b → tst ⇉ \tst₁ → ifn0 tst₁ a b
             }
+
+-- testI mixin = φ fromList ∘ toList ∘ runStoreT ∘ runExcT ∘ runEnvT ∘ mixin interpreter
+--   where
+--     interpreter =
+--         Interpreter
+--             { lambda = undefined
+--             , number = number'
+--             , text = undefined
+--             , load = undefined
+--             , closure = undefined
+--             , bind = undefined
+--             , alloc = undefined
+--             , substitute = undefined
+--             , storeₗ = undefined
+--             , op2 = undefined
+--             , if' = undefined
+--             }
