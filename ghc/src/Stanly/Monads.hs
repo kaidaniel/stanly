@@ -21,13 +21,14 @@ import Stanly.Store (
     value,
  )
 import Stanly.Unicode
-import Stanly.Val (
-    Val,
+import Stanly.Val.Concrete qualified as C (
     arithmetic,
-    closure',
-    flattenedArithmetic,
     ifn0,
-    lambdaᵥ,
+    lambda,
+ )
+import Stanly.Val.Value (
+    Val,
+    closure',
     number',
     text',
  )
@@ -41,7 +42,7 @@ concrete mixin = runStoreT ∘ runExcT ∘ runEnvT ∘ mixin interpreter
   where
     interpreter =
         Interpreter
-            { lambda = lambdaᵥ
+            { lambda = C.lambda
             , number = number'
             , text = text'
             , load = \var → lookupₗ var ⇉ lookupStore
@@ -50,8 +51,8 @@ concrete mixin = runStoreT ∘ runExcT ∘ runEnvT ∘ mixin interpreter
             , alloc = const (gets len)
             , substitute = \ρ₁ binding cc → local (const (bind' binding ρ₁)) ⎴ cc
             , storeₗ = insertStore
-            , op2 = \o a b → a ⇉ \a₁ → b ⇉ \b₁ → arithmetic o a₁ b₁
-            , if' = \tst a b → tst ⇉ \tst₁ → ifn0 tst₁ a b
+            , op2 = \o a b → a ⇉ \a₁ → b ⇉ \b₁ → C.arithmetic o a₁ b₁
+            , if' = \tst a b → tst ⇉ \tst₁ → C.ifn0 tst₁ a b
             }
 
 type AbstractT m = EnvT Variable (ExcT (StoreT Variable (Val Variable) (ListT m)))
@@ -61,7 +62,7 @@ abstract mixin = φ fromList ∘ toList ∘ runStoreT ∘ runExcT ∘ runEnvT �
   where
     interpreter =
         Interpreter
-            { lambda = lambdaᵥ
+            { lambda = C.lambda
             , number = number'
             , text = text'
             , load = \var → lookupₗ var ⇉ lookupStore
@@ -70,23 +71,6 @@ abstract mixin = φ fromList ∘ toList ∘ runStoreT ∘ runExcT ∘ runEnvT �
             , alloc = ω
             , substitute = \ρ₁ binding cc → local (const (bind' binding ρ₁)) ⎴ cc
             , storeₗ = insertStore
-            , op2 = \o a b → a ⇉ \a₁ → b ⇉ \b₁ → arithmetic o a₁ b₁
-            , if' = \tst a b → tst ⇉ \tst₁ → ifn0 tst₁ a b
+            , op2 = \o a b → a ⇉ \a₁ → b ⇉ \b₁ → C.arithmetic o a₁ b₁
+            , if' = \tst a b → tst ⇉ \tst₁ → C.ifn0 tst₁ a b
             }
-
--- testI mixin = φ fromList ∘ toList ∘ runStoreT ∘ runExcT ∘ runEnvT ∘ mixin interpreter
---   where
---     interpreter =
---         Interpreter
---             { lambda = undefined
---             , number = number'
---             , text = undefined
---             , load = undefined
---             , closure = undefined
---             , bind = undefined
---             , alloc = undefined
---             , substitute = undefined
---             , storeₗ = undefined
---             , op2 = undefined
---             , if' = undefined
---             }

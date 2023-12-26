@@ -25,7 +25,7 @@ import Stanly.Monads (concrete)
 import Stanly.Parser (parser)
 import Stanly.Store (store, value)
 import Stanly.Unicode
-import Stanly.Val (prune)
+import Stanly.Val.Value (prune)
 
 data Options = Options
     { noValueO
