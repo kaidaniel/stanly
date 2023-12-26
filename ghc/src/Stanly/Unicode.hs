@@ -13,16 +13,19 @@ import Control.Monad (MonadPlus, mzero)
 (∘) ∷ (β → γ) → (α → β) → α → γ
 (∘) = (.)
 {-# INLINE (∘) #-}
+
 infixr 9 ∘
 
 (⋙) ∷ (Category cat) ⇒ cat a b → cat b c → cat a c
 (⋙) = (>>>)
 {-# INLINE (⋙) #-}
+
 infixr 1 ⋙
 
 (≫) ∷ ∀ (m ∷ ★ → ★) α β. (Monad m) ⇒ m α → m β → m β
 (≫) = (>>)
 {-# INLINE (≫) #-}
+
 infixl 1 ≫
 
 (<*>!), (⊛) ∷ (Applicative f) ⇒ f (α → β) → f α → f β
@@ -30,6 +33,7 @@ infixl 1 ≫
 (<*>!) = (<*>)
 {-# INLINE (⊛) #-}
 {-# INLINE (<*>!) #-}
+
 infixl 4 ⊛, <*>!
 
 (∈) ∷ (Foldable t, Eq a) ⇒ a → t a → Bool
@@ -74,16 +78,19 @@ fmap_ = fmap
 (⎴) ∷ (a → b) → a → b
 (⎴) = ($)
 {-# INLINE (⎴) #-}
+
 infixr 0 ⎴
 
 (⫶) ∷ (Alternative f) ⇒ f a → f a → f a
 (⫶) = (<|>)
 {-# INLINE (⫶) #-}
+
 infixl 3 ⫶
 
 (⋄) ∷ (Semigroup a) ⇒ a → a → a
 (⋄) = (<>)
 {-# INLINE (⋄) #-}
+
 infixr 6 ⋄
 
 (>>=!), (⇉) ∷ (Monad m) ⇒ m a → (a → m b) → m b
@@ -91,6 +98,7 @@ infixr 6 ⋄
 (>>=!) = (>>=)
 {-# INLINE (⇉) #-}
 {-# INLINE (>>=!) #-}
+
 infixl 1 ⇉, >>=!
 
 π₁ ∷ ∀ {a} {b}. (a, b) → a

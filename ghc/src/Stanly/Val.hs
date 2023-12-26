@@ -1,5 +1,17 @@
-module Stanly.Val (Val, prune, regionᵥ, closureᵥ, numberᵥ, textᵥ, lambdaᵥ, arithmetic, ifn0) where
+module Stanly.Val (
+    Val,
+    prune,
+    regionᵥ,
+    closureᵥ,
+    numberᵥ,
+    textᵥ,
+    lambdaᵥ,
+    arithmetic,
+    flattenedArithmetic,
+    ifn0,
+) where
 
+import Control.Monad (MonadPlus (..))
 import Control.Monad.Reader (MonadReader (ask))
 import Stanly.Env (Env, pruneEnv, regionᵣ)
 import Stanly.Exc (MonadExc, exc)
@@ -12,7 +24,12 @@ data Val l where
     NumV ∷ Integer → Val l
     TxtV ∷ String → Val l
 
+data Val₁ l where
+    Val ∷ (Fmt l) ⇒ Val l → Val₁ l
+    Top ∷ Val₁ l
+
 deriving instance (Eq l) ⇒ Eq (Val l)
+
 deriving instance (Ord l) ⇒ Ord (Val l)
 
 regionᵥ ∷ Val l → [l]
@@ -55,9 +72,21 @@ arithmetic o a b = do
             | o == Plus → ω ⎴ TxtV ⎴ t₀ ⋄ show n₁
         _ → exc₁ "Invalid arguments to operator"
 
-flattenedArithmetic ∷ (Fmt l, MonadExc m) ⇒ Op2 → Val l → Val l → m (Val l)
-flattenedArithmetic o a b = do
-    undefined
+flattenedArithmetic ∷
+    (Fmt l, MonadExc m, MonadPlus m) ⇒ Op2 → Val₁ l → Val₁ l → m (Val₁ l)
+flattenedArithmetic = undefined
+
+-- flattenedArithmetic o a b = do
+--     let exc₁ msg = exc ⎴ msg ⊹ ".\nWhen evaluating: " ⊹ a ⊹ o ⊹ b
+--     let excDiv0 = exc "Division by zero"
+--     let excArgs = exc "Invalid arguments to operator"
+--     let top = ω Top
+--     case (a, b) of
+--         (Val (NumV _), Val (NumV n₁))
+--             | o == Div, n₁ == 0 -> exc "Division by zero"
+--             | otherwise -> top
+--         (Val (NumV _), Top)
+--             | o == Div -> mplus (mplus excDiv0 excArgs) top
 
 ifn0 ∷ (MonadExc m) ⇒ Val l → m (Val l) → m (Val l) → m (Val l)
 ifn0 tst then' else' = case tst of

@@ -17,7 +17,11 @@ idₘ = makeInterpreter id id
 
 newtype Trace ρ σ = Trace [(Expr, ρ, σ)] deriving (Semigroup, Monoid)
 
-trace ∷ ∀ l ν ρ σ m. (MonadWriter (Trace ρ σ) m, MonadState σ m, MonadReader ρ m) ⇒ Interpreter l ν ρ m → Eval m ν
+trace ∷
+    ∀ l ν ρ σ m.
+    (MonadWriter (Trace ρ σ) m, MonadState σ m, MonadReader ρ m) ⇒
+    Interpreter l ν ρ m →
+    Eval m ν
 trace = makeInterpreter id open
   where
     open evalTr eval expr = do
@@ -36,8 +40,10 @@ dead = makeInterpreter closed open
     open evalTr eval expr = do tell ⎴ Dead [expr]; evalTr eval expr
 
 instance (Fmt ρ, Fmt σ) ⇒ Fmt (Trace ρ σ) where
-    fmt (Trace li) = κ₁ [Dim ⊹ i ⊹ expr₁ e ⊹ (Dim ⊹\ "envr ") ⊹ ρ ⊹\ σ ⊹ "\n" | ((e, ρ, σ), i) ← zip li [1 ∷ Integer ..]]
+    fmt (Trace li) = κ₁ (φ ln (zip li [1 ∷ Integer ..]))
       where
-        expr₁ e = Dim ⊹\ [toLower x | x ← take 3 ⎴ show e] ⊹ " " ⊹ e
+        low3 e = [toLower x | x ← take 3 ⎴ show e] <> "  "
+        ln ((e, ρ, σ), i) = (Dim ⊹ i ⊹\ low3 e) ⊹ " " ⊹ (e ⊹\ ((Dim ⊹ "envir ") ⊹ ρ) ⊹\ σ) ⊹ "\n"
 
-instance Fmt Dead where fmt (Dead li) = case li of [] → ε₁; [x] → fmt x; (x : xs) → x ⊹\ Dead xs
+instance Fmt Dead where
+    fmt (Dead li) = case li of [] → ε₁; [x] → fmt x; (x : xs) → x ⊹\ Dead xs

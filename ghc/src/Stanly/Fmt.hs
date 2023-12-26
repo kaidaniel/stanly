@@ -110,7 +110,8 @@ instance Fmt Char where fmt = display ∘ ω
 instance Fmt String where fmt = display
 instance Fmt [FmtStr] where fmt = κ₁
 instance Fmt FmtCmd where fmt cmd = Str cmd ""
-instance (Fmt a, Fmt b) ⇒ Fmt (Either a b) where fmt = \case Left x → fmt x; Right x → fmt x
+instance (Fmt a, Fmt b) ⇒ Fmt (Either a b) where
+    fmt = \case Left x → fmt x; Right x → fmt x
 
 (|-|), (⊹), (⊹\) ∷ (Fmt a, Fmt b) ⇒ a → b → FmtStr
 a |-| b = fmt a ⋄ fmt b
@@ -125,5 +126,7 @@ a ⊹\ b =
             (True, _) → b1'
             (_, True) → a1'
             _ → a1' ⊹ '\n' ⊹ b1'
+
 infixr 6 |-|, ⊹, ⊹\
+
 {-# INLINE (⊹) #-}

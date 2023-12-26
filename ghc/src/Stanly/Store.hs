@@ -47,7 +47,7 @@ insertStore (l, v) = modify ⎴ coerce ⎴ insert l v
 instance (Ord l, Fmt l, Show v, Fmt v) ⇒ Fmt (Store l v) where
     fmt (Store σ) = κ₁ ⎴ intersperse (fmt '\n') items
       where
-        f₁ loc = (Dim ⊹ "stor ") ⊹ (Yellow ⊹ (padded ⎴ bwText loc))
+        f₁ loc = (Dim ⊹ "store ") ⊹ (Yellow ⊹ (padded ⎴ bwText loc))
         f₂ val = Dim ⊹ [toLower c | c ← take 3 (show val)] ⊹ " " ⊹ val
         items = φ (\(l, r) → l ⊹ ' ' ⊹ r) ⎴ φ (bimap f₁ f₂) (toAscList σ)
         padded = \case

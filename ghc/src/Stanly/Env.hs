@@ -19,7 +19,10 @@ runEnvT ∷ EnvT l m a → m a
 runEnvT = flip runReaderT (Env [])
 
 lookupₗ ∷ (Fmt l, Ord l, MonadExc m, MonadReader (Env l) m) ⇒ Variable → m l
-lookupₗ var = ask ⇉ \(Env ρ) → case lookup var ρ of Just l → ω l; Nothing → exc (var ⊹ " not found in environment: " ⊹ Env ρ)
+lookupₗ var =
+    ask ⇉ \(Env ρ) → case lookup var ρ of
+        Just l → ω l
+        Nothing → exc (var ⊹ " not found in environment: " ⊹ Env ρ)
 
 regionᵣ ∷ Env l → [l]
 regionᵣ (Env r) = map π₂ r

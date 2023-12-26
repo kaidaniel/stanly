@@ -7,7 +7,7 @@ all: format cabal test
 
 format:
 	./haskell-unicode src/**/*.hs tests/*.hs app/*.hs
-	fourmolu --unicode always --mode inplace src/Stanly/*.hs app/*.hs tests/*.hs
+	fourmolu --column-limit 90 --unicode always --mode inplace src/**/*.hs app/*.hs tests/*.hs
 
 cabal: format
 	cabal v2-build -j8

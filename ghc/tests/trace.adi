@@ -4,41 +4,41 @@
 
 
 // CHECK: 1
-// CHECK: op2  (((1 + 2) + 3) + (4 + (5 + (6 + 7))))
-// CHECK: envr Γ⟦⟧
+// CHECK: op2   (((1 + 2) + 3) + (4 + (5 + (6 + 7))))
+// CHECK: envir Γ⟦⟧
 // CHECK: 2
-// CHECK: op2  ((1 + 2) + 3)
-// CHECK: envr Γ⟦⟧
+// CHECK: op2   ((1 + 2) + 3)
+// CHECK: envir Γ⟦⟧
 // CHECK: 3
-// CHECK: op2  (1 + 2)
-// CHECK: envr Γ⟦⟧
+// CHECK: op2   (1 + 2)
+// CHECK: envir Γ⟦⟧
 // CHECK: 4
-// CHECK: num  1
-// CHECK: envr Γ⟦⟧
+// CHECK: num   1
+// CHECK: envir Γ⟦⟧
 // CHECK: 5
-// CHECK: num  2
-// CHECK: envr Γ⟦⟧
+// CHECK: num   2
+// CHECK: envir Γ⟦⟧
 // CHECK: 6
-// CHECK: num  3
-// CHECK: envr Γ⟦⟧
+// CHECK: num   3
+// CHECK: envir Γ⟦⟧
 // CHECK: 7
-// CHECK: op2  (4 + (5 + (6 + 7)))
-// CHECK: envr Γ⟦⟧
+// CHECK: op2   (4 + (5 + (6 + 7)))
+// CHECK: envir Γ⟦⟧
 // CHECK: 8
-// CHECK: num  4
-// CHECK: envr Γ⟦⟧
+// CHECK: num   4
+// CHECK: envir Γ⟦⟧
 // CHECK: 9
-// CHECK: op2  (5 + (6 + 7))
-// CHECK: envr Γ⟦⟧
+// CHECK: op2   (5 + (6 + 7))
+// CHECK: envir Γ⟦⟧
 // CHECK: 10
-// CHECK: num  5
-// CHECK: envr Γ⟦⟧
+// CHECK: num   5
+// CHECK: envir Γ⟦⟧
 // CHECK: 11
-// CHECK: op2  (6 + 7)
-// CHECK: envr Γ⟦⟧
+// CHECK: op2   (6 + 7)
+// CHECK: envir Γ⟦⟧
 // CHECK: 12
-// CHECK: num  6
-// CHECK: envr Γ⟦⟧
+// CHECK: num   6
+// CHECK: envir Γ⟦⟧
 // CHECK: 13
-// CHECK: num  7
-// CHECK: envr Γ⟦⟧
+// CHECK: num   7
+// CHECK: envir Γ⟦⟧

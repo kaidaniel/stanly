@@ -1,12 +1,11 @@
 module Stanly.Parser (parser) where
 
-import Text.Parsec qualified as P
-import Text.Parsec.Language (emptyDef)
-import Text.Parsec.Token qualified as Tn
-
 import Stanly.Fmt (bwText)
 import Stanly.Language (Expr (..), Op2 (..))
 import Stanly.Unicode
+import Text.Parsec qualified as P
+import Text.Parsec.Language (emptyDef)
+import Text.Parsec.Token qualified as Tn
 
 parser ∷ String → String → Either P.ParseError Expr
 parser = P.parse ⎴ ws *> expr <* P.eof

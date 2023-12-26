@@ -4,7 +4,20 @@
 import Control.Monad.Identity (runIdentity)
 import Control.Monad.Writer (execWriter)
 import Data.List (intersperse)
-import Options.Applicative (Parser, ParserInfo, execParser, fullDesc, header, help, helper, info, long, progDesc, short, switch)
+import Options.Applicative (
+    Parser,
+    ParserInfo,
+    execParser,
+    fullDesc,
+    header,
+    help,
+    helper,
+    info,
+    long,
+    progDesc,
+    short,
+    switch,
+ )
 import Stanly.Fmt (Fmt (..), FmtStr, bwText, ttyText, (⊹), (⊹\))
 import Stanly.Language (Expr)
 import Stanly.Mixins (dead, idₘ, trace)
@@ -14,7 +27,19 @@ import Stanly.Store (store, value)
 import Stanly.Unicode
 import Stanly.Val (prune)
 
-data Options = Options {noValueO, storeO, pruneO, desugaredO, astO, traceO, deadCodeO, noColourO, sectionHeadersO ∷ Bool} deriving (Read, Show, Eq)
+data Options = Options
+    { noValueO
+      , storeO
+      , pruneO
+      , desugaredO
+      , astO
+      , traceO
+      , deadCodeO
+      , noColourO
+      , sectionHeadersO ∷
+        Bool
+    }
+    deriving (Read, Show, Eq)
 
 options ∷ Parser Options
 options =
@@ -24,10 +49,19 @@ options =
             ⊛ flag "prune" 'p' "Prune store before showing (when using --store)."
             ⊛ flag "desugared" 'd' "Show the program after syntax transformation."
             ⊛ flag "ast" 'a' "Show the abstract syntax tree used by the interpreter."
-            ⊛ flag "trace" 't' "Show how the interpreter state changes while the program is being evaluated."
-            ⊛ flag "dead-code" 'e' "Show parts of the program that weren't reached during interpretation."
+            ⊛ flag
+                "trace"
+                't'
+                "Show how the interpreter state changes while the program is being evaluated."
+            ⊛ flag
+                "dead-code"
+                'e'
+                "Show parts of the program that weren't reached during interpretation."
             ⊛ flag "no-colour" 'c' "Don't colourise output."
-            ⊛ flag "section-headers" 'i' "Introduce each section by a line of '===' and the section's name."
+            ⊛ flag
+                "section-headers"
+                'i'
+                "Introduce each section by a line of '===' and the section's name."
   where
     flag l s h = switch (long l ⋄ short s ⋄ help h)
 
@@ -35,7 +69,10 @@ opts ∷ ParserInfo Options
 opts =
     info
         (helper ⊛ options)
-        (fullDesc ⋄ progDesc "Discover something interesting about your source code." ⋄ header "stanly - static analyser")
+        ( fullDesc
+            ⋄ progDesc "Discover something interesting about your source code."
+            ⋄ header "stanly - static analyser"
+        )
 
 outputs ∷ Options → Expr → [FmtStr]
 outputs Options{..} ast =
