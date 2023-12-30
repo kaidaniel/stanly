@@ -1,3 +1,4 @@
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Stanly.Monads (concrete, value, store) where
@@ -22,55 +23,55 @@ import Stanly.Store (
  )
 import Stanly.Unicode
 import Stanly.Val.Concrete qualified as C (
-    arithmetic,
-    ifn0,
+    if',
     lambda,
+    op2,
  )
 import Stanly.Val.Value (
     Val,
+    Value,
     closure',
     number',
     text',
  )
 
-type ConcreteT m = EnvT Int (ExcT (StoreT Int (Val Int) m))
-type Mixin l m = Interpreter l (Val l) (Env l) m → Eval m (Val l)
-type Snapshot l = StoreRes l (Val l) (ExcRes (Val l))
+type ConcreteT val m = EnvT Int (ExcT (StoreT Int (val Int) m))
+type AbstractT val m = EnvT Variable (ExcT (StoreT Variable (val Variable) (ListT m)))
+type Snapshot val l = StoreRes l (val l) (ExcRes (val l))
+type Mixin val l m' m r =
+    (Monad m) ⇒ (Interpreter l (val l) (Env l) m' → Eval m' (val l)) → Eval m r
+type MixinConcrete val m = Mixin val Int (ConcreteT val m) m (Snapshot val Int)
+type MixinAbstract val m =
+    Mixin val Variable (AbstractT val m) m (Set (Snapshot val Variable))
 
-concrete ∷ ∀ m. (Monad m) ⇒ Mixin Int (ConcreteT m) → Eval m (Snapshot Int)
-concrete mixin = runStoreT ∘ runExcT ∘ runEnvT ∘ mixin interpreter
+concrete ∷ ∀ m. (Monad m) ⇒ MixinConcrete Val m
+concrete mixin = runStoreT ∘ runExcT ∘ runEnvT ∘ mixin Interpreter{..}
   where
-    interpreter =
-        Interpreter
-            { lambda = C.lambda
-            , number = number'
-            , text = text'
-            , load = \var → lookupₗ var ⇉ lookupStore
-            , closure = closure'
-            , bind = \binding cc → local (bind' binding) ⎴ cc
-            , alloc = const (gets len)
-            , substitute = \ρ₁ binding cc → local (const (bind' binding ρ₁)) ⎴ cc
-            , storeₗ = insertStore
-            , op2 = \o a b → a ⇉ \a₁ → b ⇉ \b₁ → C.arithmetic o a₁ b₁
-            , if' = \tst a b → tst ⇉ \tst₁ → C.ifn0 tst₁ a b
-            }
+    lambda = C.lambda
+    number = number'
+    text = text
+    load = \var → lookupₗ var ⇉ lookupStore
+    closure = closure'
+    bind = \binding cc → local (bind' binding) ⎴ cc
+    substitute = \ρ₁ binding cc → local (const (bind' binding ρ₁)) ⎴ cc
+    storeₗ = insertStore
 
-type AbstractT m = EnvT Variable (ExcT (StoreT Variable (Val Variable) (ListT m)))
-abstract ∷
-    ∀ m. (Monad m) ⇒ Mixin Variable (AbstractT m) → Eval m (Set (Snapshot Variable))
-abstract mixin = φ fromList ∘ toList ∘ runStoreT ∘ runExcT ∘ runEnvT ∘ mixin interpreter
+    alloc = const (gets len)
+    op2 = \o a b → a ⇉ \a₁ → b ⇉ \b₁ → C.op2 o a₁ b₁
+    if' = \tst a b → tst ⇉ \tst₁ → C.if' tst₁ a b
+
+abstract ∷ ∀ m. MixinAbstract Val m
+abstract mixin = φ fromList ∘ toList ∘ runStoreT ∘ runExcT ∘ runEnvT ∘ mixin Interpreter{..}
   where
-    interpreter =
-        Interpreter
-            { lambda = C.lambda
-            , number = number'
-            , text = text'
-            , load = \var → lookupₗ var ⇉ lookupStore
-            , closure = closure'
-            , bind = \binding cc → local (bind' binding) ⎴ cc
-            , alloc = ω
-            , substitute = \ρ₁ binding cc → local (const (bind' binding ρ₁)) ⎴ cc
-            , storeₗ = insertStore
-            , op2 = \o a b → a ⇉ \a₁ → b ⇉ \b₁ → C.arithmetic o a₁ b₁
-            , if' = \tst a b → tst ⇉ \tst₁ → C.ifn0 tst₁ a b
-            }
+    lambda = C.lambda
+    number = number'
+    text = text'
+    load = \var → lookupₗ var ⇉ lookupStore
+    closure = closure'
+    bind = \binding cc → local (bind' binding) ⎴ cc
+    substitute = \ρ₁ binding cc → local (const (bind' binding ρ₁)) ⎴ cc
+    storeₗ = insertStore
+
+    alloc = ω
+    op2 = \o a b → a ⇉ \a₁ → b ⇉ \b₁ → C.op2 o a₁ b₁
+    if' = \tst a b → tst ⇉ \tst₁ → C.if' tst₁ a b

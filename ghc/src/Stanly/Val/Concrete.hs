@@ -1,7 +1,7 @@
 module Stanly.Val.Concrete (
     lambda,
-    arithmetic,
-    ifn0,
+    op2,
+    if',
 ) where
 
 import Stanly.Val.Internal(Val(..))
@@ -16,8 +16,8 @@ lambda val = case val of
     LamV x e r → ω (x, e, r)
     _ → exc ⎴ "'" ⊹ val ⊹ "'" ⊹ " is not a function."
 
-arithmetic ∷ (Fmt l, MonadExc m) ⇒ Op2 → Val l → Val l → m (Val l)
-arithmetic o a b = do
+op2 ∷ (Fmt l, MonadExc m) ⇒ Op2 → Val l → Val l → m (Val l)
+op2 o a b = do
     let exc₁ msg = exc ⎴ msg ⊹ ".\nWhen evaluating: " ⊹ a ⊹ o ⊹ b
     case (a, b) of
         (NumV n₀, NumV n₁)
@@ -32,7 +32,7 @@ arithmetic o a b = do
             | o == Plus → ω ⎴ TxtV ⎴ t₀ ⋄ show n₁
         _ → exc₁ "Invalid arguments to operator"
 
-ifn0 ∷ (MonadExc m) ⇒ Val l → m (Val l) → m (Val l) → m (Val l)
-ifn0 tst then' else' = case tst of
+if' ∷ (MonadExc m) ⇒ Val l → m (Val l) → m (Val l) → m (Val l)
+if' tst then' else' = case tst of
     NumV n | n == 0 → else' | otherwise → then'
     _ → exc "Branching on non-numeric value."

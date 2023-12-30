@@ -11,6 +11,7 @@ import Control.Monad.Reader (MonadReader (ask))
 import Stanly.Env (Env, pruneEnv)
 import Stanly.Fmt (Fmt (..), FmtCmd (Bold, Dim), (⊹))
 import Stanly.Language (Expr, Variable, freeVars)
+import Stanly.Exc (MonadExc(..))
 import Stanly.Unicode
 
 data Val l where
@@ -20,6 +21,7 @@ data Val l where
 
 class Value val where
     fromVal ∷ Val l → val l
+    -- lambda :: (Fmt l, MonadExc m) ⇒ Val l → m (Variable, Expr, Env l)
 
 instance Value Val where
     fromVal = id
