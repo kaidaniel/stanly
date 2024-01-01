@@ -49,7 +49,7 @@ concrete mixin = runStoreT ∘ runExcT ∘ runEnvT ∘ mixin Interpreter{..}
   where
     lambda = C.lambda
     number = number'
-    text = text
+    text = text'
     load = \var → lookupₗ var ⇉ lookupStore
     closure = closure'
     bind = \binding cc → local (bind' binding) ⎴ cc

@@ -13,7 +13,7 @@ common shared-properties
     parsec, base, mtl, transformers
   ghc-options:
     -Wall -Wno-star-is-type -Wno-unused-do-bind -fprint-explicit-foralls
-  default-extensions: UnicodeSyntax, LambdaCase, StarIsType, BlockArguments
+  default-extensions: UnicodeSyntax, LambdaCase, StarIsType, BlockArguments, GADTs
 
 
 library stanly-lib
