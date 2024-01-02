@@ -20,6 +20,12 @@ import Stanly.Store (
     value,
  )
 import Stanly.Unicode
+import Stanly.Val.Abstract qualified as A (
+    ValA,
+    if',
+    lambda,
+    op2,
+ )
 import Stanly.Val.Concrete qualified as C (
     if',
     lambda,
@@ -58,10 +64,10 @@ concrete mixin = runStoreT ∘ runExcT ∘ runEnvT ∘ mixin Interpreter{..}
     op2 = \o a b → a ⇉ \a₁ → b ⇉ \b₁ → C.op2 o a₁ b₁
     if' = \tst a b → tst ⇉ \tst₁ → C.if' tst₁ a b
 
-abstract ∷ ∀ m. MkEval Val Variable m ListT Set
+abstract ∷ ∀ m. MkEval A.ValA Variable m ListT Set
 abstract mixin = φ fromList ∘ toList ∘ runStoreT ∘ runExcT ∘ runEnvT ∘ mixin Interpreter{..}
   where
-    lambda = C.lambda
+    lambda = A.lambda
     number = number'
     text = text'
     load = \var → lookupₗ var ⇉ lookupStore
@@ -71,5 +77,5 @@ abstract mixin = φ fromList ∘ toList ∘ runStoreT ∘ runExcT ∘ runEnvT �
     storeₗ = insertStore
 
     alloc = ω
-    op2 = \o a b → a ⇉ \a₁ → b ⇉ \b₁ → C.op2 o a₁ b₁
-    if' = \tst a b → tst ⇉ \tst₁ → C.if' tst₁ a b
+    op2 = \o a b → a ⇉ \a₁ → b ⇉ \b₁ → A.op2 o a₁ b₁
+    if' = \tst a b → tst ⇉ \tst₁ → A.if' tst₁ a b

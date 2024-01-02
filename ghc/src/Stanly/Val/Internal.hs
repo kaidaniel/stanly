@@ -4,7 +4,7 @@ module Stanly.Val.Internal (
     closure',
     number',
     text',
-    Value,
+    Value(..),
 ) where
 
 import Control.Monad.Reader (MonadReader (ask))

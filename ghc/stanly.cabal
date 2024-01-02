@@ -31,6 +31,7 @@ library stanly-lib
       Stanly.Val.Value,
       Stanly.Val.Internal,
       Stanly.Val.Concrete,
+      Stanly.Val.Abstract,
       Stanly.Exc
     hs-source-dirs:  src
     build-depends:   haskell-src-meta, QuickCheck, list-t, containers
