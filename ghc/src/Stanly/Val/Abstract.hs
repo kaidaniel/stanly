@@ -44,15 +44,14 @@ lambda val = case val of
 
 op2 ∷ (Fmt l, MonadExc m, Alternative m) ⇒ Op2 → ValA l → ValA l → m (ValA l)
 op2 o a b = case (o, a, b) of
-    (Divide, Flat (NumV _), Flat (NumV n))
-        | n /= 0 → ω TopNum
-        | otherwise → divisionByZero
-    (Divide, TopNum, TopNum) → (ω TopNum) ⫶ divisionByZero
-    (Divide, Flat (NumV _), TopNum) → (ω TopNum) ⫶ divisionByZero
-    (_, Flat (NumV _), Flat (NumV _)) → ω TopNum
-    (Plus, Flat (TxtV _), Flat (TxtV _)) → ω TopTxt
-    (Plus, Flat (TxtV _), Flat (NumV _)) → ω TopTxt
+    (Divide, _, Flat (NumV n)) | isNumeric a, n == 0 → divisionByZero
+    (Divide, _, TopNum) | isNumeric a → ω TopNum ⫶ divisionByZero
+    (Plus, _, _) | isTxt a → ω TopTxt
+    _ | isNumeric a, isNumeric b → ω TopNum
     _ → invalidArgsToOperator
+  where
+    isNumeric = \case TopNum → True; Flat (NumV _) → True; _ → False
+    isTxt = \case TopTxt → True; Flat (TxtV _) → True; _ → False
 
 if' ∷ (MonadExc m, Alternative m) ⇒ ValA l → m (ValA l) → m (ValA l) → m (ValA l)
 if' tst then' else' = case tst of

@@ -1,0 +1,4 @@
+// RUN: stanly --abstract-value < %s | FileCheck %s
+(1 + 2)
+// CHECK: 3
+// CHECK: TopNum

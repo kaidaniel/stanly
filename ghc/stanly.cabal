@@ -39,7 +39,7 @@ library stanly-lib
 executable stanly
     import:           shared-properties
     main-is:          Main.hs
-    build-depends:    stanly-lib, optparse-applicative
+    build-depends:    stanly-lib, optparse-applicative, containers
     hs-source-dirs:   app
      
 

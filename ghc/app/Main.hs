@@ -1,9 +1,7 @@
-{-# LANGUAGE BlockArguments #-}
-{-# LANGUAGE RecordWildCards #-}
-
 import Control.Monad.Identity (runIdentity)
 import Control.Monad.Writer (execWriter)
 import Data.List (intersperse)
+import Data.Set qualified as Set (map)
 import Options.Applicative (
     Parser,
     ParserInfo,
@@ -21,7 +19,7 @@ import Options.Applicative (
 import Stanly.Fmt (Fmt (..), FmtStr, bwText, ttyText, (⊹), (⊹\))
 import Stanly.Language (Expr)
 import Stanly.Mixins (dead, idₘ, trace)
-import Stanly.Monads (concrete)
+import Stanly.Monads (abstract, concrete)
 import Stanly.Parser (parser)
 import Stanly.Store (store, value)
 import Stanly.Unicode
@@ -29,6 +27,7 @@ import Stanly.Val.Value (prune)
 
 data Options = Options
     { noValueO
+      , abstractValueO
       , storeO
       , pruneO
       , desugaredO
@@ -45,6 +44,7 @@ options ∷ Parser Options
 options =
     Options
         <$> flag "no-value" 'n' "Don't show calculated value."
+            ⊛ flag "abstract-value" 'b' "Show the calculated abstract value."
             ⊛ flag "store" 's' "Show the final state of the store after the program halts."
             ⊛ flag "prune" 'p' "Prune store before showing (when using --store)."
             ⊛ flag "desugared" 'd' "Show the program after syntax transformation."
@@ -78,10 +78,12 @@ outputs ∷ Options → Expr → [FmtStr]
 outputs Options{..} ast =
     let
         concrete₁ = runIdentity ⎴ concrete idₘ ast
+        abstract₁ = runIdentity ⎴ abstract idₘ ast
         m ++? (b, title, m₁) = if b then m ++ [if sectionHeadersO then "== " ⊹ title ⊹\ m₁ else m₁] else m
         sections =
             ε₁
                 ++? (not noValueO, "value", fmt ⎴ value concrete₁)
+                ++? (abstractValueO, "abstract-value", fmt ⎴ Set.map value abstract₁)
                 ++? (storeO, "store", fmt ⎴ (if pruneO then φ prune else id) (store concrete₁))
                 ++? (desugaredO, "desugared", fmt ast)
                 ++? (astO, "ast", fmt (show ast))
@@ -93,5 +95,5 @@ outputs Options{..} ast =
 main ∷ IO ()
 main = do
     Options{..} ← execParser opts
-    ast ← either (error ∘ show) ω ∘ parser "<stdin>" =<< getContents
+    ast ← getContents ⇉ either (error ∘ show) ω ∘ parser "<stdin>"
     (putStr ∘ if noColourO then bwText else ttyText) (outputs Options{..} ast)

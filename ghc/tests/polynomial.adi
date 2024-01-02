@@ -1,4 +1,4 @@
-// RUN: stanly < %s | FileCheck %s
+// RUN: stanly --abstract-value < %s | FileCheck %s
 
 let square  = λx.(x * x);
 let cube    = λx.((square x) * x);
@@ -26,3 +26,4 @@ let tail = fn x.("" + x);
 )
 
 // CHECK: 100000, 32, 5, 0
+// CHECK: TopTxt
