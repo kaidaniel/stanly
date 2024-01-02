@@ -11,7 +11,6 @@ import Control.Monad.Reader (MonadReader (ask))
 import Stanly.Env (Env, pruneEnv)
 import Stanly.Fmt (Fmt (..), FmtCmd (Bold, Dim), (⊹))
 import Stanly.Language (Expr, Variable, freeVars)
-import Stanly.Exc (MonadExc(..))
 import Stanly.Unicode
 
 data Val l where

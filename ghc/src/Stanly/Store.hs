@@ -1,5 +1,3 @@
-{-# LANGUAGE BlockArguments #-}
-
 module Stanly.Store (StoreT, len, lookupStore, insertStore, runStoreT, value, store, StoreRes) where
 
 import Control.Monad.State (MonadState (get), StateT, modify, runStateT)

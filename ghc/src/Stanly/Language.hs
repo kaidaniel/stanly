@@ -1,5 +1,3 @@
-{-# LANGUAGE BlockArguments #-}
-{-# LANGUAGE GADTs #-}
 {-# OPTIONS_GHC -Wno-unused-top-binds #-}
 
 module Stanly.Language (Variable, Op2 (..), Expr (..), subexprs, freeVars) where

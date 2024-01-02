@@ -1,5 +1,3 @@
-{-# LANGUAGE StarIsType #-}
-
 module Stanly.Unicode where
 
 import Control.Applicative (Alternative (..), empty)

@@ -1,7 +1,3 @@
-{-# LANGUAGE BlockArguments #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE RecordWildCards #-}
-
 module Stanly.Interpreter (Interpreter (..), makeInterpreter, Eval) where
 
 import Data.Function (fix)

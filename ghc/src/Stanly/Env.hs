@@ -1,5 +1,3 @@
-{-# LANGUAGE BlockArguments #-}
-
 module Stanly.Env (EnvT, runEnvT, Env, regionᵣ, lookupₗ, bind', pruneEnv) where
 
 import Control.Monad.Reader (MonadReader (ask), ReaderT, runReaderT)

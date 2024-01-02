@@ -1,5 +1,3 @@
-{-# LANGUAGE BlockArguments #-}
-
 module Stanly.Fmt (FmtStr, FmtCmd (..), (|-|), (⊹), Fmt (fmt), bwText, ttyText, (⊹\)) where
 
 -- no-haskell-unicode

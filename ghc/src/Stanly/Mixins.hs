@@ -1,5 +1,3 @@
-{-# LANGUAGE BlockArguments #-}
-
 module Stanly.Mixins (idₘ, trace, dead) where
 
 import Control.Monad.Reader (MonadReader (ask))

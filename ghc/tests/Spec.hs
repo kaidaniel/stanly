@@ -1,6 +1,3 @@
-{-# LANGUAGE BlockArguments #-}
-
--- import Stanly.Abstract (execPowerSet)
 import Stanly.Fmt (bwText)
 import Stanly.Language (Expr)
 import Stanly.Parser (parser)
