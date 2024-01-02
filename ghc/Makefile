@@ -1,4 +1,4 @@
-SHELL := /usr/bin/env bash
+SHELL := /usr/bin/env bash -O globstar
 MAKEFLAGS := --trace --warn-undefined-variables --print-directory -L
 
 export PATH := $(PATH):build/

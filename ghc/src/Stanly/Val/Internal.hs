@@ -1,10 +1,10 @@
 module Stanly.Val.Internal (
-    Val(..),
+    Val (..),
     prune,
     closure',
     number',
     text',
-    Value(..),
+    Value (..),
 ) where
 
 import Control.Monad.Reader (MonadReader (ask))

@@ -4,12 +4,18 @@ module Stanly.Val.Concrete (
     if',
 ) where
 
-import Stanly.Val.Internal(Val(..))
 import Stanly.Env (Env)
-import Stanly.Exc (MonadExc, divisionByZero, invalidArgsToOperator, branchOnNonNumeric, notAFunction)
+import Stanly.Exc (
+    MonadExc,
+    branchOnNonNumeric,
+    divisionByZero,
+    invalidArgsToOperator,
+    notAFunction,
+ )
 import Stanly.Fmt (Fmt)
 import Stanly.Language (Expr, Op2 (..), Variable)
 import Stanly.Unicode
+import Stanly.Val.Internal (Val (..))
 
 lambda ∷ (Fmt l, MonadExc m) ⇒ Val l → m (Variable, Expr, Env l)
 lambda val = case val of

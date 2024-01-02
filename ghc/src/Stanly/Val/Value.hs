@@ -1,4 +1,4 @@
-module Stanly.Val.Value(
+module Stanly.Val.Value (
     Val,
     prune,
     closure',
@@ -7,10 +7,11 @@ module Stanly.Val.Value(
     Value,
 ) where
 
-import Stanly.Val.Internal(    
+import Stanly.Val.Internal (
     Val,
-    prune,
+    Value,
     closure',
     number',
+    prune,
     text',
-    Value)
+ )

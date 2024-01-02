@@ -79,11 +79,12 @@ fmap_ = fmap
 
 infixr 0 ⎴
 
-(⫶) ∷ (Alternative f) ⇒ f a → f a → f a
+(⫶), (<|>!) ∷ (Alternative f) ⇒ f a → f a → f a
 (⫶) = (<|>)
+(<|>!) = (<|>)
 {-# INLINE (⫶) #-}
 
-infixl 3 ⫶
+infixl 3 ⫶, <|>!
 
 (⋄) ∷ (Semigroup a) ⇒ a → a → a
 (⋄) = (<>)

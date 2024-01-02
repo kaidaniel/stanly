@@ -4,6 +4,7 @@ module Stanly.Fmt (FmtStr, FmtCmd (..), (|-|), (⊹), Fmt (fmt), bwText, ttyText
 
 import Data.Char (isSpace)
 import Data.List (intercalate)
+import Data.Set (Set, toList)
 import Stanly.Unicode
 
 data FmtCmd where
@@ -107,6 +108,7 @@ instance Fmt FmtStr where fmt = id
 instance Fmt Char where fmt = display ∘ ω
 instance Fmt String where fmt = display
 instance Fmt [FmtStr] where fmt = κ₁
+instance (Fmt a) ⇒ Fmt (Set a) where fmt = fmt . (map fmt) . toList
 instance Fmt FmtCmd where fmt cmd = Str cmd ""
 instance (Fmt a, Fmt b) ⇒ Fmt (Either a b) where
     fmt = \case Left x → fmt x; Right x → fmt x

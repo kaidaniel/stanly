@@ -12,7 +12,7 @@ module Stanly.Exc (
 ) where
 
 import Control.Monad.Except (ExceptT, MonadError, runExceptT, throwError)
-import Stanly.Fmt (Fmt (..), FmtStr, (⊹))
+import Stanly.Fmt (Fmt (..))
 import Stanly.Unicode
 
 data Exception where
@@ -25,11 +25,11 @@ data Exception where
     deriving (Eq, Ord, Show, Enum)
 
 instance Fmt Exception where
-    fmt = fmt ∘ show
+    fmt = fmt ∘ ("Exception: " <>) ∘ show
 
 type MonadExc m = MonadError Exception m
 type ExcT m = ExceptT Exception m
-type ExcRes a = Either FmtStr a
+type ExcRes a = Either Exception a
 
 exc ∷ (MonadExc m) ⇒ Exception → m a
 exc = throwError
@@ -49,7 +49,4 @@ varNotFoundInEnvironment = exc VarNotFoundInEnvironment
 varNotFoundInStore = exc VarNotFoundInStore
 
 runExcT ∷ (Monad m) ⇒ ExcT m a → m (ExcRes a)
-runExcT m =
-    runExceptT m ⇉ \case
-        Left e → ω (Left ("Exception: " ⊹ e))
-        Right a → ω (Right a)
+runExcT = runExceptT
