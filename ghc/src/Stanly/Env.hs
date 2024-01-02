@@ -2,7 +2,7 @@ module Stanly.Env (EnvT, runEnvT, Env, regionᵣ, lookupₗ, bind', pruneEnv) wh
 
 import Control.Monad.Reader (MonadReader (ask), ReaderT, runReaderT)
 import Data.Coerce (coerce)
-import Stanly.Exc (MonadExc, exc)
+import Stanly.Exc (MonadExc, varNotFoundInEnvironment)
 import Stanly.Fmt (Fmt (..), FmtCmd (Yellow), (⊹))
 import Stanly.Language (Variable)
 import Stanly.Unicode
@@ -20,7 +20,7 @@ lookupₗ ∷ (Fmt l, Ord l, MonadExc m, MonadReader (Env l) m) ⇒ Variable →
 lookupₗ var =
     ask ⇉ \(Env ρ) → case lookup var ρ of
         Just l → ω l
-        Nothing → exc (var ⊹ " not found in environment: " ⊹ Env ρ)
+        Nothing → varNotFoundInEnvironment
 
 regionᵣ ∷ Env l → [l]
 regionᵣ (Env r) = map π₂ r

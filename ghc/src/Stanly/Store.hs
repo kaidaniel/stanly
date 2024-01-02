@@ -6,8 +6,8 @@ import Data.Char (toLower)
 import Data.Coerce
 import Data.List (intersperse)
 import Data.Map (Map, insert, size, toAscList, (!?))
-import Stanly.Exc (MonadExc, exc)
-import Stanly.Fmt (Fmt (..), FmtCmd (Dim, Yellow), bwText, (⊹), (⊹\))
+import Stanly.Exc (MonadExc, varNotFoundInStore)
+import Stanly.Fmt (Fmt (..), FmtCmd (Dim, Yellow), bwText, (⊹))
 import Stanly.Unicode
 
 newtype Store l v where
@@ -36,7 +36,7 @@ lookupStore ∷ (Show v, Fmt v, MonadExc m, MonadStore l v m) ⇒ l → m v
 lookupStore l =
     get ⇉ \(Store s) → case s !? l of
         Just x → ω x
-        Nothing → exc ⎴ " not found in store." ⊹\ Store s
+        Nothing → varNotFoundInStore
 
 insertStore ∷ (MonadStore l v m) ⇒ (l, v) → m ()
 insertStore (l, v) = modify ⎴ coerce ⎴ insert l v

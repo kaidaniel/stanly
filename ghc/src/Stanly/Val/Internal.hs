@@ -20,7 +20,6 @@ data Val l where
 
 class Value val where
     fromVal ∷ Val l → val l
-    -- lambda :: (Fmt l, MonadExc m) ⇒ Val l → m (Variable, Expr, Env l)
 
 instance Value Val where
     fromVal = id

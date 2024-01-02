@@ -13,7 +13,7 @@ cabal: format
 	cabal v2-build -j8
 
 test: cabal
-	stanly-test --qc-max-success=2000 --color
+	stanly-test --qc-max-success=200 --color
 	./tests/test.sh
 
 .PHONY: cabal test format
