@@ -5,6 +5,7 @@ import Data.Set qualified as Set (map)
 import Options.Applicative (
     Parser,
     ParserInfo,
+    auto,
     execParser,
     fullDesc,
     header,
@@ -12,22 +13,31 @@ import Options.Applicative (
     helper,
     info,
     long,
+    metavar,
+    option,
     progDesc,
     short,
+    showDefault,
     switch,
  )
+import Options.Applicative qualified as Opt (value)
+import Stanly.Exc (ExcRes)
 import Stanly.Fmt (Fmt (..), FmtStr, bwText, ttyText, (⊹), (⊹\))
 import Stanly.Language (Expr)
 import Stanly.Mixins (dead, idₘ, trace)
 import Stanly.Monads (abstract, concrete)
 import Stanly.Parser (parser)
-import Stanly.Store (store, value)
+import Stanly.Store (StoreRes, store, value)
 import Stanly.Unicode
-import Stanly.Val.Value (prune)
+import Stanly.Val.Value (Val, prune)
+
+data Semantics = Concrete | Abstract deriving (Eq)
+instance Show Semantics where show = \case Concrete → "concrete"; Abstract → "abstract"
+instance Read Semantics where
+    readsPrec _ = \case "concrete" → [(Concrete, "")]; "abstract" → [(Abstract, "")]; _ → []
 
 data Options = Options
     { noValueO
-      , abstractValueO
       , storeO
       , pruneO
       , desugaredO
@@ -37,6 +47,7 @@ data Options = Options
       , noColourO
       , sectionHeadersO ∷
         Bool
+    , semanticsO ∷ Semantics
     }
     deriving (Read, Show, Eq)
 
@@ -44,7 +55,6 @@ options ∷ Parser Options
 options =
     Options
         <$> flag "no-value" 'n' "Don't show calculated value."
-            ⊛ flag "abstract-value" 'b' "Show the calculated abstract value."
             ⊛ flag "store" 's' "Show the final state of the store after the program halts."
             ⊛ flag "prune" 'p' "Prune store before showing (when using --store)."
             ⊛ flag "desugared" 'd' "Show the program after syntax transformation."
@@ -62,6 +72,15 @@ options =
                 "section-headers"
                 'i'
                 "Introduce each section by a line of '===' and the section's name."
+            ⊛ option
+                auto
+                ( long "semantics"
+                    <> short 'm'
+                    <> help "Which kind of values to calculate."
+                    <> showDefault
+                    <> Opt.value Concrete
+                    <> metavar "{concrete|abstract}"
+                )
   where
     flag l s h = switch (long l ⋄ short s ⋄ help h)
 
@@ -81,14 +100,22 @@ outputs Options{..} ast =
         abstract₁ = runIdentity ⎴ abstract idₘ ast
         m ++? (b, title, m₁) = if b then m ++ [if sectionHeadersO then "== " ⊹ title ⊹\ m₁ else m₁] else m
         sections =
-            ε₁
-                ++? (not noValueO, "value", fmt ⎴ value concrete₁)
-                ++? (abstractValueO, "abstract-value", fmt ⎴ Set.map value abstract₁)
-                ++? (storeO, "store", fmt ⎴ (if pruneO then φ prune else id) (store concrete₁))
+            ( case semanticsO of
+                Concrete →
+                    ε₁
+                        ++? (not noValueO, "value", fmt ⎴ value concrete₁)
+                        ++? (storeO, "store", fmt ⎴ (if pruneO then φ prune else id) (store concrete₁))
+                        ++? (deadCodeO, "dead-code", fmt (execWriter (concrete dead ast)))
+                        ++? (traceO, "trace", fmt (execWriter (concrete trace ast)))
+                Abstract →
+                    ε₁
+                        ++? (not noValueO, "value", fmt ⎴ Set.map value abstract₁)
+                        -- ++? (storeO, "store", fmt ⎴ (if pruneO then φ prune else id) (Set.map store abstract₁))
+                        -- ++? (deadCodeO, "dead-code", fmt (execWriter (abstract dead ast)))
+                        -- ++? (traceO, "trace", fmt (execWriter (abstract trace ast)))
+            )
                 ++? (desugaredO, "desugared", fmt ast)
                 ++? (astO, "ast", fmt (show ast))
-                ++? (deadCodeO, "dead-code", fmt (execWriter (concrete dead ast)))
-                ++? (traceO, "trace", fmt (execWriter (concrete trace ast)))
      in
         intersperse (fmt '\n') ⎴ fmap (⊹ '\n') ⎴ sections
 

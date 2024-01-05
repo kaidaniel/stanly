@@ -20,22 +20,20 @@ trace ∷
     (MonadWriter (Trace ρ σ) m, MonadState σ m, MonadReader ρ m) ⇒
     Interpreter l ν ρ m →
     Eval m ν
-trace = makeInterpreter id open
-  where
-    open evalTr eval expr = do
-        ρ ← ask
-        σ ← get
-        tell ⎴ Trace [(expr, ρ, σ)]
-        evalTr eval expr
+trace = makeInterpreter
+    id
+    \evTr ev e → do
+        tell ⇇ φ (\ρ σ → γ [(e, ρ, σ)]) ask ⊛ get
+        evTr ev e
 
 newtype Dead = Dead [Expr] deriving (Semigroup, Monoid)
 
 dead ∷ ∀ l ν ρ m. (MonadWriter Dead m) ⇒ Interpreter l ν ρ m → Eval m ν
-dead = makeInterpreter closed open
-  where
-    closed eval expr = censor (\(Dead used) → Dead (cleanUp ⎴ subexprs expr \\ used)) ⎴ eval expr
-    cleanUp x = reverse ⎴ x \\ (x ⇉ subexprs)
-    open evalTr eval expr = do tell ⎴ Dead [expr]; evalTr eval expr
+dead = makeInterpreter
+    (\ev e → censor (γ ⎴ reverse ∘ (\es → es \\ (es ⇉ subexprs)) ∘ (subexprs e \\)) ⎴ ev e)
+    \evTr ev e → do
+        tell ⎴ γ [e]
+        evTr ev e
 
 instance (Fmt ρ, Fmt σ) ⇒ Fmt (Trace ρ σ) where
     fmt (Trace li) = κ₁ (φ ln (zip li [1 ∷ Integer ..]))

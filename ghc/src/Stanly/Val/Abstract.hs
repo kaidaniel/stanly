@@ -38,17 +38,18 @@ instance (Fmt l) ⇒ Fmt (ValA l) where
         Flat v → fmt v
 
 lambda ∷ (Fmt l, MonadExc m) ⇒ ValA l → m (Variable, Expr, Env l)
-lambda val = case val of
+lambda = \case
     Flat (LamV x e r) → ω (x, e, r)
     _ → notAFunction
 
 op2 ∷ (Fmt l, MonadExc m, Alternative m) ⇒ Op2 → ValA l → ValA l → m (ValA l)
-op2 o a b = case (o, a, b) of
-    (Divide, _, Flat (NumV n)) | isNumeric a, n == 0 → divisionByZero
-    (Divide, _, TopNum) | isNumeric a → ω TopNum ⫶ divisionByZero
-    (Plus, _, _) | isTxt a → ω TopTxt
-    _ | isNumeric a, isNumeric b → ω TopNum
-    _ → invalidArgsToOperator
+op2 o a b = case b of
+    Flat (NumV n) | o == Divide, isNumeric a, n == 0 → divisionByZero
+    TopNum | o == Divide, isNumeric a → ω TopNum ⫶ divisionByZero
+    _
+        | o == Plus, isTxt a → ω TopTxt
+        | isNumeric a, isNumeric b → ω TopNum
+        | otherwise → invalidArgsToOperator
   where
     isNumeric = \case TopNum → True; Flat (NumV _) → True; _ → False
     isTxt = \case TopTxt → True; Flat (TxtV _) → True; _ → False

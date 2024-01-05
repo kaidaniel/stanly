@@ -4,6 +4,7 @@ import Control.Applicative (Alternative (..), empty)
 import Control.Arrow ((>>>))
 import Control.Category (Category)
 import Control.Monad (MonadPlus, mzero)
+import Data.Coerce (Coercible, coerce)
 
 -- ₁ ₂ ₃ ₄ ₅ ₆ ₇ ₈ ₉ ₀
 
@@ -62,6 +63,10 @@ fmap_ = fmap
 {-# INLINE φ #-}
 {-# INLINE fmap_ #-}
 
+γ ∷ (Coercible a b) ⇒ a → b
+γ = coerce
+{-# INLINE γ #-}
+
 κ₁ ∷ (Monoid m) ⇒ [m] → m
 κ₁ = mconcat
 {-# INLINE κ₁ #-}
@@ -97,8 +102,12 @@ infixr 6 ⋄
 (>>=!) = (>>=)
 {-# INLINE (⇉) #-}
 {-# INLINE (>>=!) #-}
-
 infixl 1 ⇉, >>=!
+
+(⇇) ∷ (Monad m) ⇒ (a → m b) → m a → m b
+(⇇) = (=<<)
+{-# INLINE (⇇) #-}
+infixr 1 ⇇
 
 π₁ ∷ ∀ {a} {b}. (a, b) → a
 π₁ = fst

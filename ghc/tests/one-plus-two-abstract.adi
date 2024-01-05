@@ -1,0 +1,3 @@
+// RUN: stanly -m abstract < %s | FileCheck %s
+(1 + 2)
+// CHECK: TopNum

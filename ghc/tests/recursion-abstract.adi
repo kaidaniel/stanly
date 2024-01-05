@@ -1,4 +1,4 @@
-// RUN: stanly --no-colour  < %s | FileCheck %s
+// RUN: stanly --no-colour -m abstract< %s | FileCheck %s
 
 let fibonacci = mu f.λn.
 
@@ -28,4 +28,4 @@ let tail = fn x.("" + x);
     tail (factorial  1)
 )
 
-// CHECK: 3, 8, 21, 5040, 720, 1
+// CHECK: TopTxt
