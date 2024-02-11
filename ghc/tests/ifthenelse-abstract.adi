@@ -1,6 +1,23 @@
 // RUN: stanly -m abstract < %s | FileCheck %s
 
-(if 0 then (if (0 - 1) then 999 else 999) else (if (0 - 1) then 888 else 999))
+(if 
+    0 
+then 
+    (if 
+        (0 - 1) 
+    then 
+        1 
+    else 
+        2) 
+else 
+    (if 
+        (0 - 1) 
+    then 
+        3 
+    else 
+        4))
 
-// CHECK: 888
-// CHECK: 999
+// CHECK: 1
+// CHECK: 2
+// CHECK: 3
+// CHECK: 4

@@ -21,13 +21,12 @@ import Options.Applicative (
     switch,
  )
 import Options.Applicative qualified as Opt (value)
-import Stanly.Exc (ExcRes)
 import Stanly.Fmt (Fmt (..), FmtStr, bwText, ttyText, (⊹), (⊹\))
 import Stanly.Language (Expr)
 import Stanly.Mixins (dead, idₘ, trace)
 import Stanly.Monads (abstract, concrete)
 import Stanly.Parser (parser)
-import Stanly.Store (StoreRes, store, value)
+import Stanly.Store (store, value)
 import Stanly.Unicode
 import Stanly.Val.Value (Val, prune)
 
@@ -98,6 +97,8 @@ outputs Options{..} ast =
     let
         concrete₁ = runIdentity ⎴ concrete idₘ ast
         abstract₁ = runIdentity ⎴ abstract idₘ ast
+        -- y = execWriter (concrete dead ast)
+        -- x = execWriter (abstract dead ast)
         m ++? (b, title, m₁) = if b then m ++ [if sectionHeadersO then "== " ⊹ title ⊹\ m₁ else m₁] else m
         sections =
             ( case semanticsO of
@@ -110,7 +111,7 @@ outputs Options{..} ast =
                 Abstract →
                     ε₁
                         ++? (not noValueO, "value", fmt ⎴ Set.map value abstract₁)
-                        -- ++? (storeO, "store", fmt ⎴ (if pruneO then φ prune else id) (Set.map store abstract₁))
+                        ++? (storeO, "store", fmt ⎴ (Set.map store abstract₁))
                         -- ++? (deadCodeO, "dead-code", fmt (execWriter (abstract dead ast)))
                         -- ++? (traceO, "trace", fmt (execWriter (abstract trace ast)))
             )
