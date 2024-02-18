@@ -4,26 +4,17 @@
 
 A static analyser for programs using the [pandas](https://pandas.pydata.org) library.
 
-Let's say the following program:
+Let's say you want to calculate how much money company made. You start writing the following program:
 
 ```python
 # file: my_app/main.py
 from pandas import read_sql
 from my_app.database import con
 df = read_sql("sales", con)
-print(df["amount"].sum())
+# print(df[???].sum())
 ```
 
-raises this error:
-
-```console
-$ python my_app/main.py
-Traceback (most recent call last):
-  ...
-KeyError: 'amount'
-```
-
-To fix the error, you need to know which columns are defined for `df`.
+To make the commented-out statement work, you need to replace the `???` with the name of a column giving the price of the item sold. But you might not know how that column is called.
 
 Another function offers a clue:
 
@@ -33,19 +24,46 @@ from pandas import read_sql
 from my_app.database import con
 def sales_by_department():
   df = read_sql("sales", con)
-  return df.groupby("department")["amnt"].sum()
+  return df.groupby("department")["amount"].sum()
 ```
 
-If `sales_by_department` is free of bugs, then the "sales" table has at least two columns: "department" and "amnt". So `my_app/main.py` wouldn't raise 'KeyError' if we replaced `df["amount"]` with `df["amnt"]`.
+If `sales_by_department` is free of bugs, then the "sales" table has at least two columns: "department" and "amount". So the column you are looking for is probably called "amount".
 
 `stanly` collects information like this from anywhere in your program so that you don't have to look for functions like `sales_by_department` yourself:
 
 ```console
 $ stanly my_app/main.py
 `df` on line 5:  df = read_sql("sales", con)
-is a `pandas.DataFrame` with at least 2 columns:
+refers to a `pandas.DataFrame` with at least 2 columns:
 - department
 - amnt
+```
+
+## Capabilities
+
+```python
+# file: symbolic_variables.py
+def f(x):
+  df = read_sql("table", con)[x]
+  return df
+
+def h(y):
+  if (y):
+    f("a")
+
+def g(x):
+  f(x)
+
+g("b")
+```
+
+```console
+$ stanly symbolic_variables.py
+`df` on line 5: df = read_sql("table", con)[x]
+refers to a `pandas.Series` called either of:
+- a
+- b
+assuming `x` refers to either of: `{"a", "b"}`
 ```
 
 ## How it works
@@ -69,6 +87,7 @@ Whenever a `pandas.DataFrame` could be bound to a variable, report an over-appro
 3. Write python -> IR lowering.
 4. Generalise dictionaries to `dictionary * type-tag` (DataFrame = `dict * "pandas.DataFrame"`).
 5. Handle reference variables (`read_sql` returns a reference to external data).
-6. Write pandas -> IR lowering.
+6. Handle incomplete programs (treat function arguments symbolically).
+7. Write pandas -> IR lowering.
 
 [^1]: A collecting semantics is a set containing all the results a program might possibly have.  For example, the collecting semantics of the python program `0 if x else 1` with `x` is the set `{0, 1}`.
