@@ -1,5 +1,5 @@
 // RUN: stanly < %s | FileCheck %s
 
-(if 0 then (if (0 - 1) then 999 else 999) else (if (0 - 1) then 888 else 999))
+(if 0 then (if 1 then 11 else 22) else (if (0 + 1) then 33 else 44))
 
-// CHECK: 888
+// CHECK: 33

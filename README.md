@@ -4,48 +4,56 @@
 
 A static analyser for programs using the [pandas](https://pandas.pydata.org) library.
 
-Let's say you want to calculate how much money company made. You start writing the following program:
+Let's say you want to calculate how much money your company made. You start writing the following program:
 
 ```python
-# file: my_app/main.py
-from pandas import read_sql
-from my_app.database import con
-df = read_sql("sales", con)
+# file: main.py
+from pandas import read_csv
+df = read_csv("sales.csv")
 # print(df[???].sum())
 ```
 
-To make the commented-out statement work, you need to replace the `???` with the name of a column giving the price of the item sold. But you might not know how that column is called.
+To make the commented-out statement work, you need to replace the `???` with the name of a column giving the price of the item sold. But you might not know what that column is called.
 
 Another function offers a clue:
 
 ```python
-# file: my_app/sales_by_department.py
-from pandas import read_sql
-from my_app.database import con
+# file: sales_by_department.py
+from pandas import read_csv
 def sales_by_department():
-  df = read_sql("sales", con)
+  df = read_csv("sales.csv")
   return df.groupby("department")["amount"].sum()
 ```
 
-If `sales_by_department` is free of bugs, then the "sales" table has at least two columns: "department" and "amount". So the column you are looking for is probably called "amount".
+If `sales_by_department` is free of bugs, then "sales.csv" has at least two columns: "department" and "amount". So the column you are looking for is probably called "amount".
 
 `stanly` collects information like this from anywhere in your program so that you don't have to look for functions like `sales_by_department` yourself:
 
 ```console
-$ stanly my_app/main.py
-`df` on line 5:  df = read_sql("sales", con)
+$ stanly main.py
+`df` on line 3:  df = read_csv("sales.csv")
 refers to a `pandas.DataFrame` with at least 2 columns:
 - department
 - amnt
 ```
 
+<!-- always / sometimes refers to a DataFrame which always / sometimes has these columns: (where 'always' means: 'forall paths.', 'sometimes' means: 'exists path.'-->
+
+## Specification
+
+"refers to a `pandas.DataFrame` with at least n columns: n_1, n_2, ..." means:
+
+
 ## Capabilities
 
 ```python
 # file: symbolic_variables.py
+from pandas import read_csv
+
 def f(x):
-  df = read_sql("table", con)[x]
-  return df
+  df = read_csv("table.csv")
+  s = df[x]
+  return s
 
 def h(y):
   if (y):
@@ -59,11 +67,12 @@ g("b")
 
 ```console
 $ stanly symbolic_variables.py
-`df` on line 5: df = read_sql("table", con)[x]
+`df` on line 3: df = read_scsv("table.csv")
+refers to a `pandas.DataFrame` with at least 1
+`s`  on line 4: s = df[x]
 refers to a `pandas.Series` called either of:
 - a
 - b
-assuming `x` refers to either of: `{"a", "b"}`
 ```
 
 ## How it works
