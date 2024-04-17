@@ -1,7 +1,5 @@
-import Control.Monad.Identity (runIdentity)
-import Control.Monad.Writer (execWriter)
+import Data.Function (fix)
 import Data.List (intersperse)
-import Data.Set qualified as Set (map)
 import Options.Applicative (
     Parser,
     ParserInfo,
@@ -21,14 +19,11 @@ import Options.Applicative (
     switch,
  )
 import Options.Applicative qualified as Opt (value)
+import Stanly.Eval qualified as E
 import Stanly.Fmt (Fmt (..), FmtStr, bwText, ttyText, (⊹), (⊹\))
 import Stanly.Language (Expr)
-import Stanly.Mixins (dead, idₘ, trace)
-import Stanly.Monads (abstract, concrete)
 import Stanly.Parser (parser)
-import Stanly.Store (store, value)
 import Stanly.Unicode
-import Stanly.Val.Value (Val, prune)
 
 data Semantics = Concrete | Abstract deriving (Eq)
 instance Show Semantics where show = \case Concrete → "concrete"; Abstract → "abstract"
@@ -41,8 +36,6 @@ data Options = Options
       , pruneO
       , desugaredO
       , astO
-      , traceO
-      , deadCodeO
       , noColourO
       , sectionHeadersO ∷
         Bool
@@ -58,14 +51,6 @@ options =
             ⊛ flag "prune" 'p' "Prune store before showing (when using --store)."
             ⊛ flag "desugared" 'd' "Show the program after syntax transformation."
             ⊛ flag "ast" 'a' "Show the abstract syntax tree used by the interpreter."
-            ⊛ flag
-                "trace"
-                't'
-                "Show how the interpreter state changes while the program is being evaluated."
-            ⊛ flag
-                "dead-code"
-                'e'
-                "Show parts of the program that weren't reached during interpretation."
             ⊛ flag "no-colour" 'c' "Don't colourise output."
             ⊛ flag
                 "section-headers"
@@ -95,25 +80,16 @@ opts =
 outputs ∷ Options → Expr → [FmtStr]
 outputs Options{..} ast =
     let
-        concrete₁ = runIdentity ⎴ concrete idₘ ast
-        abstract₁ = runIdentity ⎴ abstract idₘ ast
-        -- y = execWriter (concrete dead ast)
-        -- x = execWriter (abstract dead ast)
+        concrete = E.runConcrete (fix E.eval ast)
         m ++? (b, title, m₁) = if b then m ++ [if sectionHeadersO then "== " ⊹ title ⊹\ m₁ else m₁] else m
         sections =
             ( case semanticsO of
                 Concrete →
                     ε₁
-                        ++? (not noValueO, "value", fmt ⎴ value concrete₁)
-                        ++? (storeO, "store", fmt ⎴ (if pruneO then φ prune else id) (store concrete₁))
-                        ++? (deadCodeO, "dead-code", fmt (execWriter (concrete dead ast)))
-                        ++? (traceO, "trace", fmt (execWriter (concrete trace ast)))
+                        ++? (not noValueO, "value", fmt ⎴ concrete)
+                        ++? (storeO, "store", fmt ⎴ E.store (fix E.eval ast))
                 Abstract →
                     ε₁
-                        ++? (not noValueO, "value", fmt ⎴ Set.map value abstract₁)
-                        ++? (storeO, "store", fmt ⎴ (Set.map store abstract₁))
-                        -- ++? (deadCodeO, "dead-code", fmt (execWriter (abstract dead ast)))
-                        -- ++? (traceO, "trace", fmt (execWriter (abstract trace ast)))
             )
                 ++? (desugaredO, "desugared", fmt ast)
                 ++? (astO, "ast", fmt (show ast))
