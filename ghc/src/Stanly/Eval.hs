@@ -1,18 +1,14 @@
 module Stanly.Eval (
     eval,
-    interpreter,
     Val (..),
     Env (..),
     Exception (..),
     Store (..),
-    InterpreterT (..),
     Interpreter (..),
     Res (..),
 ) where
 
-import Control.Monad (ap)
 import Control.Monad.Except (MonadError (..))
-import Control.Monad.Trans (MonadTrans (..))
 import Data.Coerce
 import Data.Map (Map)
 import Stanly.Language (Expr (..), Op2 (..), Variable)
@@ -84,30 +80,3 @@ data Exception
     | NotAFunction {expr ∷ Expr, fval ∷ Val}
     deriving (Eq, Show)
 data Res a = Step a Store | Stop Exception deriving (Functor)
-newtype InterpreterT m a = InterpreterT (Env → Store → m (Res a)) deriving (Functor)
-
-interpreter ∷ (Monad m) ⇒ (Env → Store → m a) → InterpreterT m a
-interpreter f = InterpreterT \e s → do
-    x ← f e s
-    ω (Step x s)
-
-instance (Monad m) ⇒ Applicative (InterpreterT m) where
-    pure x = InterpreterT \_ s → pure ⎴ Step x s
-    (<*>) = ap
-instance (Monad m) ⇒ Monad (InterpreterT m) where
-    (InterpreterT m₁) >>= f = InterpreterT \e s₁ → do
-        res ← m₁ e s₁
-        case res of
-            Step a s₂ → let InterpreterT m₂ = f a in m₂ e s₂
-            Stop exc → ω (Stop exc)
-instance (Monad m) ⇒ MonadError Exception (InterpreterT m) where
-    throwError exc = InterpreterT \_ _ → ω (Stop exc)
-    catchError (InterpreterT m₁) f = InterpreterT \e s₁ → do
-        res ← m₁ e s₁
-        case res of
-            Step a s₂ → ω (Step a s₂)
-            Stop exc → let InterpreterT m₂ = f exc in m₂ e s₁
-instance MonadTrans InterpreterT where
-    lift m = InterpreterT \_ s → do
-        v ← m
-        ω ⎴ Step v s
