@@ -19,6 +19,7 @@ import Options.Applicative (
     switch,
  )
 import Options.Applicative qualified as Opt (value)
+import Stanly.Concrete qualified as C
 import Stanly.Eval qualified as E
 import Stanly.Fmt (Fmt (..), FmtStr, bwText, ttyText, (⊹), (⊹\))
 import Stanly.Language (Expr)
@@ -86,8 +87,8 @@ outputs Options{..} ast =
             ( case semanticsO of
                 Concrete →
                     ε₁
-                        ++? (not noValueO, "value", fmt ⎴ E.value concrete)
-                        ++? (storeO, "store", fmt ⎴ E.store concrete)
+                        ++? (not noValueO, "value", fmt ⎴ C.value concrete)
+                        ++? (storeO, "store", fmt ⎴ C.store concrete)
                 Abstract →
                     ε₁
             )

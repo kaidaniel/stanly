@@ -1,19 +1,20 @@
 module Stanly.Eval (
     eval,
-    store,
-    value,
+    interpreter,
     Val (..),
     Env (..),
-    Exception,
+    Exception (..),
     Store (..),
+    InterpreterT (..),
+    Interpreter (..),
+    Res (..),
 ) where
 
 import Control.Monad (ap)
 import Control.Monad.Except (MonadError (..))
-import Control.Monad.Identity (Identity, runIdentity)
 import Control.Monad.Trans (MonadTrans (..))
 import Data.Coerce
-import Data.Map (Map, insert, size, (!?))
+import Data.Map (Map)
 import Stanly.Language (Expr (..), Op2 (..), Variable)
 import Stanly.Unicode
 
@@ -22,9 +23,6 @@ type Loc = Int
 newtype Env where
     Env ∷ [(Variable, Loc)] → Env
     deriving (Eq, Ord, Semigroup, Monoid, Show)
-
-insertEnv ∷ (Variable, Loc) → Env → Env
-insertEnv binding (Env ρ) = Env (binding : ρ)
 
 data Val
     = LamV Variable Expr Env
@@ -71,6 +69,8 @@ eval eval₁ = \case
                 update (loc, x₁)
                 inEnv (insertEnv (var, loc) ρ) (eval₁ body)
             _ → throwError (NotAFunction (App f x) f₁)
+  where
+    insertEnv binding (Env ρ) = Env (binding : ρ)
 
 newtype Store = Store (Map Loc Val)
     deriving (Eq, Semigroup, Monoid, Show)
@@ -86,45 +86,10 @@ data Exception
 data Res a = Step a Store | Stop Exception deriving (Functor)
 newtype InterpreterT m a = InterpreterT (Env → Store → m (Res a)) deriving (Functor)
 
-newtype ConcreteT m a = ConcreteT (InterpreterT m a)
-    deriving (Functor, Applicative, Monad, MonadError Exception, MonadTrans)
-
-store ∷ ConcreteT Identity a → Either Store Exception
-store (ConcreteT (InterpreterT f)) = case runIdentity (f ε₁ ε₁) of
-    Step _ s → Left s
-    Stop exc → Right exc
-
-value ∷ ConcreteT Identity a → Either a Exception
-value (ConcreteT (InterpreterT f)) = case runIdentity (f ε₁ ε₁) of
-    Step v _ → Left v
-    Stop exc → Right exc
-
-instance (Monad m) ⇒ Interpreter (ConcreteT m) where
-    op2 o lhs rhs = do
-        case (lhs, rhs) of
-            (NumV n₀, NumV n₁)
-                | o == Plus → ω ⎴ NumV ⎴ n₀ + n₁
-                | o == Minus → ω ⎴ NumV ⎴ n₀ - n₁
-                | o == Times → ω ⎴ NumV ⎴ n₀ * n₁
-                | o == Divide, n₁ == 0 → throwError (DivisionByZero lhs rhs)
-                | o == Divide → ω ⎴ NumV ⎴ div n₀ n₁
-            (TxtV t₀, TxtV t₁)
-                | o == Plus → ω ⎴ TxtV ⎴ t₀ ⋄ t₁
-            (TxtV t₀, NumV n₁)
-                | o == Plus → ω ⎴ TxtV ⎴ t₀ ⋄ show n₁
-            _ → throwError (InvalidArgsToOperator lhs o rhs)
-    if' tst then' else' = do
-        tst' ← tst
-        case tst' of
-            NumV n | n == 0 → else' | otherwise → then'
-            _ → throwError (BranchOnNonNumeric tst')
-    env = γ \ρ s → ω @m (Step (Env ρ) s)
-    inEnv ρ = γ \m₁ (_ ∷ Env) s → m₁ ρ (Store s) ∷ m (Res Val)
-    update (loc, val) = γ \(_ ∷ Env) s → ω @m (Step () (Store ⎴ insert loc val s))
-    find loc = γ \(_ ∷ Env) s → case s !? loc of
-        Just v → ω @m (Step v (Store s))
-        Nothing → ω @m (Stop ⎴ InvalidLoc loc (Store s))
-    alloc _ = γ \(_ ∷ Env) s → ω @m (Step (size s) (Store s))
+interpreter ∷ (Monad m) ⇒ (Env → Store → m a) → InterpreterT m a
+interpreter f = InterpreterT \e s → do
+    x ← f e s
+    ω (Step x s)
 
 instance (Monad m) ⇒ Applicative (InterpreterT m) where
     pure x = InterpreterT \_ s → pure ⎴ Step x s
