@@ -4,7 +4,6 @@ module Stanly.Language (Variable, Op2 (..), Expr (..), subexprs, freeVars) where
 
 import Control.Applicative (Alternative)
 import GHC.Generics (Generic)
-import Stanly.Fmt (Fmt (..), FmtCmd (Bold, Dim, Magenta), (⊹))
 import Stanly.Unicode
 import Test.QuickCheck (
     Arbitrary (arbitrary),
@@ -51,24 +50,6 @@ subexprs = \case
 
 freeVars ∷ Expr → [Variable]
 freeVars e = [v | Var v ← subexprs e]
-
-instance Fmt Op2 where
-    fmt = ("" ⊹) ∘ \case Plus → "+"; Minus → "-"; Times → "*"; Divide → "/"
-
-instance Fmt Expr where
-    fmt = \case
-        Var x → "" ⊹ x
-        App f x → (Dim ⊹ Magenta ⊹ "(") ⊹ paren₁ f ⊹ " " ⊹ x ⊹ (Dim ⊹ Magenta ⊹ ")")
-        Lam x fn → (Dim ⊹ "(λ") ⊹ (Bold ⊹ x) ⊹ "." ⊹ paren₂ fn ⊹ (Dim ⊹ ")")
-        Rec x fn → (Dim ⊹ "(μ") ⊹ (Bold ⊹ x) ⊹ "." ⊹ paren₂ fn ⊹ (Dim ⊹ ")")
-        Op2 o e₁ e₂ → (Dim ⊹ "(") ⊹ e₁ ⊹ " " ⊹ o ⊹ " " ⊹ e₂ ⊹ (Dim ⊹ ")")
-        Num n → "" ⊹ n
-        Txt s → (Dim ⊹ show s)
-        If' tst e₁ e₂ → "(if " ⊹ tst ⊹ " then " ⊹ e₁ ⊹ " else " ⊹ e₂ ⊹ ")"
-      where
-        paren₁ = \case App f x → paren₁ f ⊹ " " ⊹ x; e → "" ⊹ e
-        paren₂ = \case Rec x fn → k "μ" x fn; Lam x fn → k "λ" x fn; e → "" ⊹ e
-        k sym x fn = sym ⊹ (Bold ⊹ x) ⊹ "." ⊹ paren₂ fn
 
 instance Arbitrary Expr where
     arbitrary = sized \case

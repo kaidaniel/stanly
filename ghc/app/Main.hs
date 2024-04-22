@@ -80,14 +80,14 @@ opts =
 outputs ∷ Options → Expr → [FmtStr]
 outputs Options{..} ast =
     let
-        concrete = E.runConcrete (fix E.eval ast)
+        concrete = fix E.eval ast
         m ++? (b, title, m₁) = if b then m ++ [if sectionHeadersO then "== " ⊹ title ⊹\ m₁ else m₁] else m
         sections =
             ( case semanticsO of
                 Concrete →
                     ε₁
-                        ++? (not noValueO, "value", fmt ⎴ concrete)
-                        ++? (storeO, "store", fmt ⎴ E.store (fix E.eval ast))
+                        ++? (not noValueO, "value", fmt ⎴ E.value concrete)
+                        ++? (storeO, "store", fmt ⎴ E.store concrete)
                 Abstract →
                     ε₁
             )

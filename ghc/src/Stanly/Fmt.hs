@@ -2,9 +2,14 @@ module Stanly.Fmt (FmtStr, FmtCmd (..), (|-|), (⊹), Fmt (fmt), bwText, ttyText
 
 -- no-haskell-unicode
 
-import Data.Char (isSpace)
-import Data.List (intercalate)
+import Data.Bifunctor (Bifunctor (bimap))
+import Data.Char (isSpace, toLower)
+import Data.List (intercalate, intersperse)
+import Data.Map (toAscList)
 import Data.Set qualified as Set (Set, toList)
+import Stanly.Eval (Env (..), Exception, Store (..), Val (..))
+import Stanly.Language (Expr (..), Op2 (..))
+
 import Stanly.Unicode
 
 data FmtCmd where
@@ -130,3 +135,50 @@ a ⊹\ b =
 infixr 6 |-|, ⊹, ⊹\
 
 {-# INLINE (⊹) #-}
+
+instance Fmt Val where
+    fmt = \case
+        LamV x body r → "λ" ⊹ (Bold ⊹ x) ⊹ "." ⊹ body ⊹ " " ⊹ r
+        NumV n → Dim ⊹ n
+        TxtV s → Dim ⊹ s
+
+instance Fmt Env where
+    fmt (Env r) = (Yellow ⊹ "Γ⟦") ⊹ fmt₁ (r, "") ⊹ (Yellow ⊹ "⟧")
+      where
+        fmt₁ = \case
+            ((v, a) : r₁, sep) → sep ⊹ v ⊹ ": " ⊹ (Yellow ⊹ a) ⊹ fmt₁ (r₁, ", ")
+            ([], _) → ε₁
+
+instance Fmt Exception where
+    fmt e = fmt (show e)
+
+instance Fmt Store where
+    fmt (Store σ) = κ₁ ⎴ intersperse (fmt '\n') items
+      where
+        f₁ loc = (Dim ⊹ "store ") ⊹ (Yellow ⊹ (padded ⎴ bwText loc))
+        f₂ val = Dim ⊹ [toLower c | c ← take 3 (show val)] ⊹ " " ⊹ val
+        items = φ (\(l, r) → l ⊹ ' ' ⊹ r) ⎴ φ (bimap f₁ f₂) (toAscList σ)
+        padded = \case
+            [] → "    "
+            s@[_] → "   " ⋄ s
+            s@[_, _] → "  " ⋄ s
+            s@[_, _, _] → " " ⋄ s
+            s → s
+
+instance Fmt Op2 where
+    fmt = ("" ⊹) ∘ \case Plus → "+"; Minus → "-"; Times → "*"; Divide → "/"
+
+instance Fmt Expr where
+    fmt = \case
+        Var x → "" ⊹ x
+        App f x → (Dim ⊹ Magenta ⊹ "(") ⊹ paren₁ f ⊹ " " ⊹ x ⊹ (Dim ⊹ Magenta ⊹ ")")
+        Lam x fn → (Dim ⊹ "(λ") ⊹ (Bold ⊹ x) ⊹ "." ⊹ paren₂ fn ⊹ (Dim ⊹ ")")
+        Rec x fn → (Dim ⊹ "(μ") ⊹ (Bold ⊹ x) ⊹ "." ⊹ paren₂ fn ⊹ (Dim ⊹ ")")
+        Op2 o e₁ e₂ → (Dim ⊹ "(") ⊹ e₁ ⊹ " " ⊹ o ⊹ " " ⊹ e₂ ⊹ (Dim ⊹ ")")
+        Num n → "" ⊹ n
+        Txt s → (Dim ⊹ show s)
+        If' tst e₁ e₂ → "(if " ⊹ tst ⊹ " then " ⊹ e₁ ⊹ " else " ⊹ e₂ ⊹ ")"
+      where
+        paren₁ = \case App f x → paren₁ f ⊹ " " ⊹ x; e → "" ⊹ e
+        paren₂ = \case Rec x fn → k "μ" x fn; Lam x fn → k "λ" x fn; e → "" ⊹ e
+        k sym x fn = sym ⊹ (Bold ⊹ x) ⊹ "." ⊹ paren₂ fn
