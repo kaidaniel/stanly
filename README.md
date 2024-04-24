@@ -34,46 +34,10 @@ $ stanly main.py
 `df` on line 3:  df = read_csv("sales.csv")
 refers to a `pandas.DataFrame` with at least 2 columns:
 - department
-- amnt
+- amount
 ```
 
 <!-- always / sometimes refers to a DataFrame which always / sometimes has these columns: (where 'always' means: 'forall paths.', 'sometimes' means: 'exists path.'-->
-
-## Specification
-
-"refers to a `pandas.DataFrame` with at least n columns: n_1, n_2, ..." means:
-
-
-## Capabilities
-
-```python
-# file: symbolic_variables.py
-from pandas import read_csv
-
-def f(x):
-  df = read_csv("table.csv")
-  s = df[x]
-  return s
-
-def h(y):
-  if (y):
-    f("a")
-
-def g(x):
-  f(x)
-
-g("b")
-```
-
-```console
-$ stanly symbolic_variables.py
-`df` on line 3: df = read_scsv("table.csv")
-refers to a `pandas.DataFrame` with at least 1
-`s`  on line 4: s = df[x]
-refers to a `pandas.Series` called either of:
-- a
-- b
-```
 
 ## How it works
 
