@@ -1,21 +1,21 @@
 module Stanly.Abstract where
 
-import Stanly.Eval
-
--- import Control.Monad.Trans.Maybe(MaybeT)
-import Control.Monad (ap)
-import Control.Monad.Except (MonadError (..))
-
--- import Control.Monad.Identity (Identity, runIdentity)
-import Control.Monad.Trans (MonadTrans (..))
-
 -- import Stanly.Eval
-import Stanly.Unicode
+
+-- -- import Control.Monad.Trans.Maybe(MaybeT)
+-- import Control.Monad (ap)
+-- import Control.Monad.Except (MonadError (..))
+
+-- -- import Control.Monad.Identity (Identity, runIdentity)
+-- import Control.Monad.Trans (MonadTrans (..))
+
+-- -- import Stanly.Eval
+-- import Stanly.Unicode
 
 -- newtype AbsRes a =
 
-newtype AbstractT m a = AbstractT (Env → Store → m [Res a])
-    deriving (Functor)
+-- newtype AbstractT m a = AbstractT (Env → Store → m [_ a])
+--     deriving (Functor)
 
 -- instance (Monad m) ⇒ Applicative (AbstractT m) where
 --     pure x = AbstractT \_ s → pure ⎴ [Step x s]

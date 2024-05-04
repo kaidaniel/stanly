@@ -1,37 +1,45 @@
-module Stanly.Concrete (store, value) where
+module Stanly.Concrete (runConcrete, runConcreteT, ConcreteT) where
 
-import Control.Monad (ap)
-import Control.Monad.Except (MonadError (..))
-import Control.Monad.Identity (Identity, runIdentity)
-import Control.Monad.Trans (MonadTrans (..))
-import Data.Map (insert, size, (!?))
+import Control.Monad.Except qualified as M
+import Control.Monad.Identity qualified as M
+import Control.Monad.Reader qualified as M
+import Control.Monad.State qualified as M
+import Data.Coerce
+import Data.Map (size, (!?))
 import Stanly.Eval (
     Env (..),
     Exception (..),
     Interpreter (..),
-    Res (..),
     Store (..),
     Val (..),
  )
 import Stanly.Language (Op2 (..))
 import Stanly.Unicode
 
-newtype ConcreteT m a = ConcreteT (Env → Store → m (Res a)) deriving (Functor)
+newtype ConcreteT m a = ConcreteT (Env → Store → m (Either Exception (a, Store)))
+    deriving
+        ( Functor
+        , Applicative
+        , Monad
+        , M.MonadError Exception
+        , M.MonadReader Env
+        , M.MonadState Store
+        )
+        via M.ReaderT Env (M.StateT Store (M.ExceptT Exception m))
+instance M.MonadTrans ConcreteT where
+    lift ma =
+        let
+            a = M.lift @(M.ExceptT Exception) ma
+            b = M.lift @(M.StateT Store) a
+            c = M.lift @(M.ReaderT Env) b
+         in
+            coerce c
 
-interpreter ∷ (Monad m) ⇒ (Env → Store → m a) → ConcreteT m a
-interpreter f = ConcreteT \e s → do
-    x ← f e s
-    ω (Step x s)
+runConcreteT ∷ ConcreteT m a → m (Either Exception (a, Store))
+runConcreteT (ConcreteT f) = f ε₁ ε₁
 
-store ∷ ConcreteT Identity a → Either Store Exception
-store (ConcreteT f) = case runIdentity (f ε₁ ε₁) of
-    Step _ s → Left s
-    Stop exc → Right exc
-
-value ∷ ConcreteT Identity a → Either a Exception
-value (ConcreteT f) = case runIdentity (f ε₁ ε₁) of
-    Step v _ → Left v
-    Stop exc → Right exc
+runConcrete ∷ ConcreteT M.Identity a → Either Exception (a, Store)
+runConcrete = M.runIdentity ∘ runConcreteT
 
 instance (Monad m) ⇒ Interpreter (ConcreteT m) where
     op2 o lhs rhs = do
@@ -40,43 +48,21 @@ instance (Monad m) ⇒ Interpreter (ConcreteT m) where
                 | o == Plus → ω ⎴ NumV ⎴ n₀ + n₁
                 | o == Minus → ω ⎴ NumV ⎴ n₀ - n₁
                 | o == Times → ω ⎴ NumV ⎴ n₀ * n₁
-                | o == Divide, n₁ == 0 → throwError (DivisionByZero lhs rhs)
+                | o == Divide, n₁ == 0 → M.throwError (DivisionByZero lhs rhs)
                 | o == Divide → ω ⎴ NumV ⎴ div n₀ n₁
             (TxtV t₀, TxtV t₁)
                 | o == Plus → ω ⎴ TxtV ⎴ t₀ ⋄ t₁
             (TxtV t₀, NumV n₁)
                 | o == Plus → ω ⎴ TxtV ⎴ t₀ ⋄ show n₁
-            _ → throwError (InvalidArgsToOperator lhs o rhs)
+            _ → M.throwError (InvalidArgsToOperator lhs o rhs)
     if' tst then' else' = do
         tst' ← tst
         case tst' of
             NumV n | n == 0 → else' | otherwise → then'
-            _ → throwError (BranchOnNonNumeric tst')
-    env = interpreter (\e _ → ω e)
-    inEnv ρ = γ \m₁ (_ ∷ Env) s → m₁ ρ (Store s) ∷ m (Res Val)
-    update (loc, val) = γ \(_ ∷ Env) s → ω @m (Step () (Store ⎴ insert loc val s))
+            _ → M.throwError (BranchOnNonNumeric tst')
     find loc = γ \(_ ∷ Env) s → case s !? loc of
-        Just v → ω @m (Step v (Store s))
-        Nothing → ω @m (Stop ⎴ InvalidLoc loc (Store s))
-    alloc _ = interpreter (\_ (Store s) → ω (size s))
-
-instance (Monad m) ⇒ Applicative (ConcreteT m) where
-    pure x = ConcreteT \_ s → pure ⎴ Step x s
-    (<*>) = ap
-instance (Monad m) ⇒ Monad (ConcreteT m) where
-    (ConcreteT m₁) >>= f = ConcreteT \e s₁ → do
-        res ← m₁ e s₁
-        case res of
-            Step a s₂ → let ConcreteT m₂ = f a in m₂ e s₂
-            Stop exc → ω (Stop exc)
-instance (Monad m) ⇒ MonadError Exception (ConcreteT m) where
-    throwError exc = ConcreteT \_ _ → ω (Stop exc)
-    catchError (ConcreteT m₁) f = ConcreteT \e s₁ → do
-        res ← m₁ e s₁
-        case res of
-            Step a s₂ → ω (Step a s₂)
-            Stop exc → let ConcreteT m₂ = f exc in m₂ e s₁
-instance MonadTrans ConcreteT where
-    lift m = ConcreteT \_ s → do
-        v ← m
-        ω ⎴ Step v s
+        Just v → ω @m (Right (v, (Store s)))
+        Nothing → ω @m (Left ⎴ InvalidLoc loc (Store s))
+    alloc _ = do
+        Store s ← M.get
+        pure (size s)
