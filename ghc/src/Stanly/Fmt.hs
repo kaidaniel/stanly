@@ -7,7 +7,7 @@ import Data.Char (isSpace, toLower)
 import Data.List (intercalate, intersperse)
 import Data.Map (toAscList)
 import Data.Set qualified as Set (Set, toList)
-import Stanly.Eval (Env (..), Exception, Store (..), Val (..))
+import Stanly.Eval (Env (..), Exception, Store (..), Trace (..), Val (..))
 import Stanly.Language (Expr (..), Op2 (..))
 
 import Stanly.Unicode
@@ -182,3 +182,9 @@ instance Fmt Expr where
         paren₁ = \case App f x → paren₁ f ⊹ " " ⊹ x; e → "" ⊹ e
         paren₂ = \case Rec x fn → k "μ" x fn; Lam x fn → k "λ" x fn; e → "" ⊹ e
         k sym x fn = sym ⊹ (Bold ⊹ x) ⊹ "." ⊹ paren₂ fn
+
+instance Fmt Trace where
+    fmt (Trace li) = κ₁ (φ ln (zip li [1 ∷ Integer ..]))
+      where
+        low3 e = [toLower x | x ← take 3 ⎴ show e] <> "  "
+        ln ((e, ρ, σ), i) = (Dim ⊹ i ⊹\ low3 e) ⊹ " " ⊹ (e ⊹\ ((Dim ⊹ "envir ") ⊹ ρ) ⊹\ σ) ⊹ "\n"

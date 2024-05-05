@@ -1,7 +1,7 @@
 module Stanly.Eval (
     eval,
     trace,
-    Trace,
+    Trace (..),
     Val (..),
     Env (..),
     Exception (..),
