@@ -4,9 +4,10 @@ module Stanly.Fmt (FmtStr, FmtCmd (..), (|-|), (⊹), Fmt (fmt), bwText, ttyText
 
 import Data.Bifunctor (Bifunctor (bimap))
 import Data.Char (isSpace, toLower)
+import Data.Coerce
 import Data.List (intercalate, intersperse)
 import Data.Map (toAscList)
-import Data.Set qualified as Set (Set, toList)
+import Data.Set qualified as Set
 import Stanly.Eval (Env (..), Exception, Store (..), Trace (..), Val (..))
 import Stanly.Language (Expr (..), Op2 (..))
 
@@ -143,17 +144,20 @@ instance Fmt Val where
         TxtV s → Dim ⊹ s
 
 instance Fmt Env where
-    fmt (Env r) = (Yellow ⊹ "Γ⟦") ⊹ fmt₁ (r, "") ⊹ (Yellow ⊹ "⟧")
+    fmt r = (Yellow ⊹ "Γ⟦") ⊹ fmt2 r "" ⊹ (Yellow ⊹ "⟧")
       where
-        fmt₁ = \case
-            ((v, a) : r₁, sep) → sep ⊹ v ⊹ ": " ⊹ (Yellow ⊹ a) ⊹ fmt₁ (r₁, ", ")
-            ([], _) → ε₁
+        fmt₁ ∷ [(String, Int)] → String → FmtStr
+        fmt₁ = \cases
+            ((v, a) : r₁) sep → sep ⊹ v ⊹ ": " ⊹ (Yellow ⊹ a) ⊹ fmt₁ r₁ ", "
+            [] _ → ε₁
+        fmt2 ∷ Env → String → FmtStr
+        fmt2 = coerce fmt₁
 
 instance Fmt Exception where
     fmt e = fmt (show e)
 
 instance Fmt Store where
-    fmt (Store σ) = κ₁ ⎴ intersperse (fmt '\n') items
+    fmt (MkStore σ) = κ₁ ⎴ intersperse (fmt '\n') items
       where
         f₁ loc = (Dim ⊹ "store ") ⊹ (Yellow ⊹ (padded ⎴ bwText loc))
         f₂ val = Dim ⊹ [toLower c | c ← take 3 (show val)] ⊹ " " ⊹ val

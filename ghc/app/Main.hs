@@ -1,5 +1,5 @@
+import Control.Monad.Identity qualified as M
 import Control.Monad.Writer qualified as M
-import Data.Function (fix)
 import Data.List (intersperse)
 import Options.Applicative (
     Parser,
@@ -21,7 +21,7 @@ import Options.Applicative (
  )
 import Options.Applicative qualified as Opt (value)
 import Stanly.Concrete qualified as C
-import Stanly.Eval qualified as E
+import Stanly.Eval as E
 import Stanly.Fmt (Fmt (..), FmtStr, bwText, ttyText, (⊹), (⊹\))
 import Stanly.Language (Expr)
 import Stanly.Parser (parser)
@@ -40,6 +40,7 @@ data Options = Options
       , astO
       , noColourO
       , traceO
+      , deadCodeO
       , sectionHeadersO ∷
         Bool
     , semanticsO ∷ Semantics
@@ -56,6 +57,7 @@ options =
             ⊛ flag "ast" 'a' "Show the abstract syntax tree used by the interpreter."
             ⊛ flag "no-colour" 'c' "Don't colourise output."
             ⊛ flag "trace" 't' "Show program configurations for each step of evaluation."
+            ⊛ flag "dead-code" 'd' "Show subexpressions subexpressions that weren't visited."
             ⊛ flag
                 "section-headers"
                 'i'
@@ -84,19 +86,16 @@ opts =
 outputs ∷ Options → Expr → [FmtStr]
 outputs Options{..} ast =
     let
-        concrete ∷ Either E.Exception (E.Val, E.Store)
-        concrete = C.runConcrete (fix E.eval ast)
-        trace ∷ E.Trace
-        trace = (M.execWriter ⎴ C.runConcreteT ⎴ fix (E.trace E.eval) ast)
-
+        concreteRes = M.runIdentity ⎴ C.runConcreteT (mix eval ast)
+        traceRes = (M.execWriter ⎴ C.runConcreteT ⎴ mix (trace .> eval) ast)
         m ++? (b, title, m₁) = if b then m ++ [if sectionHeadersO then "== " ⊹ title ⊹\ m₁ else m₁] else m
         sections =
             ( case semanticsO of
                 Concrete →
                     ε₁
-                        ++? (not noValueO, "value", fmt ⎴ (φ π₁ concrete))
-                        ++? (storeO, "store", fmt ⎴ (φ π₂ concrete))
-                        ++? (traceO, "trace", fmt trace)
+                        ++? (not noValueO, "value", fmt ⎴ (φ π₁ concreteRes))
+                        ++? (storeO, "store", fmt ⎴ (φ π₂ concreteRes))
+                        ++? (traceO, "trace", fmt traceRes)
                 Abstract →
                     ε₁
             )

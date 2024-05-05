@@ -12,4 +12,4 @@ let d = (x / y);
 let x = 1 in let x = 2 in
 let myvar = 1 in ((fn myvar.(myvar + myvar)) 3)
 
-// CHECK: NotAFunction {expr = App (Num 0) (Num 1), fval = NumV 0}
+// CHECK: NotAFunction {expr = App (Num 0) (Num 1), val = NumV 0}
