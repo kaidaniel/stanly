@@ -114,7 +114,9 @@ instance Fmt FmtStr where fmt = id
 instance Fmt Char where fmt = display ∘ ω
 instance Fmt String where fmt = display
 instance Fmt [FmtStr] where fmt = κ₁
-instance (Fmt a) ⇒ Fmt (Set.Set a) where fmt = fmt . (map fmt) . Set.toList
+instance (Fmt a) ⇒ Fmt (Set.Set a) where
+    fmt s = fmt (intersperse (fmt "\n") [fmt x | x ← Set.toList s])
+
 instance Fmt FmtCmd where fmt cmd = Str cmd ""
 instance (Fmt a, Fmt b) ⇒ Fmt (Either a b) where
     fmt = \case Left x → fmt x; Right x → fmt x
@@ -142,6 +144,7 @@ instance Fmt Val where
         LamV x body r → "λ" ⊹ (Bold ⊹ x) ⊹ "." ⊹ body ⊹ " " ⊹ r
         NumV n → Dim ⊹ n
         TxtV s → Dim ⊹ s
+        x → Dim ⊹ (show x)
 
 instance Fmt Env where
     fmt r = (Yellow ⊹ "Γ⟦") ⊹ fmt2 r "" ⊹ (Yellow ⊹ "⟧")

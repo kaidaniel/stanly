@@ -9,8 +9,7 @@ let h = mu x.fn y.(recursive dead code);
 
 (f 0)
 
+// CHECK: (dead code)
 // CHECK: (unreachable branch)
-// CHECK: (unreachable lambda body (a b c))
-// CHECK: (dead code)
-// CHECK: (dead code)
 // CHECK: (recursive dead code)
+// CHECK: (unreachable lambda body (a b c))

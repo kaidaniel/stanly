@@ -1,37 +1,57 @@
+{-# LANGUAGE UndecidableInstances #-}
+
 module Stanly.Abstract where
 
--- import Stanly.Eval
+import Control.Applicative
+import Control.Monad as M
+import Control.Monad.Except as M
+import Control.Monad.Reader as M
+import Control.Monad.State as M
+import Data.Bits (xor)
+import Data.List (foldl')
+import Data.Map qualified as Map
+import ListT (ListT)
+import Stanly.Concrete (concreteIsTruthy, concreteOp2)
+import Stanly.Eval
+import Stanly.Language
+import Stanly.Unicode
 
--- -- import Control.Monad.Trans.Maybe(MaybeT)
--- import Control.Monad (ap)
--- import Control.Monad.Except (MonadError (..))
+type AbstractTRep m = M.ReaderT Env (M.StateT Store (M.ExceptT Exception (ListT m)))
 
--- -- import Control.Monad.Identity (Identity, runIdentity)
--- import Control.Monad.Trans (MonadTrans (..))
+data Extremum = Top | Bottom
+newtype AbstractT m a = AbstractT (Env → Store → ListT m (Either Exception (a, Store)))
+    deriving
+        (Functor, Applicative, Monad, MonadExc, MonadEnv, MonadStore, Alternative, MonadPlus)
+        via AbstractTRep m
 
--- -- import Stanly.Eval
--- import Stanly.Unicode
+truncateV ∷ Val → Val
+truncateV = \case
+    NumV n
+        | n > 100 → TopV
+        | n < -100 → TopV
+        | otherwise → NumV n
+    TxtV s
+        | length s > 100 → TopV
+        | otherwise → TxtV s
+    _ → TopV
 
--- newtype AbsRes a =
-
--- newtype AbstractT m a = AbstractT (Env → Store → m [_ a])
---     deriving (Functor)
-
--- instance (Monad m) ⇒ Applicative (AbstractT m) where
---     pure x = AbstractT \_ s → pure ⎴ [Step x s]
---     (<*>) = ap
--- instance (Monad m) ⇒ Monad (AbstractT m) where
---     (AbstractT m₁) >>= f = AbstractT \e s₁ → do
---         res ← m₁ e s₁
---         undefined
--- instance (Monad m) ⇒ MonadError Exception (AbstractT m) where
---     throwError exc = AbstractT \_ _ → ω (Stop exc)
---     catchError (AbstractT m₁) f = AbstractT \e s₁ → do
---         res ← m₁ e s₁
---         case res of
---             Step a s₂ → ω (Step a s₂)
---             Stop exc → let AbstractT m₂ = f exc in m₂ e s₁
--- instance MonadTrans AbstractT where
---     lift m = AbstractT \_ s → do
---         v ← m
---         ω ⎴ [Step v s]
+instance (Monad m) ⇒ Interpreter (AbstractT m) where
+    op2 = \cases
+        Divide lhs TopV →
+            ω TopV
+                ⫶ throwError (DivisionByZero lhs TopV)
+                ⫶ throwError (InvalidArgsToOperator lhs Divide TopV)
+        o lhs rhs → φ truncateV (concreteOp2 o lhs rhs) ⫶ err
+          where
+            err
+                | lhs == TopV || rhs == TopV = throwError (InvalidArgsToOperator lhs o rhs)
+                | otherwise = εₘ
+    isTruthy = \case
+        TopV → (ω True) ⫶ (ω False) ⫶ throwError (BranchOnNonNumeric TopV)
+        x → concreteIsTruthy x
+    find loc =
+        AbstractT ⎴ \cases
+            _ s
+                | Just v ← (γ s) Map.!? loc → ω ⎴ ω (v, s)
+                | otherwise → ω ⎴ throwError (InvalidLoc loc s)
+    alloc var = ω (foldl' (\h c → 33 * h `xor` fromEnum c) 5381 var) -- DJB2 hashing

@@ -1,6 +1,7 @@
 module Stanly.Eval (
     eval,
     trace,
+    dead,
     Trace (..),
     Val (..),
     Env (..),
@@ -19,7 +20,8 @@ import Control.Monad.Reader qualified as M
 import Control.Monad.State qualified as M
 import Control.Monad.Writer qualified as M
 import Data.Map qualified as Map
-import Stanly.Language (Expr (..), Op2, Variable)
+import Data.Set qualified as Set
+import Stanly.Language (Expr (..), Op2, Variable, subexprs)
 import Stanly.Unicode
 
 type Loc = Int
@@ -31,6 +33,7 @@ data Val
     = LamV Variable Expr Env
     | NumV Integer
     | TxtV String
+    | TopV
     deriving (Eq, Show)
 
 type MonadExc = M.MonadError Exception
@@ -39,7 +42,7 @@ type MonadStore = M.MonadState Store
 
 class (MonadExc m, MonadEnv m, MonadStore m) ⇒ Interpreter m where
     op2 ∷ Op2 → Val → Val → m Val
-    if' ∷ m Val → m Val → m Val → m Val
+    isTruthy ∷ Val → m Bool
     find ∷ Loc → m Val
     alloc ∷ Variable → m Loc
 
@@ -53,7 +56,10 @@ eval _ call = \case
         case lookup x (γ ρ) of
             Just loc → find loc
             Nothing → M.throwError ⎴ UndefinedName (Var x) ρ
-    If' tst then' else' → if' (call tst) (call then') (call else')
+    If' tst then' else' → do
+        t ← call tst
+        b ← isTruthy t
+        if b then call then' else call else'
     Op2 o e₁ e₂ → do
         lhs ← call e₁
         rhs ← call e₂
@@ -84,7 +90,14 @@ data Exception
     | InvalidLoc {loc ∷ Loc, store ∷ Store}
     | UndefinedName {expr ∷ Expr, env ∷ Env}
     | NotAFunction {expr ∷ Expr, val ∷ Val}
+    | Exception
     deriving (Eq, Show)
+
+instance Semigroup Exception where
+    a <> _ = a
+
+instance Monoid Exception where
+    mempty = Exception
 
 type Mixin s = s → s → s
 
@@ -103,3 +116,11 @@ trace cc _ = \expr → do
     s ← M.get
     M.tell (Trace [(expr, r, s)])
     cc expr
+
+dead ∷ Trace → Expr → Set.Set Expr
+dead (Trace t) ast = Set.fromList (withoutSubExprs (Set.toList notVisited))
+  where
+    visited = Set.fromList (map (\(e, _, _) → e) t)
+    allExprs = Set.fromList (subexprs ast)
+    withoutSubExprs li = [x | x ← li, x `notElem` (li >>= subexprs)]
+    notVisited = Set.difference allExprs visited

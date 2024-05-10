@@ -57,7 +57,7 @@ options =
             ⊛ flag "ast" 'a' "Show the abstract syntax tree used by the interpreter."
             ⊛ flag "no-colour" 'c' "Don't colourise output."
             ⊛ flag "trace" 't' "Show program configurations for each step of evaluation."
-            ⊛ flag "dead-code" 'd' "Show subexpressions subexpressions that weren't visited."
+            ⊛ flag "dead-code" 'e' "Show subexpressions that weren't visited."
             ⊛ flag
                 "section-headers"
                 'i'
@@ -88,6 +88,7 @@ outputs Options{..} ast =
     let
         concreteRes = M.runIdentity ⎴ C.runConcreteT (mix eval ast)
         traceRes = (M.execWriter ⎴ C.runConcreteT ⎴ mix (trace .> eval) ast)
+        deadRes = dead traceRes ast
         m ++? (b, title, m₁) = if b then m ++ [if sectionHeadersO then "== " ⊹ title ⊹\ m₁ else m₁] else m
         sections =
             ( case semanticsO of
@@ -96,6 +97,7 @@ outputs Options{..} ast =
                         ++? (not noValueO, "value", fmt ⎴ (φ π₁ concreteRes))
                         ++? (storeO, "store", fmt ⎴ (φ π₂ concreteRes))
                         ++? (traceO, "trace", fmt traceRes)
+                        ++? (deadCodeO, "dead code", fmt deadRes)
                 Abstract →
                     ε₁
             )
