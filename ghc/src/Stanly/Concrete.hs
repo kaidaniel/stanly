@@ -52,4 +52,4 @@ instance (Monad m) ⇒ Interpreter (ConcreteT m) where
             Nothing → M.throwError (InvalidLoc loc (MkStore s))
     alloc _ = do
         (MkStore s) ← M.get
-        pure (size s)
+        pure (show ⎴ size s)

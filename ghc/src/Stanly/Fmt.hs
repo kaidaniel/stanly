@@ -149,7 +149,7 @@ instance Fmt Val where
 instance Fmt Env where
     fmt r = (Yellow ⊹ "Γ⟦") ⊹ fmt2 r "" ⊹ (Yellow ⊹ "⟧")
       where
-        fmt₁ ∷ [(String, Int)] → String → FmtStr
+        fmt₁ ∷ [(String, String)] → String → FmtStr
         fmt₁ = \cases
             ((v, a) : r₁) sep → sep ⊹ v ⊹ ": " ⊹ (Yellow ⊹ a) ⊹ fmt₁ r₁ ", "
             [] _ → ε₁

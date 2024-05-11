@@ -7,8 +7,6 @@ import Control.Monad as M
 import Control.Monad.Except as M
 import Control.Monad.Reader as M
 import Control.Monad.State as M
-import Data.Bits (xor)
-import Data.List (foldl')
 import Data.Map qualified as Map
 import ListT (ListT)
 import Stanly.Concrete (concreteIsTruthy, concreteOp2)
@@ -54,4 +52,4 @@ instance (Monad m) ⇒ Interpreter (AbstractT m) where
             _ s
                 | Just v ← (γ s) Map.!? loc → ω ⎴ ω (v, s)
                 | otherwise → ω ⎴ throwError (InvalidLoc loc s)
-    alloc var = ω (foldl' (\h c → 33 * h `xor` fromEnum c) 5381 var) -- DJB2 hashing
+    alloc var = ω var

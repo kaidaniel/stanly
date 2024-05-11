@@ -24,7 +24,7 @@ import Data.Set qualified as Set
 import Stanly.Language (Expr (..), Op2, Variable, subexprs)
 import Stanly.Unicode
 
-type Loc = Int
+type Loc = String
 
 newtype Env = MkEnv [(Variable, Loc)]
     deriving (Eq, Ord, Semigroup, Monoid, Show)
