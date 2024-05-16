@@ -38,8 +38,8 @@ concreteOp2 o lhs rhs = do
             | o == Plus → ω ⎴ TxtV ⎴ t₀ ⋄ t₁
         (TxtV t₀, NumV n₁)
             | o == Plus → ω ⎴ TxtV ⎴ t₀ ⋄ show n₁
-        (TopV, _) → ω TopV
-        (_, TopV) → ω TopV
+        (AnyV, _) → ω AnyV
+        (_, AnyV) → ω AnyV
         _ → M.throwError (InvalidArgsToOperator lhs o rhs)
 
 concreteIsTruthy ∷ (MonadExc m) ⇒ Val → m Bool

@@ -166,7 +166,6 @@ instance (Fmt val) ⇒ Fmt (A.Abstracted val) where
         A.Precise x → fmt x
         A.OneOf s → fmt s
         A.Top → fmt "⊤"
-        A.Bottom → fmt "⊥"
 
 instance Fmt A.Store where
     fmt (A.MkStore σ) = κ₁ ⎴ intersperse (fmt '\n') items

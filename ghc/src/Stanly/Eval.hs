@@ -31,7 +31,7 @@ data Val
     = LamV Variable Expr Env
     | NumV Integer
     | TxtV String
-    | TopV
+    | AnyV
     deriving (Eq, Ord, Show)
 
 type MonadExc = M.MonadError Exception

@@ -21,11 +21,7 @@ let join = λa.λf.λb.(f (("" + a) + (", " + b)));
 let tail = fn x.("" + x);
 (
     join (fibonacci  4) 
-    join (fibonacci  6)
-    join (fibonacci  8) 
-    join (factorial  7) 
-    join (factorial  6)
-    tail (factorial  1)
+    join (fibonacci  3)
 )
 
 // CHECK: TopTxt

@@ -20,6 +20,7 @@ import Options.Applicative (
     switch,
  )
 import Options.Applicative qualified as Opt (value)
+import Stanly.Abstract qualified as A
 import Stanly.Concrete qualified as C
 import Stanly.Eval as E
 import Stanly.Fmt (Fmt (..), FmtStr, bwText, ttyText, (⊹), (⊹\))
@@ -89,6 +90,8 @@ outputs Options{..} ast =
         concreteRes = M.runIdentity ⎴ C.runConcreteT (mix eval ast)
         traceRes = (M.execWriter ⎴ C.runConcreteT ⎴ mix (trace .> eval) ast)
         deadRes = dead traceRes ast
+        abstractValues ∷ [Val]
+        abstractValues = M.runIdentity (A.values (mix eval ast))
         m ++? (b, title, m₁) = if b then m ++ [if sectionHeadersO then "== " ⊹ title ⊹\ m₁ else m₁] else m
         sections =
             ( case semanticsO of
@@ -100,6 +103,7 @@ outputs Options{..} ast =
                         ++? (deadCodeO, "dead code", fmt deadRes)
                 Abstract →
                     ε₁
+                        ++? (not noValueO, "abstract", fmt (intersperse (fmt "\n") (map fmt abstractValues)))
             )
                 ++? (desugaredO, "desugared", fmt ast)
                 ++? (astO, "ast", fmt (show ast))
