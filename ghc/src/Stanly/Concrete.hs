@@ -1,19 +1,24 @@
 {-# LANGUAGE UndecidableInstances #-}
 
-module Stanly.Concrete (runConcreteT, ConcreteT, concreteOp2, concreteIsTruthy) where
+module Stanly.Concrete (runConcreteT, ConcreteT, concreteOp2, concreteIsTruthy, Store (..)) where
 
 import Control.Monad.Except qualified as M
 import Control.Monad.Reader qualified as M
 import Control.Monad.State qualified as M
 import Control.Monad.Writer qualified as M
-import Data.Map (size, (!?))
+import Data.Map qualified as Map
 import Stanly.Eval
 import Stanly.Language
 import Stanly.Unicode
 
+newtype Store = MkStore (Map.Map Loc Val)
+    deriving (Eq, Semigroup, Monoid, Show)
+
 type ConcreteTRep m = M.ReaderT Env (M.StateT Store (M.ExceptT Exception m))
 newtype ConcreteT m a = ConcreteT (Env → Store → m (Either Exception (a, Store)))
-    deriving (Functor, Applicative, Monad, MonadExc, MonadEnv, MonadStore) via ConcreteTRep m
+    deriving
+        (Functor, Applicative, Monad, MonadExc, MonadEnv, M.MonadState Store)
+        via ConcreteTRep m
 
 deriving via (ConcreteTRep m) instance (M.MonadWriter w m) ⇒ M.MonadWriter w (ConcreteT m)
 
@@ -47,9 +52,10 @@ instance (Monad m) ⇒ Interpreter (ConcreteT m) where
     op2 = concreteOp2
     isTruthy = concreteIsTruthy
     find loc = ConcreteT \_ (MkStore s) →
-        ω ⎴ case s !? loc of
+        ω ⎴ case s Map.!? loc of
             Just v → ω (v, (MkStore s))
-            Nothing → M.throwError (InvalidLoc loc (MkStore s))
+            Nothing → M.throwError (InvalidLoc loc)
+    ext loc val = M.modify ⎴ γ \s → Map.insert loc val s
     alloc _ = do
         (MkStore s) ← M.get
-        pure (show ⎴ size s)
+        pure (show ⎴ Map.size s)

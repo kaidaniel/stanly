@@ -8,7 +8,9 @@ import Data.Coerce
 import Data.List (intercalate, intersperse)
 import Data.Map (toAscList)
 import Data.Set qualified as Set
-import Stanly.Eval (Env (..), Exception, Store (..), Trace (..), Val (..))
+import Stanly.Abstract qualified as A
+import Stanly.Concrete (Store (..))
+import Stanly.Eval (Env (..), Exception, Trace (..), Val (..))
 import Stanly.Language (Expr (..), Op2 (..))
 
 import Stanly.Unicode
@@ -159,8 +161,15 @@ instance Fmt Env where
 instance Fmt Exception where
     fmt e = fmt (show e)
 
-instance Fmt Store where
-    fmt (MkStore σ) = κ₁ ⎴ intersperse (fmt '\n') items
+instance (Fmt val) ⇒ Fmt (A.Abstracted val) where
+    fmt = \case
+        A.Precise x → fmt x
+        A.OneOf s → fmt s
+        A.Top → fmt "⊤"
+        A.Bottom → fmt "⊥"
+
+instance Fmt A.Store where
+    fmt (A.MkStore σ) = κ₁ ⎴ intersperse (fmt '\n') items
       where
         f₁ loc = (Dim ⊹ "store ") ⊹ (Yellow ⊹ (padded ⎴ bwText loc))
         f₂ val = Dim ⊹ [toLower c | c ← take 3 (show val)] ⊹ " " ⊹ val
@@ -172,6 +181,18 @@ instance Fmt Store where
             s@[_, _, _] → " " ⋄ s
             s → s
 
+instance Fmt Stanly.Concrete.Store where
+    fmt (Stanly.Concrete.MkStore σ) = κ₁ ⎴ intersperse (fmt '\n') items
+      where
+        f₁ loc = (Dim ⊹ "store ") ⊹ (Yellow ⊹ (padded ⎴ bwText loc))
+        f₂ val = Dim ⊹ [toLower c | c ← take 3 (show val)] ⊹ " " ⊹ val
+        items = φ (\(l, r) → l ⊹ ' ' ⊹ r) ⎴ φ (bimap f₁ f₂) (toAscList σ)
+        padded = \case
+            [] → "    "
+            s@[_] → "   " ⋄ s
+            s@[_, _] → "  " ⋄ s
+            s@[_, _, _] → " " ⋄ s
+            s → s
 instance Fmt Op2 where
     fmt = ("" ⊹) ∘ \case Plus → "+"; Minus → "-"; Times → "*"; Divide → "/"
 
@@ -190,7 +211,7 @@ instance Fmt Expr where
         paren₂ = \case Rec x fn → k "μ" x fn; Lam x fn → k "λ" x fn; e → "" ⊹ e
         k sym x fn = sym ⊹ (Bold ⊹ x) ⊹ "." ⊹ paren₂ fn
 
-instance Fmt Trace where
+instance (Fmt a) ⇒ Fmt (Trace a) where
     fmt (Trace li) = κ₁ (φ ln (zip li [1 ∷ Integer ..]))
       where
         low3 e = [toLower x | x ← take 3 ⎴ show e] <> "  "
