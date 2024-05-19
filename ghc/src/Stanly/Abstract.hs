@@ -85,15 +85,17 @@ values ∷ [Either Exception (Val, Store)] → [Either Exception Val]
 values res = Set.toList (Set.fromList [fmap_ π₁ x | x ← res])
 
 truncateV ∷ Val → Val
-truncateV = \case
-    E.Num n
-        | n > 100 → E.Any
-        | n < -100 → E.Any
-        | otherwise → E.Num n
-    E.Txt s
-        | length s > 100 → E.Any
-        | otherwise → E.Txt s
-    _ → E.Any
+truncateV =
+    let bound = 1000
+     in \case
+            E.Num n
+                | n > bound → E.Any
+                | n < -bound → E.Any
+                | otherwise → E.Num n
+            E.Txt s
+                | length s > (fromIntegral bound) → E.Any
+                | otherwise → E.Txt s
+            _ → E.Any
 
 instance (Monad m) ⇒ Interpreter (AbstractT m) where
     op2 = \cases

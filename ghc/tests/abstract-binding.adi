@@ -1,0 +1,8 @@
+// RUN: stanly -c -m abstract < %s | FileCheck %s
+let f = fn x. x;
+let _ = (f 1);
+(f 2)
+
+//CHECK: 1
+//CHECK: 2
+//CHECK-NOT: {{.}}
