@@ -7,10 +7,11 @@ import Control.Monad.Except as M
 import Control.Monad.Reader as M
 import Control.Monad.State as M
 import Data.Map qualified as Map
+import Data.Maybe (catMaybes)
 import Data.Set qualified as Set
-import ListT (ListT (..), fromFoldable, toList)
+import ListT
 import Stanly.Concrete (concreteIsTruthy, concreteOp2)
-import Stanly.Eval
+import Stanly.Eval as E
 import Stanly.Language
 import Stanly.Unicode
 
@@ -18,10 +19,18 @@ data Abstracted val
     = Precise (Either Exception val)
     | OneOf (Set.Set (Either Exception val))
     | Top
-    deriving (Eq, Show)
+    deriving (Eq, Show, Ord)
+
+prune ∷ Abstracted Val → Abstracted Val
+prune = \case
+    Precise x → Precise (φ E.prune x)
+    OneOf s → OneOf (Set.map (\x → φ E.prune x) s)
+    Top → Top
 
 instance (Ord val) ⇒ Semigroup (Abstracted val) where
-    Precise a <> Precise b = OneOf (Set.singleton a <> Set.singleton b)
+    Precise a <> Precise b
+        | a == b = Precise a
+        | otherwise = OneOf (Set.singleton a <> Set.singleton b)
     Top <> _ = Top
     _ <> Top = Top
     OneOf a <> OneOf b = OneOf (a <> b)
@@ -29,86 +38,97 @@ instance (Ord val) ⇒ Semigroup (Abstracted val) where
     OneOf a <> Precise b = OneOf (a <> Set.singleton b)
 
 newtype Store = MkStore (Map.Map Loc (Abstracted Val))
-    deriving (Eq, Semigroup, Monoid, Show)
+    deriving (Eq, Semigroup, Monoid, Show, Ord)
 
 type AbstractTRep m = M.ReaderT Env (M.StateT Store (M.ExceptT Exception (ListT m)))
 
 newtype AbstractT m a = AbstractT (Env → Store → ListT m (Either Exception (a, Store)))
     deriving
-        ( Functor
-        , Applicative
-        , Monad
-        , MonadExc
-        , MonadEnv
-        , M.MonadState Store
-        )
+        (Functor, Applicative, Monad, MonadEnv, MonadExc, M.MonadState Store)
         via AbstractTRep m
 
 instance (Monad m) ⇒ Alternative (AbstractT m) where
     empty = AbstractT \_ _ → ε₁
     (AbstractT f) <|> (AbstractT g) = AbstractT \e s → f e s <> g e s
 
-runAbstractT ∷ (Monad m) ⇒ AbstractT m a → m [Either Exception (a, Store)]
-runAbstractT (AbstractT f) = ListT.toList (f ε₁ ε₁)
-
-joinedStore ∷ (Monad m) ⇒ AbstractT m a → m Store
-joinedStore m = fmap κ₁ stores
+nubM ∷ ∀ m a. (Monad m, Ord a) ⇒ ListT m a → ListT m a
+nubM m1 = ListT.unfoldM f (φ Set.toList ⎴ φ Set.fromList ⎴ ListT.toList m1)
   where
-    stores = do
-        x ← runAbstractT m
-        pure do
-            li ← x
-            case li of
-                Left _ → ε₁
-                Right (_, store) → ω store
+    f ∷ m [a] → m (Maybe (a, m [a]))
+    f m2 = do
+        els ← m2
+        case els of
+            [] → ω Nothing
+            x : xs → ω ⎴ Just (x, ω xs)
 
-values ∷ (Monad m) ⇒ AbstractT m Val → m [Val]
-values m = do
-    x ← runAbstractT m
-    pure do
-        li ← x
-        case li of
-            Left _ → ε₁
-            Right (val, _) → ω val
+runAbstractT ∷ (Monad m, Ord a) ⇒ AbstractT m a → m [Either Exception (a, Store)]
+runAbstractT (AbstractT f) = ListT.toList (nubM (f ε₁ ε₁))
+
+joinStores ∷ [Either Exception (Val, Store)] → Store
+joinStores r = γ catS stores
+  where
+    stores = (catMaybes (map (\case Left _ → Nothing; Right (_, s) → Just s) r))
+    catS ∷ [Map.Map Loc (Abstracted Val)] → Map.Map Loc (Abstracted Val)
+    catS = \case
+        [] → ε₁
+        [store1, store2] → Map.unionWith (<>) store1 store2
+        x : xs → catS [x, catS xs]
+
+store ∷ [Either Exception (Val, Store)] → Store
+store result = let MkStore s = (joinStores result) in MkStore (Map.map Stanly.Abstract.prune s)
+
+-- values ∷ (Monad m) ⇒ m [Either Exception (Val, Store)] → m [Either Exception Val]
+-- values m =
+--     φ (Set.toList ∘ Set.fromList) ⎴ do
+--         x ← m
+--         pure do
+--             li ← x
+--             case li of
+--                 Left e → ω (Left e)
+--                 Right (val, _) → ω (Right val)
+
+values ∷ [Either Exception (Val, Store)] → [Either Exception Val]
+values res = Set.toList (Set.fromList [fmap_ π₁ x | x ← res])
 
 truncateV ∷ Val → Val
 truncateV = \case
-    NumV n
-        | n > 100 → AnyV
-        | n < -100 → AnyV
-        | otherwise → NumV n
-    TxtV s
-        | length s > 100 → AnyV
-        | otherwise → TxtV s
-    _ → AnyV
+    E.Num n
+        | n > 100 → E.Any
+        | n < -100 → E.Any
+        | otherwise → E.Num n
+    E.Txt s
+        | length s > 100 → E.Any
+        | otherwise → E.Txt s
+    _ → E.Any
 
 instance (Monad m) ⇒ Interpreter (AbstractT m) where
     op2 = \cases
-        Divide lhs AnyV →
-            ω AnyV
-                ⫶ throwError (DivisionByZero lhs AnyV)
-                ⫶ throwError (InvalidArgsToOperator lhs Divide AnyV)
+        Divide lhs E.Any →
+            ω E.Any
+                ⫶ throwError (DivisionByZero lhs E.Any)
+                ⫶ throwError (InvalidArgsToOperator lhs Divide E.Any)
         o lhs rhs → φ truncateV (concreteOp2 o lhs rhs) ⫶ err
           where
             err
-                | lhs == AnyV || rhs == AnyV = throwError (InvalidArgsToOperator lhs o rhs)
+                | lhs == E.Any || rhs == E.Any = throwError (InvalidArgsToOperator lhs o rhs)
                 | otherwise = εₐ
     isTruthy = \case
-        AnyV → (ω True) ⫶ (ω False) ⫶ throwError (BranchOnNonNumeric AnyV)
+        E.Any → (ω True) ⫶ (ω False) ⫶ throwError (BranchOnNonNumeric E.Any)
         x → concreteIsTruthy x
     find loc = AbstractT \_ s →
         case (γ s) Map.!? loc of
             Just (Precise val) → ω ⎴ do v ← val; ω (v, s)
             Just (OneOf set) → fromFoldable [fmap_ (\x → (x, s)) v | v ← Set.toList set]
-            Just (Top) → ω ⎴ ω (AnyV, s)
+            Just (Top) → ω ⎴ ω (E.Any, s)
             Nothing → ω ⎴ throwError (InvalidLoc loc)
     ext loc val =
         M.modify ⎴ γ \s →
             let
+                new = Precise (ω val)
                 stronglyUpdated = case s Map.!? loc of
-                    Just (Precise _old) → Precise (ω val)
-                    Just old → old <> (Precise (ω val))
-                    Nothing → Precise (ω val)
+                    Nothing → new
+                    -- Just (Precise _old) → new
+                    Just old → old <> new
              in
                 Map.insert loc stronglyUpdated s
 

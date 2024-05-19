@@ -10,8 +10,8 @@ import Data.Map (toAscList)
 import Data.Set qualified as Set
 import Stanly.Abstract qualified as A
 import Stanly.Concrete (Store (..))
-import Stanly.Eval (Env (..), Exception, Trace (..), Val (..))
-import Stanly.Language (Expr (..), Op2 (..))
+import Stanly.Eval as E (Env (..), Exception, Trace (..), Val (..))
+import Stanly.Language as L (Expr (..), Op2 (..))
 
 import Stanly.Unicode
 
@@ -143,10 +143,10 @@ infixr 6 |-|, ⊹, ⊹\
 
 instance Fmt Val where
     fmt = \case
-        LamV x body r → "λ" ⊹ (Bold ⊹ x) ⊹ "." ⊹ body ⊹ " " ⊹ r
-        NumV n → Dim ⊹ n
-        TxtV s → Dim ⊹ s
-        x → Dim ⊹ (show x)
+        E.Lam x body r → "λ" ⊹ (Bold ⊹ x) ⊹ "." ⊹ body ⊹ " " ⊹ r
+        E.Num n → Dim ⊹ n
+        E.Txt s → Dim ⊹ s
+        E.Any → Dim ⊹ (show Any)
 
 instance Fmt Env where
     fmt r = (Yellow ⊹ "Γ⟦") ⊹ fmt2 r "" ⊹ (Yellow ⊹ "⟧")
@@ -164,21 +164,16 @@ instance Fmt Exception where
 instance (Fmt val) ⇒ Fmt (A.Abstracted val) where
     fmt = \case
         A.Precise x → fmt x
-        A.OneOf s → fmt s
+        A.OneOf s → "{" ⊹ (intersperse (fmt ", ") (map fmt $ Set.toList s)) ⊹ "}"
         A.Top → fmt "⊤"
 
 instance Fmt A.Store where
-    fmt (A.MkStore σ) = κ₁ ⎴ intersperse (fmt '\n') items
+    fmt (A.MkStore σ) = κ₁ ⎴ intersperse (fmt '\n') lines_
       where
-        f₁ loc = (Dim ⊹ "store ") ⊹ (Yellow ⊹ (padded ⎴ bwText loc))
-        f₂ val = Dim ⊹ [toLower c | c ← take 3 (show val)] ⊹ " " ⊹ val
-        items = φ (\(l, r) → l ⊹ ' ' ⊹ r) ⎴ φ (bimap f₁ f₂) (toAscList σ)
-        padded = \case
-            [] → "    "
-            s@[_] → "   " ⋄ s
-            s@[_, _] → "  " ⋄ s
-            s@[_, _, _] → " " ⋄ s
-            s → s
+        lines_ = φ (\(loc, val) → (Yellow ⊹ (bwText $ pad loc)) ⊹ " ↦ " ⊹ val) items
+        items = toAscList σ
+        loc_length = minimum [20, (maximum (φ (length . fst) items))]
+        pad loc = (concat $ replicate (loc_length - length loc) " ") ++ loc
 
 instance Fmt Stanly.Concrete.Store where
     fmt (Stanly.Concrete.MkStore σ) = κ₁ ⎴ intersperse (fmt '\n') items
@@ -197,17 +192,17 @@ instance Fmt Op2 where
 
 instance Fmt Expr where
     fmt = \case
-        Var x → "" ⊹ x
-        App f x → (Dim ⊹ Magenta ⊹ "(") ⊹ paren₁ f ⊹ " " ⊹ x ⊹ (Dim ⊹ Magenta ⊹ ")")
-        Lam x fn → (Dim ⊹ "(λ") ⊹ (Bold ⊹ x) ⊹ "." ⊹ paren₂ fn ⊹ (Dim ⊹ ")")
-        Rec x fn → (Dim ⊹ "(μ") ⊹ (Bold ⊹ x) ⊹ "." ⊹ paren₂ fn ⊹ (Dim ⊹ ")")
-        Op2 o e₁ e₂ → (Dim ⊹ "(") ⊹ e₁ ⊹ " " ⊹ o ⊹ " " ⊹ e₂ ⊹ (Dim ⊹ ")")
-        Num n → "" ⊹ n
-        Txt s → (Dim ⊹ show s)
-        If' tst e₁ e₂ → "(if " ⊹ tst ⊹ " then " ⊹ e₁ ⊹ " else " ⊹ e₂ ⊹ ")"
+        L.Var x → "" ⊹ x
+        L.App f x → (Dim ⊹ Magenta ⊹ "(") ⊹ paren₁ f ⊹ " " ⊹ x ⊹ (Dim ⊹ Magenta ⊹ ")")
+        L.Lam x fn → (Dim ⊹ "(λ") ⊹ (Bold ⊹ x) ⊹ "." ⊹ paren₂ fn ⊹ (Dim ⊹ ")")
+        L.Rec x fn → (Dim ⊹ "(μ") ⊹ (Bold ⊹ x) ⊹ "." ⊹ paren₂ fn ⊹ (Dim ⊹ ")")
+        L.Op2 o e₁ e₂ → (Dim ⊹ "(") ⊹ e₁ ⊹ " " ⊹ o ⊹ " " ⊹ e₂ ⊹ (Dim ⊹ ")")
+        L.Num n → "" ⊹ n
+        L.Txt s → (Dim ⊹ show s)
+        L.If' tst e₁ e₂ → "(if " ⊹ tst ⊹ " then " ⊹ e₁ ⊹ " else " ⊹ e₂ ⊹ ")"
       where
-        paren₁ = \case App f x → paren₁ f ⊹ " " ⊹ x; e → "" ⊹ e
-        paren₂ = \case Rec x fn → k "μ" x fn; Lam x fn → k "λ" x fn; e → "" ⊹ e
+        paren₁ = \case L.App f x → paren₁ f ⊹ " " ⊹ x; e → "" ⊹ e
+        paren₂ = \case L.Rec x fn → k "μ" x fn; L.Lam x fn → k "λ" x fn; e → "" ⊹ e
         k sym x fn = sym ⊹ (Bold ⊹ x) ⊹ "." ⊹ paren₂ fn
 
 instance (Fmt a) ⇒ Fmt (Trace a) where

@@ -1,4 +1,4 @@
 // RUN: stanly -m abstract < %s | FileCheck %s
 (1 + 200)
 
-// CHECK: AnyV
+// CHECK: Any

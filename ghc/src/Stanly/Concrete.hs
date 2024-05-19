@@ -1,13 +1,13 @@
 {-# LANGUAGE UndecidableInstances #-}
 
-module Stanly.Concrete (runConcreteT, ConcreteT, concreteOp2, concreteIsTruthy, Store (..)) where
+module Stanly.Concrete (runConcreteT, ConcreteT, concreteOp2, concreteIsTruthy, Store (..), store) where
 
 import Control.Monad.Except qualified as M
 import Control.Monad.Reader qualified as M
 import Control.Monad.State qualified as M
 import Control.Monad.Writer qualified as M
 import Data.Map qualified as Map
-import Stanly.Eval
+import Stanly.Eval as E
 import Stanly.Language
 import Stanly.Unicode
 
@@ -25,27 +25,30 @@ deriving via (ConcreteTRep m) instance (M.MonadWriter w m) ⇒ M.MonadWriter w (
 runConcreteT ∷ ConcreteT m a → m (Either Exception (a, Store))
 runConcreteT (ConcreteT f) = f ε₁ ε₁
 
+store ∷ Either Exception (Val, Store) → Either Exception Store
+store result = φ (\(MkStore s) → (MkStore ⎴ Map.map E.prune s)) (φ π₂ result)
+
 concreteOp2 ∷ (MonadExc m) ⇒ Op2 → Val → Val → m Val
 concreteOp2 o lhs rhs = do
     case (lhs, rhs) of
-        (NumV n₀, NumV n₁)
-            | o == Plus → ω ⎴ NumV ⎴ n₀ + n₁
-            | o == Minus → ω ⎴ NumV ⎴ n₀ - n₁
-            | o == Times → ω ⎴ NumV ⎴ n₀ * n₁
+        (E.Num n₀, E.Num n₁)
+            | o == Plus → ω ⎴ E.Num ⎴ n₀ + n₁
+            | o == Minus → ω ⎴ E.Num ⎴ n₀ - n₁
+            | o == Times → ω ⎴ E.Num ⎴ n₀ * n₁
             | o == Divide, n₁ == 0 → M.throwError (DivisionByZero lhs rhs)
-            | o == Divide → ω ⎴ NumV ⎴ div n₀ n₁
-        (TxtV t₀, TxtV t₁)
-            | o == Plus → ω ⎴ TxtV ⎴ t₀ ⋄ t₁
-        (TxtV t₀, NumV n₁)
-            | o == Plus → ω ⎴ TxtV ⎴ t₀ ⋄ show n₁
-        (AnyV, _) → ω AnyV
-        (_, AnyV) → ω AnyV
+            | o == Divide → ω ⎴ E.Num ⎴ div n₀ n₁
+        (E.Txt t₀, E.Txt t₁)
+            | o == Plus → ω ⎴ E.Txt ⎴ t₀ ⋄ t₁
+        (E.Txt t₀, E.Num n₁)
+            | o == Plus → ω ⎴ E.Txt ⎴ t₀ ⋄ show n₁
+        (E.Any, _) → ω E.Any
+        (_, E.Any) → ω E.Any
         _ → M.throwError (InvalidArgsToOperator lhs o rhs)
 
 concreteIsTruthy ∷ (MonadExc m) ⇒ Val → m Bool
 concreteIsTruthy = \case
-    NumV n → ω (n /= 0)
-    TxtV s → ω (length s /= 0)
+    E.Num n → ω (n /= 0)
+    E.Txt s → ω (length s /= 0)
     x → M.throwError (BranchOnNonNumeric x)
 
 instance (Monad m) ⇒ Interpreter (ConcreteT m) where

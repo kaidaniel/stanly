@@ -3,6 +3,7 @@
 module Stanly.Language (Variable, Op2 (..), Expr (..), subexprs, freeVars) where
 
 import Control.Applicative (Alternative)
+import Data.Set qualified as Set
 import GHC.Generics (Generic)
 import Stanly.Unicode
 import Test.QuickCheck (
@@ -48,8 +49,16 @@ subexprs = \case
     Rec _ e → ω e ⫶ subexprs e
     Var _ → εₐ
 
-freeVars ∷ Expr → [Variable]
-freeVars e = [v | Var v ← subexprs e]
+freeVars ∷ Expr → Set.Set Variable
+freeVars = \case
+    Lam x e → freeVars e `Set.difference` (Set.singleton x)
+    Num _ → ε₁
+    Txt _ → ε₁
+    App f x → freeVars f `Set.union` freeVars x
+    Op2 _ l r → freeVars l `Set.union` freeVars r
+    If' b x y → freeVars b `Set.union` freeVars x `Set.union` freeVars y
+    Rec f e → freeVars e `Set.difference` (Set.singleton f)
+    Var x → Set.singleton x
 
 instance Arbitrary Expr where
     arbitrary = sized \case
