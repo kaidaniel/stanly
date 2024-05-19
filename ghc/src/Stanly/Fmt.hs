@@ -146,7 +146,7 @@ instance Fmt Val where
         E.Lam x body r → "λ" ⊹ (Bold ⊹ x) ⊹ "." ⊹ body ⊹ " " ⊹ r
         E.Num n → Dim ⊹ n
         E.Txt s → Dim ⊹ s
-        E.Any → Dim ⊹ (show Any)
+        E.Any → Dim ⊹ (show E.Any)
 
 instance Fmt Env where
     fmt r = (Yellow ⊹ "Γ⟦") ⊹ fmt2 r "" ⊹ (Yellow ⊹ "⟧")
@@ -200,6 +200,7 @@ instance Fmt Expr where
         L.Num n → "" ⊹ n
         L.Txt s → (Dim ⊹ show s)
         L.If' tst e₁ e₂ → "(if " ⊹ tst ⊹ " then " ⊹ e₁ ⊹ " else " ⊹ e₂ ⊹ ")"
+        L.Any → Magenta ⊹ "?"
       where
         paren₁ = \case L.App f x → paren₁ f ⊹ " " ⊹ x; e → "" ⊹ e
         paren₂ = \case L.Rec x fn → k "μ" x fn; L.Lam x fn → k "λ" x fn; e → "" ⊹ e

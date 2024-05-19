@@ -55,6 +55,7 @@ eval _ call = \case
     L.Num n → ω ⎴ Num n
     L.Txt s → ω ⎴ Txt s
     L.Lam x e → φ (Lam x e) M.ask
+    L.Any → ω Any
     L.Var x → do
         ρ ← M.ask
         case lookup x (γ ρ) of

@@ -21,6 +21,7 @@ expr = withParens P.<|> withoutParens
     withoutParens =
         let let' x arg body = App (Lam x body) arg
          in ω Txt ⊛ stringLiteral
+                P.<|> P.try (kw "?" ≫ ω Any)
                 P.<|> ω Lam ⊛ (try₁ "λ" ⫶ try₁ "fn " ≫ iden) ⊛ (dot ≫ expr)
                 P.<|> ω Rec ⊛ (try₁ "μ" ⫶ try₁ "mu " ≫ iden) ⊛ (dot ≫ expr)
                 P.<|> ω If' ⊛ (kw "if" ≫ expr) ⊛ (kw "then" ≫ expr) ⊛ (kw "else" ≫ expr)

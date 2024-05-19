@@ -1,5 +1,5 @@
 // RUN: stanly -c -m abstract < %s | FileCheck %s
-(if (1 + 200) then (if (1 + 200) then 1 else 2) else (if (1 * "hi") then 3 else 4))
+(if ? then (if ? then 1 else 2) else (if (1 * "hi") then 3 else 4))
 
 // CHECK: InvalidArgsToOperator
 // CHECK: BranchOnNonNumeric

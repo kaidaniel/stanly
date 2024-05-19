@@ -29,6 +29,7 @@ data Expr where
     Num ∷ Integer → Expr
     Txt ∷ String → Expr
     If' ∷ Expr → Expr → Expr → Expr
+    Any ∷ Expr
     deriving (Eq, Ord, Show, Generic)
 
 data Op2 where
@@ -48,6 +49,7 @@ subexprs = \case
     If' b x y → ω b ⫶ ω x ⫶ ω y ⫶ subexprs b ⫶ subexprs x ⫶ subexprs y
     Rec _ e → ω e ⫶ subexprs e
     Var _ → εₐ
+    Any → εₐ
 
 freeVars ∷ Expr → Set.Set Variable
 freeVars = \case
@@ -59,6 +61,7 @@ freeVars = \case
     If' b x y → freeVars b `Set.union` freeVars x `Set.union` freeVars y
     Rec f e → freeVars e `Set.difference` (Set.singleton f)
     Var x → Set.singleton x
+    Any → ε₁
 
 instance Arbitrary Expr where
     arbitrary = sized \case
@@ -68,6 +71,7 @@ instance Arbitrary Expr where
                 [ φ Num (choose (0, 1000))
                 , φ Txt char
                 , φ Var word
+                , ω Any
                 , φ Op2 arbitrary ⊛ half ⊛ half
                 , φ App half ⊛ half
                 , φ Lam word ⊛ half

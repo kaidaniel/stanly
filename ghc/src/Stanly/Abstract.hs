@@ -77,16 +77,6 @@ joinStores r = γ catS stores
 store ∷ [Either Exception (Val, Store)] → Store
 store result = let MkStore s = (joinStores result) in MkStore (Map.map Stanly.Abstract.prune s)
 
--- values ∷ (Monad m) ⇒ m [Either Exception (Val, Store)] → m [Either Exception Val]
--- values m =
---     φ (Set.toList ∘ Set.fromList) ⎴ do
---         x ← m
---         pure do
---             li ← x
---             case li of
---                 Left e → ω (Left e)
---                 Right (val, _) → ω (Right val)
-
 values ∷ [Either Exception (Val, Store)] → [Either Exception Val]
 values res = Set.toList (Set.fromList [fmap_ π₁ x | x ← res])
 
