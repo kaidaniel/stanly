@@ -165,7 +165,7 @@ instance (Fmt val) ⇒ Fmt (A.Abstracted val) where
     fmt = \case
         A.Precise x → fmt x
         A.OneOf s → "{" ⊹ (intersperse (fmt ", ") (map fmt $ Set.toList s)) ⊹ "}"
-        A.Top → fmt "⊤"
+        A.Top → Reset ⊹ "⊤"
 
 instance Fmt A.Store where
     fmt (A.MkStore σ) = κ₁ ⎴ intersperse (fmt '\n') lines_

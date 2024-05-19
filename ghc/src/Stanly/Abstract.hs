@@ -23,8 +23,12 @@ data Abstracted val
 
 prune ∷ Abstracted Val → Abstracted Val
 prune = \case
-    Precise x → Precise (φ E.prune x)
-    OneOf s → OneOf (Set.map (\x → φ E.prune x) s)
+    Precise x
+        | x == (ω E.Any) → Top
+        | otherwise → Precise (φ E.prune x)
+    OneOf s
+        | (ω E.Any) `Set.member` s → Top
+        | otherwise → OneOf (Set.map (\x → φ E.prune x) s)
     Top → Top
 
 instance (Ord val) ⇒ Semigroup (Abstracted val) where
