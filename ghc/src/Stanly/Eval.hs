@@ -1,3 +1,5 @@
+{-# LANGUAGE RecursiveDo #-}
+
 module Stanly.Eval (
     eval,
     trace,
@@ -19,6 +21,7 @@ module Stanly.Eval (
 
 import Control.Applicative qualified as M
 import Control.Monad.Except qualified as M
+import Control.Monad.Fix qualified as M
 import Control.Monad.Reader qualified as M
 import Control.Monad.State qualified as M
 import Control.Monad.Writer qualified as M
@@ -136,27 +139,43 @@ dead (Trace t) ast = Set.fromList (withoutSubExprs (Set.toList notVisited))
 
 type Cache s = Map.Map (L.Expr, Env, s) (Set.Set (Val, s))
 
-class Cached s m where
+class (Ord s) ⇒ Cached s m where
     cacheOut ∷ m (Cache s)
     cacheIn ∷ m (Cache s)
     modifyCacheOut ∷ (Cache s → Cache s) → m ()
+    localCacheIn ∷ Cache s → m Val → m (Cache s)
 
 {-# INLINEABLE cached #-}
 cached ∷
     ∀ s m.
-    (Ord s, Cached s m, MonadEnv m, M.MonadState s m, M.Alternative m) ⇒
+    (Cached s m, MonadEnv m, M.MonadState s m, M.MonadFix m, M.Alternative m) ⇒
     Mixin (L.Expr → m Val)
-cached cc _ = \expr → do
-    env ← M.ask
-    store ← M.get
-    let config = (expr, env, store)
-    out ← cacheOut
-    case out Map.!? config of
-        Just vXs's → Set.foldl' (\m (v, s) → do M.put s; m M.<|> pure v) M.empty vXs's
-        Nothing → do
-            in' ← cacheIn
-            modifyCacheOut \_ → Map.insert config (Map.findWithDefault Set.empty config in') out
-            v ← cc expr
-            store' ← M.get
-            modifyCacheOut ⎴ Map.adjust (<> Set.singleton (v, store')) config
-            pure v
+cached = fixCached .> go
+  where
+    fixCached cc _ = \expr → do
+        env ← M.ask
+        store ← M.get
+        let config = (expr, env, store)
+        rec cache ← do
+                modifyCacheOut @s \_ → Map.empty
+                M.put store
+                localCacheIn @s cache (cc expr)
+                cacheOut
+        case (cache Map.!? config) of
+            Just vXs's → foldCache vXs's
+            Nothing → M.empty
+    go cc _ = \expr → do
+        env ← M.ask
+        store ← M.get
+        let config = (expr, env, store)
+        out ← cacheOut
+        case out Map.!? config of
+            Just vXs's → foldCache vXs's
+            Nothing → do
+                in' ← cacheIn
+                modifyCacheOut \_ → Map.insert config (Map.findWithDefault Set.empty config in') out
+                v ← cc expr
+                store' ← M.get
+                modifyCacheOut ⎴ Map.adjust (<> Set.singleton (v, store')) config
+                pure v
+    foldCache = \vXs's → Set.foldl' (\m (v, s) → do M.put s; m M.<|> pure v) M.empty vXs's
