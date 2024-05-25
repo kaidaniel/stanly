@@ -13,12 +13,16 @@ module Stanly.Eval (
     (.>),
     mix,
     prune,
+    Mixin,
+    cached,
 ) where
 
+import Control.Applicative qualified as M
 import Control.Monad.Except qualified as M
 import Control.Monad.Reader qualified as M
 import Control.Monad.State qualified as M
 import Control.Monad.Writer qualified as M
+import Data.Map qualified as Map
 import Data.Set qualified as Set
 import Stanly.Language qualified as L
 import Stanly.Unicode
@@ -43,14 +47,14 @@ prune = \case
 type MonadExc = M.MonadError Exception
 type MonadEnv = M.MonadReader Env
 
-class (MonadExc m, MonadEnv m) ⇒ Interpreter m where
+class Interpreter m where
     op2 ∷ L.Op2 → Val → Val → m Val
     isTruthy ∷ Val → m Bool
     find ∷ Loc → m Val
     ext ∷ Loc → Val → m ()
     alloc ∷ L.Variable → m Loc
 
-eval ∷ (Interpreter m) ⇒ Mixin (L.Expr → m Val)
+eval ∷ (MonadExc m, MonadEnv m, Interpreter m) ⇒ Mixin (L.Expr → m Val)
 eval _ call = \case
     L.Num n → ω ⎴ Num n
     L.Txt s → ω ⎴ Txt s
@@ -114,7 +118,7 @@ newtype Trace a = Trace [(L.Expr, Env, a)] deriving (Eq, Show, Semigroup, Monoid
 {-# INLINEABLE trace #-}
 trace ∷
     ∀ a m.
-    (M.MonadState a m, M.MonadWriter (Trace a) m, Interpreter m) ⇒
+    (M.MonadState a m, M.MonadWriter (Trace a) m, MonadEnv m) ⇒
     Mixin (L.Expr → m Val)
 trace cc _ = \expr → do
     r ← M.ask
@@ -129,3 +133,30 @@ dead (Trace t) ast = Set.fromList (withoutSubExprs (Set.toList notVisited))
     allExprs = Set.fromList (L.subexprs ast)
     withoutSubExprs li = [x | x ← li, x `notElem` (li >>= L.subexprs)]
     notVisited = Set.difference allExprs visited
+
+type Cache s = Map.Map (L.Expr, Env, s) (Set.Set (Val, s))
+
+class Cached s m where
+    cacheOut ∷ m (Cache s)
+    cacheIn ∷ m (Cache s)
+    modifyCacheOut ∷ (Cache s → Cache s) → m ()
+
+{-# INLINEABLE cached #-}
+cached ∷
+    ∀ s m.
+    (Ord s, Cached s m, MonadEnv m, M.MonadState s m, M.Alternative m) ⇒
+    Mixin (L.Expr → m Val)
+cached cc _ = \expr → do
+    env ← M.ask
+    store ← M.get
+    let config = (expr, env, store)
+    out ← cacheOut
+    case out Map.!? config of
+        Just vXs's → Set.foldl' (\m (v, s) → do M.put s; m M.<|> pure v) M.empty vXs's
+        Nothing → do
+            in' ← cacheIn
+            modifyCacheOut \_ → Map.insert config (Map.findWithDefault Set.empty config in') out
+            v ← cc expr
+            store' ← M.get
+            modifyCacheOut ⎴ Map.adjust (<> Set.singleton (v, store')) config
+            pure v
