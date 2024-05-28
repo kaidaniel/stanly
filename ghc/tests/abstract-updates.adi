@@ -6,21 +6,25 @@ let closure = λarg.(arg + y);
 let factory = λcaptured.λz.(captured + z);
 let f1 = (factory 2);
 let f2 = (factory y);
-let a = (closure 1);
-let b = (closure 2);
+let a = (closure 0);
+let b = (closure 1);
 let f3 = (factory ?);
-(closure (if ? then 5 else 6))
+(closure (if ? then 10 else 11))
 
 
 //CHECK: == value
-//CHECK: 8
-//CHECK: 9
+//CHECK: 2
+//CHECK: 3
+//CHECK: 4
+//CHECK: 12
+//CHECK: 13
+//CHECK: 14
 //CHECK-NOT: {{.}}
 //CHECK: == store
-//CHECK: arg ↦ {1, 2, 5, 6}
+//CHECK: arg ↦ {0, 1, 10, 11}
 //CHECK: captured ↦ ⊤
 //CHECK: f1 ↦ λz.(captured + z) Γ⟦captured: captured⟧
 //CHECK: f2 ↦ λz.(captured + z) Γ⟦captured: captured⟧
 //CHECK: f3 ↦ λz.(captured + z) Γ⟦captured: captured⟧
-//CHECK: y ↦ 3
+//CHECK: y ↦ {2, 3}
 //CHECK-NOT: {{.}}

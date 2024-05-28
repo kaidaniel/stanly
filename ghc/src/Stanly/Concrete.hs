@@ -1,6 +1,6 @@
 {-# LANGUAGE UndecidableInstances #-}
 
-module Stanly.Concrete (runConcreteT, ConcreteT, concreteOp2, concreteIsTruthy, Store (..), store) where
+module Stanly.Concrete (runT, ConcreteT, concreteOp2, concreteIsTruthy, Store (..), store) where
 
 import Control.Monad.Except qualified as M
 import Control.Monad.Reader qualified as M
@@ -22,8 +22,8 @@ newtype ConcreteT m a = ConcreteT (Env → Store → m (Either Exception (a, Sto
 
 deriving via (ConcreteTRep m) instance (M.MonadWriter w m) ⇒ M.MonadWriter w (ConcreteT m)
 
-runConcreteT ∷ ConcreteT m a → m (Either Exception (a, Store))
-runConcreteT (ConcreteT f) = f ε₁ ε₁
+runT ∷ ConcreteT m a → m (Either Exception (a, Store))
+runT (ConcreteT f) = f ε₁ ε₁
 
 store ∷ Either Exception (Val, Store) → Either Exception Store
 store result = φ (\(MkStore s) → (MkStore ⎴ Map.map E.prune s)) (φ π₂ result)

@@ -8,7 +8,6 @@ import Data.Coerce
 import Data.List (intercalate, intersperse)
 import Data.Map qualified as Map
 import Data.Set qualified as Set
-import Stanly.Abstract qualified as A
 import Stanly.Concrete (Store (..))
 import Stanly.Eval as E (Env (..), Exception, Loc, Trace (..), Val (..))
 import Stanly.Language as L (Expr (..), Op2 (..))
@@ -160,20 +159,6 @@ instance Fmt Env where
 
 instance Fmt Exception where
     fmt e = fmt (show e)
-
-instance (Fmt val) ⇒ Fmt (A.Abstracted val) where
-    fmt = \case
-        A.Precise x → fmt x
-        A.OneOf s → "{" ⊹ (intersperse (fmt ", ") (map fmt $ Set.toList s)) ⊹ "}"
-        A.Top → Reset ⊹ "⊤"
-
-instance Fmt A.Store where
-    fmt (A.MkStore σ) = κ₁ ⎴ intersperse (fmt '\n') lines_
-      where
-        lines_ = φ (\(loc, val) → (Yellow ⊹ (bwText $ pad loc)) ⊹ " ↦ " ⊹ val) items
-        items = Map.toAscList σ
-        loc_length = minimum [20, (maximum (φ (length . fst) items))]
-        pad loc = (concat $ replicate (loc_length - length loc) " ") ++ loc
 
 instance Fmt (Map.Map E.Loc (Set.Set E.Val)) where
     fmt σ = κ₁ ⎴ intersperse (fmt '\n') lines_

@@ -20,10 +20,9 @@ import Options.Applicative (
     switch,
  )
 import Options.Applicative qualified as Opt (value)
-import Stanly.Abstract qualified as A
+import Stanly.Abstract as A
 import Stanly.Concrete qualified as C
 import Stanly.Eval as E
-import Stanly.Fixed as F
 import Stanly.Fmt (Fmt (..), FmtStr, bwText, ttyText, (⊹), (⊹\))
 import Stanly.Language (Expr)
 import Stanly.Parser (parser)
@@ -87,11 +86,10 @@ opts =
 outputs ∷ Options → Expr → [FmtStr]
 outputs Options{..} ast =
     let
-        concreteRes = M.runIdentity ⎴ C.runConcreteT (mix eval ast)
-        traceRes = (M.execWriter ⎴ C.runConcreteT ⎴ mix (trace .> eval) ast)
+        concreteRes = M.runIdentity ⎴ C.runT (mix eval ast)
+        traceRes = (M.execWriter ⎴ C.runT ⎴ mix (trace .> eval) ast)
         deadRes = dead traceRes ast
-        abstractRes = M.runIdentity ⎴ A.runAbstractT (mix eval ast)
-        fixedRes = F.runFixed (mix eval ast)
+        abstractRes = A.run (mix eval ast)
 
         fmtLine ∷ ∀ a. (Fmt a) ⇒ [a] → FmtStr
         fmtLine = \li → fmt (intersperse (fmt "\n") (map fmt li))
@@ -109,8 +107,8 @@ outputs Options{..} ast =
                         ++? (deadCodeO, "dead code", fmt deadRes)
                 Abstract →
                     ε₁
-                        ++? (not noValueO, "value", fmtLine ⎴ F.values fixedRes)
-                        ++? (storeO, "store", fmt ⎴ F.joinedStore fixedRes)
+                        ++? (not noValueO, "value", fmtLine ⎴ A.values abstractRes)
+                        ++? (storeO, "store", fmt ⎴ A.joinedStore abstractRes)
             )
                 ++? (desugaredO, "desugared", fmt ast)
                 ++? (astO, "ast", fmt (show ast))
