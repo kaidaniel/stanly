@@ -1,6 +1,6 @@
 {-# LANGUAGE UndecidableInstances #-}
 
-module Stanly.Abstract where
+module Stanly.Abstract (values, store, runAbstractT, Store (..), Abstracted (..)) where
 
 import Control.Applicative
 import Control.Monad.Except as M
@@ -16,8 +16,8 @@ import Stanly.Language
 import Stanly.Unicode
 
 data Abstracted val
-    = Precise (Either Exception val)
-    | OneOf (Set.Set (Either Exception val))
+    = Precise (Either E.Exception val)
+    | OneOf (Set.Set (Either E.Exception val))
     | Top
     deriving (Eq, Show, Ord)
 
@@ -41,7 +41,7 @@ instance (Ord val) ⇒ Semigroup (Abstracted val) where
     Precise a <> OneOf b = OneOf (Set.singleton a <> b)
     OneOf a <> Precise b = OneOf (a <> Set.singleton b)
 
-newtype Store = MkStore (Map.Map Loc (Abstracted Val))
+newtype Store = MkStore (Map.Map E.Loc (Abstracted E.Val))
     deriving (Eq, Semigroup, Monoid, Show, Ord)
 
 type AbstractTRep m = M.ReaderT Env (M.StateT Store (M.ExceptT Exception (ListT m)))

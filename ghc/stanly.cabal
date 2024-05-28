@@ -25,7 +25,8 @@ library stanly-lib
       Stanly.Parser,
       Stanly.Eval,
       Stanly.Concrete,
-      Stanly.Abstract
+      Stanly.Abstract,
+      Stanly.Fixed
     hs-source-dirs:  src
     build-depends:   haskell-src-meta, QuickCheck, list-t, containers
       

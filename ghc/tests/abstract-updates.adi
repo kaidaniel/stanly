@@ -1,12 +1,13 @@
 // RUN: stanly --section-headers --store --no-colour --semantics abstract < %s | FileCheck %s
 
+let y = 2;
 let y = 3;
 let closure = λarg.(arg + y);
 let factory = λcaptured.λz.(captured + z);
 let f1 = (factory 2);
 let f2 = (factory y);
-let a = (closure 3);
-let b = (closure 4);
+let a = (closure 1);
+let b = (closure 2);
 let f3 = (factory ?);
 (closure (if ? then 5 else 6))
 
@@ -16,7 +17,7 @@ let f3 = (factory ?);
 //CHECK: 9
 //CHECK-NOT: {{.}}
 //CHECK: == store
-//CHECK: arg ↦ {3, 4, 5, 6}
+//CHECK: arg ↦ {1, 2, 5, 6}
 //CHECK: captured ↦ ⊤
 //CHECK: f1 ↦ λz.(captured + z) Γ⟦captured: captured⟧
 //CHECK: f2 ↦ λz.(captured + z) Γ⟦captured: captured⟧

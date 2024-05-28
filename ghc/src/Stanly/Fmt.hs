@@ -6,11 +6,11 @@ import Data.Bifunctor (Bifunctor (bimap))
 import Data.Char (isSpace, toLower)
 import Data.Coerce
 import Data.List (intercalate, intersperse)
-import Data.Map (toAscList)
+import Data.Map qualified as Map
 import Data.Set qualified as Set
 import Stanly.Abstract qualified as A
 import Stanly.Concrete (Store (..))
-import Stanly.Eval as E (Env (..), Exception, Trace (..), Val (..))
+import Stanly.Eval as E (Env (..), Exception, Loc, Trace (..), Val (..))
 import Stanly.Language as L (Expr (..), Op2 (..))
 
 import Stanly.Unicode
@@ -171,8 +171,21 @@ instance Fmt A.Store where
     fmt (A.MkStore σ) = κ₁ ⎴ intersperse (fmt '\n') lines_
       where
         lines_ = φ (\(loc, val) → (Yellow ⊹ (bwText $ pad loc)) ⊹ " ↦ " ⊹ val) items
-        items = toAscList σ
+        items = Map.toAscList σ
         loc_length = minimum [20, (maximum (φ (length . fst) items))]
+        pad loc = (concat $ replicate (loc_length - length loc) " ") ++ loc
+
+instance Fmt (Map.Map E.Loc (Set.Set E.Val)) where
+    fmt σ = κ₁ ⎴ intersperse (fmt '\n') lines_
+      where
+        lines_ = φ (\(loc, val) → (Yellow ⊹ (bwText $ pad loc)) ⊹ " ↦ " ⊹ fval val) items
+        items = Map.toAscList σ
+        loc_length = minimum [20, (maximum (φ (length . fst) items))]
+        fval val = case Set.toList val of
+            [E.Any] → Reset ⊹ "⊤"
+            [x] → fmt x
+            [] → fmt ""
+            xs → "{" ⊹ (intersperse (fmt ", ") (map fmt $ xs)) ⊹ "}"
         pad loc = (concat $ replicate (loc_length - length loc) " ") ++ loc
 
 instance Fmt Stanly.Concrete.Store where
@@ -180,7 +193,7 @@ instance Fmt Stanly.Concrete.Store where
       where
         f₁ loc = (Dim ⊹ "store ") ⊹ (Yellow ⊹ (padded ⎴ bwText loc))
         f₂ val = Dim ⊹ [toLower c | c ← take 3 (show val)] ⊹ " " ⊹ val
-        items = φ (\(l, r) → l ⊹ ' ' ⊹ r) ⎴ φ (bimap f₁ f₂) (toAscList σ)
+        items = φ (\(l, r) → l ⊹ ' ' ⊹ r) ⎴ φ (bimap f₁ f₂) (Map.toAscList σ)
         padded = \case
             [] → "    "
             s@[_] → "   " ⋄ s

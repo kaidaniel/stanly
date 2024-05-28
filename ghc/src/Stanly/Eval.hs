@@ -17,6 +17,8 @@ module Stanly.Eval (
     prune,
     Mixin,
     cached,
+    Cache,
+    Cached,
 ) where
 
 import Control.Applicative qualified as M
