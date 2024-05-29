@@ -123,5 +123,5 @@ instance E.Interpreter Abstract where
     find = \loc → Abstract \i →
         let s = store i
          in (cacheOut i, [(v, s) | v ← Set.toList ⎴ fromMaybe ε₁ (s Map.!? loc)], [])
-    ext = \loc val → M.modify \s → Map.insertWith (<>) loc (Set.singleton val) s
+    ext = \loc val → M.modify \s → Map.insertWith (\s₁ s₂ → squashToTop ⎴ s₁ <> s₂) loc (Set.singleton val) s
     alloc var = ω var

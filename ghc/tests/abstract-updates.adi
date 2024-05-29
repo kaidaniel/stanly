@@ -12,7 +12,9 @@ let f3 = (factory ?);
 (closure (if ? then 10 else 11))
 
 
-//CHECK: == value
+//CHECK: == value (abstract)
+//CHECK-NOT: {{.}}
+//CHECK: BranchOnNonNumeric {val = Any}
 //CHECK: 2
 //CHECK: 3
 //CHECK: 4
