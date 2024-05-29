@@ -87,9 +87,9 @@ outputs ∷ Options → Expr → [FmtStr]
 outputs Options{..} ast =
     let
         concreteRes = M.runIdentity ⎴ C.runT (mix eval ast)
-        traceRes = (M.execWriter ⎴ C.runT ⎴ mix (trace .> eval) ast)
+        traceRes = (M.execWriter ⎴ C.runT ⎴ mix (trace .< eval) ast)
         deadRes = dead traceRes ast
-        abstractRes = A.run (mix eval ast)
+        abstractRes = A.run ⎴ mix eval ast
 
         fmtLine ∷ ∀ a. (Fmt a) ⇒ [a] → FmtStr
         fmtLine = \li → fmt (intersperse (fmt "\n") (map fmt li))

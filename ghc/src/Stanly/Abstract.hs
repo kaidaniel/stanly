@@ -35,14 +35,20 @@ run = \m →
 values ∷ Outputs E.Val → [Either E.Exception E.Val]
 values = \(_, vals, exceptions) → nub ([Left e | (e, _) ← exceptions] <> [Right val | (val, _) ← vals])
 
+-- ⋙ squashToTop ⎴ Set.fromList [E.Num 1, E.Any, E.Txt "abc"]
+-- fromList [Any]
 squashToTop ∷ Set.Set E.Val → Set.Set E.Val
 squashToTop = \set → if E.Any `Set.member` set then Set.singleton E.Any else set
 
+-- ⋙ joinedStore ⎴ run ⎴ (E.ext "x" (E.Num 3)) M.<|> (E.ext "y" (E.Num 4))
+-- fromList [("x",fromList [Num 3]),("y",fromList [Num 4])]
 joinedStore ∷ Outputs a → Store
 joinedStore = \(_, vals, exceptions) →
     let s = foldl' (Map.unionWith Set.union) Map.empty ((map π₂ vals) <> (map π₂ exceptions))
      in Map.map (squashToTop ∘ Set.map E.prune) s
 
+-- ⋙ run ⎴ forceUnique ((pure "x") M.<|> (E.ext "a" (E.Num 1) ≫ pure "x"))
+-- (fromList [],[("x",fromList []),("x",fromList [("a",fromList [Num 1])])],[])
 forceUnique ∷ (Ord a) ⇒ Abstract a → Abstract a
 forceUnique = \(Abstract f) → Abstract \i →
     let (cache, vals, exceptions) = f i
@@ -65,6 +71,8 @@ instance Monad Abstract where
          in
             (cache', M.join vals', M.join exceptions' <> exceptions)
 
+-- ⋙ run ⎴ pure 1 M.<|> pure 1 M.<|> pure 2
+-- (fromList [],[(1,fromList []),(2,fromList [])],[])
 instance M.Alternative Abstract where
     empty = Abstract \i → (cacheOut i, M.empty, M.empty)
     (Abstract f) <|> (Abstract g) = Abstract \inputs →
@@ -125,3 +133,9 @@ instance E.Interpreter Abstract where
          in (cacheOut i, [(v, s) | v ← Set.toList ⎴ fromMaybe ε₁ (s Map.!? loc)], [])
     ext = \loc val → M.modify \s → Map.insertWith (\s₁ s₂ → squashToTop ⎴ s₁ <> s₂) loc (Set.singleton val) s
     alloc var = ω var
+
+instance (E.Cached Store) Abstract where
+    cacheOut = Abstract \i → (cacheOut i, [(cacheOut i, store i)], [])
+    cacheIn = Abstract \i → (cacheOut i, [(cacheIn i, store i)], [])
+    modifyCacheOut = \f → Abstract \i → (f ⎴ cacheOut i, [], [])
+    localCacheIn = \c (Abstract m) → Abstract \i → m i{cacheIn = c}
