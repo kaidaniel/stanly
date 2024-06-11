@@ -17,6 +17,7 @@ else
     else 
         3))
 
+// CHECK: BranchOnNonNumeric {val = Any}
 // CHECK: 1
 // CHECK: 2
 // CHECK: 3

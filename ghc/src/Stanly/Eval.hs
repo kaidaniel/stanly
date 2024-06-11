@@ -29,6 +29,7 @@ import Control.Monad.Writer qualified as M
 import Data.Function (fix)
 import Data.Map qualified as Map
 import Data.Set qualified as Set
+import Debug.Trace qualified as D
 import Stanly.Language qualified as L
 import Stanly.Unicode
 
@@ -144,97 +145,124 @@ type Cache s = Map.Map (L.Expr, Env, s) (Set.Set (Val, s))
 class (Ord s) ⇒ Cached s m where
     cacheOut ∷ m (Cache s)
     cacheIn ∷ m (Cache s)
-    modifyCacheOut ∷ (Cache s → Cache s) → m ()
+    putCacheOut ∷ Cache s → m ()
     localCacheIn ∷ Cache s → m Val → m Val
 
 {-# INLINEABLE cached #-}
-cached ∷
-    ∀ s m.
-    (Cached s m, MonadEnv m, M.MonadState s m, M.Alternative m) ⇒
-    Mixin (L.Expr → m Val)
-cached = fixCached .< go
-  where
-    fixCached super _ = \expr → do
-        env ← M.ask
-        store ← M.get
-        let config = (expr, env, store)
-        cache ← mlfp \cache' → do
-            modifyCacheOut @s \_ → ε₁
-            M.put store
-            localCacheIn @s cache' (super expr)
-            cacheOut
-        maybe M.empty foldCache (cache Map.!? config)
-    mlfp = \f →
-        let loop x = do
-                x' ← f x
-                if (x' == x) then (pure x) else (loop x')
-         in loop ε₁
-    go super _ = \expr → do
-        env ← M.ask
-        store ← M.get
-        let config = (expr, env, store)
-        out ← cacheOut
-        case out Map.!? config of
-            Just vXs's → foldCache vXs's
-            Nothing → do
-                in' ← cacheIn
-                modifyCacheOut \_ → Map.insert config (Map.findWithDefault Set.empty config in') out
-                v ← super expr
-                store' ← M.get
-                modifyCacheOut ⎴ Map.adjust (<> Set.singleton (v, store')) config
-                pure v
-    foldCache = \vXs's → Set.foldl' (\m (v, s) → do M.put s; m M.<|> pure v) M.empty vXs's
 
--- evCache ∷
+-- cached ∷
 --     ∀ s m.
 --     (Cached s m, MonadEnv m, M.MonadState s m, M.Alternative m) ⇒
---     ((L.Expr → m Val) → (L.Expr → m Val)) →
---     (L.Expr → m Val) →
---     L.Expr →
---     m Val
--- evCache ev0 ev = \expr → do
---     env ← M.ask
---     store ← M.get
---     let config = (expr, env, store)
---     out ← cacheOut
---     case out Map.!? config of
---         Just vXs's → foldCache vXs's
---         Nothing → do
---             in' ← cacheIn
---             modifyCacheOut \_ → Map.insert config (Map.findWithDefault Set.empty config in') out
---             v ← (ev0 ev) expr
---             store' ← M.get
---             modifyCacheOut ⎴ Map.adjust (<> Set.singleton (v, store')) config
---             pure v
+--     Mixin (L.Expr → m Val)
+-- cached = fixCached .< go
 --   where
---     foldCache = Set.foldl' (\m (v, s) → do M.put s; m M.<|> pure v) M.empty
-
--- fixCached ∷
---     ∀ s m.
---     (Cached s m, MonadEnv m, M.MonadState s m, M.Alternative m) ⇒
---     (L.Expr → m Val) →
---     (L.Expr → m Val)
--- fixCached ev = \expr → do
---     env ← M.ask
---     store ← M.get
---     let config = (expr, env, store)
---     cache ← mlfp \cache' → do
---         modifyCacheOut @s \_ → ε₁
---         M.put store
---         localCacheIn @s cache' (ev expr)
---         cacheOut
---     maybe M.empty foldCache (cache Map.!? config)
---   where
+--     fixCached super _ = \expr → do
+--         env ← M.ask
+--         store ← M.get
+--         let config = (expr, env, store)
+--         cache ← mlfp \cache' → do
+--             putCacheOut @s ε₁
+--             M.put store
+--             localCacheIn @s cache' (super expr)
+--             cacheOut
+--         maybe M.empty foldSet (cache Map.!? config)
 --     mlfp = \f →
 --         let loop x = do
 --                 x' ← f x
 --                 if (x' == x) then (pure x) else (loop x')
 --          in loop ε₁
---     foldCache = Set.foldl' (\m (v, s) → do M.put s; m M.<|> pure v) M.empty
+--     go super _ = \expr → do
+--         env ← M.ask
+--         store ← M.get
+--         let config = (expr, env, store)
+--         out ← cacheOut
+--         case out Map.!? config of
+--             Just vXs's → foldSet vXs's
+--             Nothing → do
+--                 in' ← cacheIn
+--                 putCacheOut ⎴ Map.insert config (Map.findWithDefault Set.empty config in') out
+--                 v ← super expr
+--                 store' ← M.get
+--                 out' ← cacheOut
+--                 putCacheOut ⎴ Map.insertWith (<>) config (Set.singleton (v, store')) out'
+--                 pure v
+--     foldSet ∷ Set.Set (Val, s) → m Val
+--     foldSet = Set.foldl' (\m (v, s) → do M.put s; m M.<|> pure v) M.empty
 
--- cached ∷
---     ∀ s m.
---     (Cached s m, MonadEnv m, M.MonadState s m, M.Alternative m, MonadExc m, Interpreter m) ⇒
---     L.Expr →
---     m Val
--- cached = fixCached (fix ⎴ evCache (eval cached))
+-- (define (((ev-cache ev') ev) e)
+--                      ... m Val)
+-- (define ((fix-cache eval) e)
+--                      ... m Val)
+-- (define (eval e)
+--    (mrun ((fix-cache (fix (ev-cache ev))) e)))
+-- eval :: Expr -> m Val
+-- fix-cache :: (Expr -> m Val) -> (Expr -> m Val)
+-- ev-cache :: ((Expr -> m Val) -> (Expr -> m Val)) -> (Expr -> m Val) -> Expr -> m Val
+-- ev' ev e :: m Val
+-- ev' ev :: Expr -> m Val
+-- ev :: Expr -> m Val
+-- fix (ev-cache ev) :: (Expr -> m Val)
+evCache ∷
+    ∀ s m.
+    (Cached s m, MonadEnv m, M.MonadState s m, M.Alternative m) ⇒
+    ((L.Expr → m Val) → (L.Expr → m Val)) →
+    (L.Expr → m Val) →
+    L.Expr →
+    m Val
+evCache ev0 ev = \expr → do
+    env ← M.ask
+    store ← M.get
+    let config = (expr, env, store)
+    out ← cacheOut
+    case out Map.!? config of
+        Just vXs's → foldCache vXs's
+        Nothing → do
+            in' ← cacheIn
+            putCacheOut ⎴ Map.insert config (Map.findWithDefault Set.empty config in') out
+            v ← (ev0 ev) expr
+            store' ← M.get
+            out' ← cacheOut
+            putCacheOut ⎴ Map.insertWith (<>) config (Set.singleton (v, store')) out'
+            pure v
+  where
+    foldCache = Set.foldl' (\m (v, s) → do M.put s; m M.<|> pure v) M.empty
+
+fixCached ∷
+    ∀ s m.
+    (Cached s m, MonadEnv m, M.MonadState s m, M.Alternative m, Show (Cache s)) ⇒
+    (L.Expr → m Val) →
+    (L.Expr → m Val)
+fixCached ev = \expr → do
+    env ← M.ask
+    store ← M.get
+    let config = (expr, env, store)
+    cache ← mlfp \cache' → do
+        putCacheOut @s ε₁
+        M.put store
+        localCacheIn @s cache' (ev expr)
+        cacheOut
+    maybe M.empty foldCache (cache Map.!? config)
+  where
+    mlfp = \f →
+        let loop x = do
+                x' ← f x
+                if (tr x') (tr x) (x' == x)
+                    then (pure x)
+                    else (loop x')
+         in loop ε₁
+    foldCache = Set.foldl' (\m (v, s) → do M.put s; m M.<|> pure v) M.empty
+    tr = \c → D.traceShow (Map.foldl' (\a b → a + Set.size b) 0 c)
+
+cached ∷
+    ∀ s m.
+    ( Cached s m
+    , MonadEnv m
+    , M.MonadState s m
+    , M.Alternative m
+    , MonadExc m
+    , Interpreter m
+    , Show (Cache s)
+    ) ⇒
+    L.Expr →
+    m Val
+cached = fixCached (fix ⎴ evCache (eval undefined))

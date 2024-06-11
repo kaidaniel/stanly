@@ -13,6 +13,7 @@ import Stanly.Concrete qualified as C
 import Stanly.Eval qualified as E
 import Stanly.Language qualified as L
 import Stanly.Unicode
+import Text.Show.Functions
 
 type Store = Map.Map E.Loc (Set.Set E.Val)
 type Cache = E.Cache Store
@@ -33,21 +34,23 @@ run = \m →
     unAbstract (forceUnique m) Inputs{env = ε₁, store = ε₁, cacheIn = ε₁, cacheOut = mempty}
 
 values ∷ Outputs E.Val → [Either E.Exception E.Val]
-values = \(_, vals, exceptions) → nub ([Left e | (e, _) ← exceptions] <> [Right val | (val, _) ← vals])
+values = \(_, vals, exceptions) →
+    let vals' = ((map Right) ∘ Set.toList ∘ squashToTop ∘ Set.fromList) (map π₁ vals)
+     in nub ([Left e | (e, _) ← exceptions] <> vals')
 
--- ⋙ squashToTop ⎴ Set.fromList [E.Num 1, E.Any, E.Txt "abc"]
+-- >>> squashToTop ⎴ Set.fromList [E.Num 1, E.Any, E.Txt "abc"]
 -- fromList [Any]
 squashToTop ∷ Set.Set E.Val → Set.Set E.Val
 squashToTop = \set → if E.Any `Set.member` set then Set.singleton E.Any else set
 
--- ⋙ joinedStore ⎴ run ⎴ (E.ext "x" (E.Num 3)) M.<|> (E.ext "y" (E.Num 4))
+-- >>> joinedStore ⎴ run ⎴ (E.ext "x" (E.Num 3)) M.<|> (E.ext "y" (E.Num 4))
 -- fromList [("x",fromList [Num 3]),("y",fromList [Num 4])]
 joinedStore ∷ Outputs a → Store
 joinedStore = \(_, vals, exceptions) →
     let s = foldl' (Map.unionWith Set.union) Map.empty ((map π₂ vals) <> (map π₂ exceptions))
      in Map.map (squashToTop ∘ Set.map E.prune) s
 
--- ⋙ run ⎴ forceUnique ((pure "x") M.<|> (E.ext "a" (E.Num 1) ≫ pure "x"))
+-- >>> run ⎴ forceUnique ((pure "x") M.<|> (E.ext "a" (E.Num 1) ≫ pure "x"))
 -- (fromList [],[("x",fromList []),("x",fromList [("a",fromList [Num 1])])],[])
 forceUnique ∷ (Ord a) ⇒ Abstract a → Abstract a
 forceUnique = \(Abstract f) → Abstract \i →
@@ -71,7 +74,7 @@ instance Monad Abstract where
          in
             (cache', M.join vals', M.join exceptions' <> exceptions)
 
--- ⋙ run ⎴ pure 1 M.<|> pure 1 M.<|> pure 2
+-- >>> run ⎴ pure 1 M.<|> pure 1 M.<|> pure 2
 -- (fromList [],[(1,fromList []),(2,fromList [])],[])
 instance M.Alternative Abstract where
     empty = Abstract \i → (cacheOut i, M.empty, M.empty)
@@ -137,5 +140,25 @@ instance E.Interpreter Abstract where
 instance (E.Cached Store) Abstract where
     cacheOut = Abstract \i → (cacheOut i, [(cacheOut i, store i)], [])
     cacheIn = Abstract \i → (cacheOut i, [(cacheIn i, store i)], [])
-    modifyCacheOut = \f → Abstract \i → (f ⎴ cacheOut i, [], [])
+    putCacheOut = \c → Abstract \i → (c, [((), store i)], [])
     localCacheIn = \c (Abstract m) → Abstract \i → m i{cacheIn = c}
+
+{- |
+>>> let s = \x -> Map.fromList [("x", Set.singleton (E.Num x))]
+>>> let m = foldSet (Set.fromList [(E.Num 1, s 1), (E.Num 2, s 2), (E.Any, s 1)])
+>>> values ⎴ run ⎴ m
+
+
+
+-- prop> \(m :: Abstract E.Val) -> values (run (m M.<|> pure E.Any)) == [Right E.Any]
+
+>>> Map.fromList [("a", Set.fromList [1, 2, 3]), ("b", Set.singleton 2)] == Map.fromList [("a", Set.fromList [2, 1, 3 , 3])]
+False
+
+
+prop> \(l :: [Int]) -> reverse (reverse l) == l
++++ OK, passed 100 tests.
+
+prop> \f g h x -> let types = [f, g, h] :: [Int -> Int] in ((f ∘ g) ∘ h) x == (f ∘ (g ∘ h)) x
++++ OK, passed 100 tests.
+-}
